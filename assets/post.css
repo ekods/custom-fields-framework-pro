@@ -1,0 +1,51 @@
+.cff-field{display:grid;grid-template-columns:220px 1fr;gap:14px;padding:14px 12px;border-top:1px solid #e5e5e5;background:#fff}
+.cff-field:first-child{border-top:0}
+.cff-label label{font-weight:600}
+.cff-label .description{margin-top:4px;color:#646970;font-size:12px}
+.cff-muted{color:#646970}
+.cff-media{border:1px solid #dcdcde;border-radius:10px;padding:10px;background:#fbfbfc;max-width:720px}
+.cff-media-preview{margin-bottom:8px}
+.cff-media-inline{max-width:520px}
+.cff-rep-row,.cff-flex-row{border:1px solid #dcdcde;border-radius:12px;margin:10px 0;background:#fbfbfc}
+.cff-rep-row-head,.cff-flex-head{padding:10px 12px;border-bottom:1px solid #e5e5e5;display:flex;justify-content:space-between;align-items:center}
+.cff-rep-row-body,.cff-flex-body{padding:10px 12px;display:grid;grid-template-columns:1fr;gap:10px}
+.cff-subfield-input label{display:block;font-weight:600;margin-bottom:6px}
+.cff-flex-add{display:flex;gap:10px;align-items:center;margin-top:10px}
+.cff-pill{display:inline-block;padding:2px 8px;border:1px solid #ddd;border-radius:999px;background:#fff;font-size:12px;color:#444;margin-left:8px}
+
+
+/* === ACF-like repeater rows === */
+.cff-rep-row{
+  border:1px solid #dcdcde;
+  border-radius:12px;
+  background:#fff;
+  margin:0 0 10px;
+  overflow:hidden;
+}
+.cff-rep-row-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:10px 12px;
+  background:#f6f7f7;
+  border-bottom:1px solid #dcdcde;
+}
+.cff-rep-row-head .cff-rep-left{display:flex;align-items:center;gap:10px}
+.cff-rep-drag{
+  width:28px;height:28px;border:1px solid #dcdcde;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  color:#646970;background:#fff;cursor:grab;
+}
+.cff-rep-drag:before{font-family:dashicons;content:"\f333";font-size:18px}
+.cff-rep-toggle{
+  width:28px;height:28px;border:1px solid #dcdcde;border-radius:8px;
+  background:#fff;color:#2271b1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.cff-rep-toggle:before{font-family:dashicons;content:"\f142"} /* arrow-down */
+.cff-rep-row.is-collapsed .cff-rep-toggle:before{content:"\f140"} /* arrow-right */
+.cff-rep-row.is-collapsed .cff-rep-row-body{display:none}
+
+.cff-rep-row-body{padding:12px}
+.cff-subfield-input{margin-bottom:12px}
+.cff-subfield-input label{font-weight:600;display:block;margin-bottom:6px}
