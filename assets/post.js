@@ -1,62 +1,54 @@
 jQuery(function($){
 
   function safeText(v){ return String(v == null ? '' : v); }
-
-  // ✅ replace all token tanpa replaceAll()
-  function replaceTokenAll(str, token, value){
-    str = safeText(str);
-    token = safeText(token);
-    value = safeText(value);
-    if (!token) return str;
-    return str.split(token).join(value);
+  function cffReplaceAll(str, find, rep){
+    return String(str || '').split(find).join(rep);
+  }
+  function escapeReg(s){
+    return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   /* -------------------------
-   * WYSIWYG init/remove (dynamic)
+   * WYSIWYG init/remove (single source of truth)
    * ------------------------- */
-   function cffInitWysiwyg($scope){
-     if (!window.wp || !wp.editor || !wp.editor.initialize) return;
+  window.cffInitWysiwyg = function($scope){
+    if (!window.wp || !wp.editor || !wp.editor.initialize) return;
 
-     var defaults = (wp.editor.getDefaultSettings)
-       ? wp.editor.getDefaultSettings()
-       : { tinymce: {}, quicktags: true, mediaButtons: true };
+    var defaults = (wp.editor.getDefaultSettings)
+      ? wp.editor.getDefaultSettings()
+      : { tinymce: {}, quicktags: true, mediaButtons: true };
 
-     $scope.find('textarea.cff-wysiwyg').each(function(){
-       var id = this.id;
-       if (!id) return;
-       if (window.tinymce && tinymce.get(id)) return;
+    $scope.find('textarea.cff-wysiwyg[id]').each(function(){
+      var id = this.id;
+      if (!id) return;
+      if (window.tinymce && tinymce.get(id)) return;
 
-       var settings = $.extend(true, {}, defaults, {
-         tinymce: true,
-         quicktags: true,
-         mediaButtons: true
-       });
+      var settings = $.extend(true, {}, defaults, {
+        tinymce: true,
+        quicktags: true,
+        mediaButtons: true
+      });
 
-       var $cfg = $(this).closest('.cff-field, .cff-subfield, .cff-repeater-row')
-         .find('.cff-wysiwyg-settings[data-editor-id="'+id+'"]');
+      var $cfg = $(this).closest('.cff-field, .cff-subfield-input, .cff-rep-row, .cff-flex-row')
+        .find('.cff-wysiwyg-settings[data-editor-id="'+id+'"]');
 
-       if ($cfg.length) {
-         try { settings = $.extend(true, settings, JSON.parse($cfg.val() || '{}')); } catch(e){}
-       }
+      if ($cfg.length) {
+        try { settings = $.extend(true, settings, JSON.parse($cfg.val() || '{}')); } catch(e){}
+      }
 
-       wp.editor.initialize(id, settings);
-     });
-   }
+      wp.editor.initialize(id, settings);
+    });
+  };
 
-   function cffRemoveWysiwyg($scope){
-     if (!window.wp || !wp.editor || !wp.editor.remove) return;
-
-     $scope.find('textarea.cff-wysiwyg').each(function(){
-       var id = this.id;
-       if (id) wp.editor.remove(id);
-     });
-   }
-
-  // init existing wysiwyg on load (kalau ada template textarea)
-  cffInitWysiwyg($(document));
+  window.cffRemoveWysiwyg = function($scope){
+    if (!window.wp || !wp.editor || !wp.editor.remove) return;
+    $scope.find('textarea.cff-wysiwyg[id]').each(function(){
+      try { wp.editor.remove(this.id); } catch(e){}
+    });
+  };
 
   /* -------------------------
-   * Media helpers
+   * Media picker (tetap, aman)
    * ------------------------- */
   function renderMedia($wrap, id){
     var $id = $wrap.find('.cff-media-id');
@@ -65,9 +57,7 @@ jQuery(function($){
     $id.val(id || '');
 
     if (!id){
-      $preview.empty().append(
-        $('<span/>', { class: 'cff-muted', text: 'No file selected' })
-      );
+      $preview.empty().append($('<span/>', { class: 'cff-muted', text: 'No file selected' }));
       return;
     }
 
@@ -78,26 +68,6 @@ jQuery(function($){
       )
     );
   }
-
-  function renderMediaLink($wrap, url, label){
-    var $preview = $wrap.find('.cff-media-preview');
-    $preview.empty();
-
-    var href = safeText(url).trim();
-    if (!/^https?:\/\//i.test(href)) return;
-
-    var text = safeText(label || href);
-    var $a = $('<a/>', {
-      href: href,
-      target: '_blank',
-      rel: 'noopener noreferrer',
-      text: text
-    });
-
-    $preview.append($a);
-  }
-
-  var cffFrames = {};
 
   $(document).on('click', '.cff-media-select', function(e){
     e.preventDefault();
@@ -117,18 +87,14 @@ jQuery(function($){
 
     frame.on('select', function(){
       var sel = frame.state().get('selection');
-      if (!sel) return;
-
-      var model = sel.first();
+      var model = sel && sel.first && sel.first();
       if (!model) return;
 
       var att = model.toJSON();
       if (!att || !att.id) return;
 
-      // ✅ SET ID (ini yang bikin value gak lagi 0)
       $wrap.find('input.cff-media-id').val(att.id).trigger('change');
 
-      // ✅ PREVIEW
       var $preview = $wrap.find('.cff-media-preview').empty();
 
       if (type === 'image') {
@@ -144,7 +110,6 @@ jQuery(function($){
         }
       }
 
-      // fallback file link
       if (att.url) {
         $('<a>', { href: att.url, target:'_blank', rel:'noopener noreferrer', text:(att.filename || att.url) })
           .appendTo($preview);
@@ -162,75 +127,13 @@ jQuery(function($){
   });
 
   /* -------------------------
-   * Sortable init (repeater rows)
+   * Sortable + reindex
    * ------------------------- */
-  function initSortable($container){
-    if (!$.fn.sortable || !$container || !$container.length) return;
-
-    // avoid double init
-    try {
-      if ($container.data('ui-sortable')) return;
-    } catch(_) {}
-
-    $container.sortable({
-      handle: '.cff-rep-drag',
-      items: '> .cff-rep-row'
-    });
-  }
-
-  $('.cff-rep-rows').each(function(){
-    initSortable($(this));
-  });
-
-  function cffReplaceAll(str, find, rep){
-      return String(str || '').split(find).join(rep);
-    }
-
-  // ===== expose ke window supaya bisa dipakai di mana-mana
-  window.cffInitWysiwyg = function($scope){
-    if (!window.wp || !wp.editor || !wp.editor.initialize) return;
-
-    var defaults = (wp.editor.getDefaultSettings)
-      ? wp.editor.getDefaultSettings()
-      : { tinymce: {}, quicktags: true, mediaButtons: true };
-
-    $scope.find('textarea.cff-wysiwyg[id]').each(function(){
-      var id = this.id;
-      if (!id) return;
-      if (window.tinymce && tinymce.get(id)) return;
-
-      var settings = $.extend(true, {}, defaults, {
-        tinymce: true,
-        quicktags: true,
-        mediaButtons: true
-      });
-
-      // ✅ FIX: cari settings dari parent yang bener (.cff-rep-row)
-      var $cfg = $(this).closest('.cff-field, .cff-subfield-input, .cff-rep-row, .cff-flex-row')
-        .find('.cff-wysiwyg-settings[data-editor-id="'+id+'"]');
-
-      if ($cfg.length) {
-        try { settings = $.extend(true, settings, JSON.parse($cfg.val() || '{}')); } catch(e){}
-      }
-
-      wp.editor.initialize(id, settings);
-    });
-  };
-
-  window.cffRemoveWysiwyg = function($scope){
-    if (!window.wp || !wp.editor || !wp.editor.remove) return;
-    $scope.find('textarea.cff-wysiwyg[id]').each(function(){
-      try { wp.editor.remove(this.id); } catch(e){}
-    });
-  };
-
-  // ===== sortable + reindex
   function initSortable($rows){
     if (!$.fn.sortable || !$rows.length) return;
 
-    // reinit aman
     if ($rows.data('ui-sortable')) {
-      $rows.sortable('destroy');
+      try { $rows.sortable('destroy'); } catch(e){}
     }
 
     $rows.sortable({
@@ -243,10 +146,6 @@ jQuery(function($){
     });
   }
 
-  function escapeReg(s){
-    return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  }
-
   function reindexRepeater($rep){
     var parent = String($rep.data('field') || '');
     if (!parent) return;
@@ -254,7 +153,7 @@ jQuery(function($){
     $rep.find('.cff-rep-row').each(function(newIndex){
       var $row = $(this);
 
-      // deteksi oldIndex dari data-i (fallback dari name)
+      // ambil oldIndex dari data-i atau dari name pertama
       var oldIndex = $row.attr('data-i');
       if (oldIndex == null || oldIndex === '') {
         var n = $row.find('[name^="cff_values['+parent+']["]').first().attr('name') || '';
@@ -267,7 +166,7 @@ jQuery(function($){
 
       $row.attr('data-i', newIndex);
 
-      // ✅ update semua name yang mengandung [parent][old]
+      // update name: [parent][old] -> [parent][new]
       if (oldIndex !== '') {
         var pat = new RegExp('\\['+escapeReg(parent)+'\\]\\['+escapeReg(oldIndex)+'\\]', 'g');
         $row.find('[name]').each(function(){
@@ -277,33 +176,84 @@ jQuery(function($){
         });
       }
 
-      // ✅ update ID editor: ..._<postid>_<old> -> ..._<postid>_<new>
+      // update editor id: pakai pola yang lebih niat
+      // contoh: cff_wysiwyg_xxx__INDEX -> cff_wysiwyg_xxx_0 dst
       $row.find('textarea.cff-wysiwyg[id]').each(function(){
-        // lebih aman: replace _<angka_di_akhir>
-        this.id = this.id.replace(/_\d+$/, '_'+newIndex);
+        // ganti hanya angka index paling akhir
+        this.id = this.id.replace(/(_)(\d+)$/, '$1' + newIndex);
       });
 
-      // sync data-editor-id settings
+      // sync data-editor-id di settings hidden
       $row.find('.cff-wysiwyg-settings[data-editor-id]').each(function(){
         var cur = $(this).attr('data-editor-id');
-        if (cur) $(this).attr('data-editor-id', cur.replace(/_\d+$/, '_'+newIndex));
+        if (!cur) return;
+        $(this).attr('data-editor-id', cur.replace(/(_)(\d+)$/, '$1' + newIndex));
       });
 
       // hidupkan lagi editor
       window.cffInitWysiwyg($row);
     });
 
-    // WP detect dirty
     $rep.closest('form').trigger('change');
   }
 
-  // ===== INIT existing
+
+  function updateRepeaterControls($rep){
+    var count = $rep.find('.cff-rep-row').length;
+
+    var min = parseInt($rep.data('min'), 10);
+    var max = parseInt($rep.data('max'), 10);
+
+    if (isNaN(min) || min < 0) min = 1;
+    if (isNaN(max) || max < 0) max = 0; // 0 = unlimited
+
+    // --- REMOVE: disable kalau count <= min (atau <=1 default safety)
+    var canRemove = count > Math.max(1, min);
+
+    $rep.find('.cff-rep-remove').each(function(){
+      $(this)
+        .toggleClass('is-disabled', !canRemove)
+        .attr('aria-disabled', canRemove ? null : 'true');
+
+      // kalau button, ini ngaruh. kalau link, tetap aman.
+      try { $(this).prop('disabled', !canRemove); } catch(e){}
+    });
+
+    // --- ADD: disable kalau sudah max (kecuali max=0 unlimited)
+    var canAdd = (!max || count < max);
+
+    $rep.find('.cff-rep-add').each(function(){
+      $(this)
+        .toggleClass('is-disabled', !canAdd)
+        .attr('aria-disabled', canAdd ? null : 'true');
+      try { $(this).prop('disabled', !canAdd); } catch(e){}
+    });
+
+    // optional: tooltip kecil biar jelas
+    if (!canAdd && max) {
+      $rep.find('.cff-rep-add').attr('title', 'Max rows: ' + max);
+    } else {
+      $rep.find('.cff-rep-add').removeAttr('title');
+    }
+  }
+
+
+  /* -------------------------
+   * INIT existing
+   * ------------------------- */
   $('.cff-rep-rows').each(function(){
     initSortable($(this));
   });
-  window.cffInitWysiwyg($(document));
+  window.cffInitWysiwyg($(document)); // sekali saja
 
-  // ===== ADD ROW (PASTIKAN cuma 1 handler!)
+  $('.cff-repeater').each(function(){
+    updateRepeaterControls($(this));
+  });
+
+
+  /* -------------------------
+   * ADD / REMOVE (single handler each)
+   * ------------------------- */
   $(document)
     .off('click.cffRepAdd', '.cff-rep-add')
     .on('click.cffRepAdd', '.cff-rep-add', function(e){
@@ -324,10 +274,13 @@ jQuery(function($){
       initSortable($rows);
       window.cffInitWysiwyg($new);
 
+      updateRepeaterControls($rep);
+
+      if ($(this).hasClass('is-disabled')) return;
+
       $rep.closest('form').trigger('change');
     });
 
-  // ===== REMOVE ROW + REINDEX (juga hanya 1 handler)
   $(document)
     .off('click.cffRepRemove', '.cff-rep-remove')
     .on('click.cffRepRemove', '.cff-rep-remove', function(e){
@@ -340,34 +293,21 @@ jQuery(function($){
       $row.remove();
 
       reindexRepeater($rep);
+
+      updateRepeaterControls($rep);
+
+      if ($(this).hasClass('is-disabled')) return;
+
       $rep.closest('form').trigger('change');
     });
 
-  // ===== sync tinymce -> textarea sebelum submit (wajib)
+  /* -------------------------
+   * Sync TinyMCE to textarea before submit
+   * ------------------------- */
   $(document).on('submit.cffTinymceSave', '#post', function(){
     if (window.tinymce) {
       try { tinymce.triggerSave(); } catch(e){}
     }
   });
-
-
-  $(document).on('click', '.cff-rep-remove', function(e){
-    e.preventDefault();
-
-    var $rep = $(this).closest('.cff-repeater');
-    var $row = $(this).closest('.cff-rep-row');
-
-    if (window.wp && wp.editor) {
-      $row.find('textarea.cff-wysiwyg[id]').each(function(){
-        try { wp.editor.remove(this.id); } catch(e){}
-      });
-    }
-
-    $row.remove();
-    cffReindexRepeater($rep);
-
-    $rep.closest('form').trigger('change');
-  });
-
 
 });

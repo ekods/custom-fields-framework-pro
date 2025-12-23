@@ -17,6 +17,7 @@ class Plugin {
         'singular_name' => __('Field Group', 'cff'),
         'add_new_item' => __('Add New Field Group', 'cff'),
         'edit_item' => __('Edit Field Group', 'cff'),
+        'search_items' => __('Search Field Groups', 'cff'),
       ],
       'public' => false,
       'show_ui' => true,
@@ -41,7 +42,21 @@ class Plugin {
       $public   = !empty($def['public']);
       $has_archive = !empty($def['has_archive']);
       $show_in_rest = !empty($def['show_in_rest']);
-      $supports = isset($def['supports']) && is_array($def['supports']) ? array_values(array_map('sanitize_key',$def['supports'])) : ['title','editor'];
+      $supports = (isset($def['supports']) && is_array($def['supports']))
+        ? array_values(array_map('sanitize_key',$def['supports']))
+        : ['title','editor'];
+
+      // ✅ ambil dari option yg tersimpan
+      $menu_icon_raw = isset($def['menu_icon']) ? trim((string)$def['menu_icon']) : '';
+      $menu_icon = '';
+
+      if ($menu_icon_raw !== '') {
+        if (strpos($menu_icon_raw, 'dashicons-') === 0) {
+          $menu_icon = preg_replace('/[^a-z0-9\-_]/i', '', $menu_icon_raw);
+        } else {
+          $menu_icon = esc_url_raw($menu_icon_raw);
+        }
+      }
 
       register_post_type($key, [
         'labels' => [
@@ -58,8 +73,11 @@ class Plugin {
         'query_var' => array_key_exists('query_var',$def) ? (bool)$def['query_var'] : true,
         'show_admin_column' => array_key_exists('show_admin_column',$def) ? (bool)$def['show_admin_column'] : true,
         'supports' => $supports,
-        'taxonomies' => isset($def['taxonomies']) && is_array($def['taxonomies']) ? array_map('sanitize_key',$def['taxonomies']) : [],
+        'taxonomies' => (isset($def['taxonomies']) && is_array($def['taxonomies']))
+          ? array_map('sanitize_key',$def['taxonomies'])
+          : [],
         'menu_position' => 25,
+        'menu_icon' => $menu_icon ?: 'dashicons-admin-post',
       ]);
     }
   }
@@ -159,12 +177,30 @@ class Plugin {
     $defs = get_option('cffp_post_types', []);
     if (!is_array($defs)) $defs = [];
 
+    $edit_key = isset($_GET['edit']) ? sanitize_key($_GET['edit']) : '';
+    $editing  = ($edit_key && isset($defs[$edit_key]) && is_array($defs[$edit_key]));
+    $edit_def = $editing ? (array) $defs[$edit_key] : [];
+
+    // =========================
+    // HANDLE SAVE / DELETE
+    // =========================
     if (isset($_POST['cffp_cpt_nonce']) && wp_verify_nonce($_POST['cffp_cpt_nonce'], 'cffp_cpt_save')) {
       $action = sanitize_key($_POST['cffp_action'] ?? '');
 
-      if ($action === 'add') {
+      if (in_array($action, ['add','update'], true)) {
         $key = sanitize_key($_POST['cpt_key'] ?? '');
         if ($key) {
+          $menu_icon_raw = isset($_POST['cpt_menu_icon']) ? trim(wp_unslash($_POST['cpt_menu_icon'])) : '';
+          $menu_icon = '';
+
+          if ($menu_icon_raw !== '') {
+            if (strpos($menu_icon_raw, 'dashicons-') === 0) {
+              $menu_icon = preg_replace('/[^a-z0-9\-_]/i', '', $menu_icon_raw);
+            } else {
+              $menu_icon = esc_url_raw($menu_icon_raw);
+            }
+          }
+
           $defs[$key] = [
             'singular' => sanitize_text_field($_POST['cpt_singular'] ?? ''),
             'plural'   => sanitize_text_field($_POST['cpt_plural'] ?? ''),
@@ -172,24 +208,42 @@ class Plugin {
             'public'   => !empty($_POST['cpt_public']),
             'has_archive' => !empty($_POST['cpt_archive']),
             'show_in_rest' => !empty($_POST['cpt_rest']),
-            'supports' => isset($_POST['cpt_supports']) ? array_values(array_map('sanitize_key',(array)$_POST['cpt_supports'])) : ['title','editor'],
-            'taxonomies' => isset($_POST['cpt_taxonomies']) ? array_values(array_filter(array_map('sanitize_key',(array)$_POST['cpt_taxonomies']))) : [],
+            'supports' => isset($_POST['cpt_supports'])
+              ? array_values(array_map('sanitize_key', (array) $_POST['cpt_supports']))
+              : ['title','editor'],
+            'taxonomies' => isset($_POST['cpt_taxonomies'])
+              ? array_values(array_filter(array_map('sanitize_key',(array)$_POST['cpt_taxonomies'])))
+              : [],
+            'menu_icon' => $menu_icon,
           ];
+
           update_option('cffp_post_types', $defs);
           flush_rewrite_rules();
+
+          // redirect aman tanpa header (biar sidebar icon ikut refresh)
           echo '<div class="notice notice-success"><p>Custom Post Type saved.</p></div>';
+          echo '<script>window.location = ' . wp_json_encode( admin_url('admin.php?page=cff-post-types&updated=1') ) . ';</script>';
+          exit;
         }
-      } elseif ($action === 'delete') {
+      }
+
+      if ($action === 'delete') {
         $key = sanitize_key($_POST['cpt_key'] ?? '');
         if ($key && isset($defs[$key])) {
           unset($defs[$key]);
           update_option('cffp_post_types', $defs);
           flush_rewrite_rules();
+
           echo '<div class="notice notice-success"><p>Custom Post Type removed.</p></div>';
+          echo '<script>window.location = ' . wp_json_encode( admin_url('admin.php?page=cff-post-types&deleted=1') ) . ';</script>';
+          exit;
         }
       }
     }
 
+    // =========================
+    // UI LIST
+    // =========================
     $supports_all = [
       'title' => 'Title',
       'editor' => 'Editor',
@@ -205,44 +259,98 @@ class Plugin {
     if (!$defs) {
       echo '<p class="cff-muted">No custom post types yet.</p>';
     } else {
-      echo '<table class="widefat striped"><thead><tr><th>Key</th><th>Label</th><th>Slug</th><th>Public</th><th></th></tr></thead><tbody>';
+      echo '<table class="widefat striped"><thead><tr><th>Key</th><th>Label</th><th>Slug</th><th>Icon</th><th>Public</th><th>Actions</th></tr></thead><tbody>';
+
       foreach ($defs as $key => $def) {
         $label = esc_html(($def['plural'] ?? $key));
-        echo '<tr><td><code>'.esc_html($key).'</code></td><td>'.$label.'</td><td><code>'.esc_html($def['slug'] ?? $key).'</code></td><td>'.(!empty($def['public'])?'Yes':'No').'</td><td>';
+
+        $icon = is_string($def['menu_icon'] ?? '') ? trim((string)$def['menu_icon']) : '';
+        $icon_html = '—';
+        if ($icon) {
+          if (strpos($icon, 'dashicons-') === 0) {
+            $icon_html = '<span class="dashicons '.esc_attr($icon).'" style="vertical-align:middle;"></span> <code>'.esc_html($icon).'</code>';
+          } else {
+            $icon_html = '<img src="'.esc_url($icon).'" style="width:18px;height:18px;vertical-align:middle;" /> <code>'.esc_html($icon).'</code>';
+          }
+        }
+
+        $edit_url = add_query_arg(['page'=>'cff-post-types','edit'=>$key], admin_url('admin.php'));
+
+        echo '<tr>';
+        echo '<td><code>'.esc_html($key).'</code></td>';
+        echo '<td>'.$label.'</td>';
+        echo '<td><code>'.esc_html($def['slug'] ?? $key).'</code></td>';
+        echo '<td>'.$icon_html.'</td>';
+        echo '<td>'.(!empty($def['public']) ? 'Yes' : 'No').'</td>';
+        echo '<td>';
+
+        echo '<a class="button button-small" href="'.esc_url($edit_url).'">Edit</a> ';
+
         echo '<form method="post" style="display:inline">';
         wp_nonce_field('cffp_cpt_save','cffp_cpt_nonce');
         echo '<input type="hidden" name="cffp_action" value="delete">';
         echo '<input type="hidden" name="cpt_key" value="'.esc_attr($key).'">';
-        echo '<button class="button button-small" type="submit" onclick="return confirm(\'Delete CPT?\')">Delete</button>';
+        echo '<button class="button button-link-delete button-small" type="submit" onclick="return confirm(\'Delete CPT?\')">Delete</button>';
         echo '</form>';
-        echo '</td></tr>';
+
+        echo '</td>';
+        echo '</tr>';
       }
+
       echo '</tbody></table>';
     }
 
-    echo '<hr><h2>Add New Post Type</h2>';
+    // =========================
+    // ADD / EDIT FORM
+    // =========================
+    echo '<hr><h2>'.($editing ? 'Edit Post Type' : 'Add New Post Type').'</h2>';
+
+    $pub = $editing ? !empty($edit_def['public']) : true;
+    $arc = $editing ? !empty($edit_def['has_archive']) : true;
+    $rst = $editing ? !empty($edit_def['show_in_rest']) : true;
+
+    $supports_selected = $editing && isset($edit_def['supports']) && is_array($edit_def['supports'])
+      ? array_values(array_map('sanitize_key', $edit_def['supports']))
+      : ['title','editor'];
+
     echo '<form method="post" class="cff-cpt-form">';
     wp_nonce_field('cffp_cpt_save','cffp_cpt_nonce');
-    echo '<input type="hidden" name="cffp_action" value="add">';
+    echo '<input type="hidden" name="cffp_action" value="'.($editing ? 'update' : 'add').'">';
+
     echo '<table class="form-table"><tbody>';
-    echo '<tr><th><label>Key</label></th><td><input name="cpt_key" class="regular-text" placeholder="custom_post" required></td></tr>';
-    echo '<tr><th><label>Singular</label></th><td><input name="cpt_singular" class="regular-text" placeholder="Custom Post"></td></tr>';
-    echo '<tr><th><label>Plural</label></th><td><input name="cpt_plural" class="regular-text" placeholder="Custom Posts"></td></tr>';
-    echo '<tr><th><label>Slug</label></th><td><input name="cpt_slug" class="regular-text" placeholder="custom-post"></td></tr>';
+
+    echo '<tr><th><label>Key</label></th><td><input name="cpt_key" class="regular-text" placeholder="custom_post" required value="'.esc_attr($editing ? $edit_key : '').'" '.($editing?'readonly':'').'></td></tr>';
+    echo '<tr><th><label>Singular</label></th><td><input name="cpt_singular" class="regular-text" placeholder="Custom Post" value="'.esc_attr($edit_def['singular'] ?? '').'"></td></tr>';
+    echo '<tr><th><label>Plural</label></th><td><input name="cpt_plural" class="regular-text" placeholder="Custom Posts" value="'.esc_attr($edit_def['plural'] ?? '').'"></td></tr>';
+    echo '<tr><th><label>Slug</label></th><td><input name="cpt_slug" class="regular-text" placeholder="custom-post" value="'.esc_attr($edit_def['slug'] ?? '').'"></td></tr>';
+
     echo '<tr><th><label>Options</label></th><td>';
-    echo '<label><input type="checkbox" name="cpt_public" value="1" checked> Public</label> &nbsp; ';
-    echo '<label><input type="checkbox" name="cpt_archive" value="1" checked> Has Archive</label> &nbsp; ';
-    echo '<label><input type="checkbox" name="cpt_rest" value="1" checked> REST API</label>';
+    echo '<label><input type="checkbox" name="cpt_public" value="1" '.($pub?'checked':'').'> Public</label> &nbsp; ';
+    echo '<label><input type="checkbox" name="cpt_archive" value="1" '.($arc?'checked':'').'> Has Archive</label> &nbsp; ';
+    echo '<label><input type="checkbox" name="cpt_rest" value="1" '.($rst?'checked':'').'> REST API</label>';
     echo '</td></tr>';
+
+    // ✅ ini akan selalu muncul value saat edit
+    echo '<tr><th><label>Menu Icon</label></th><td>';
+    echo '<input name="cpt_menu_icon" class="regular-text" placeholder="dashicons-admin-post or https://example.com/icon.svg" value="'.esc_attr($edit_def['menu_icon'] ?? '').'">';
+    echo '<p class="description">
+      Use Dashicons class (e.g. <code>dashicons-admin-post</code>) or a full image URL.
+      Reference: <a href="https://developer.wordpress.org/resource/dashicons/" target="_blank" rel="noopener noreferrer">Dashicons Library</a>.
+      Example image URL: <code>https://example.com/icon.svg</code>
+    </p>';
+    echo '</td></tr>';
+
     echo '<tr><th><label>Supports</label></th><td>';
     foreach ($supports_all as $k => $lab) {
-      $checked = in_array($k, ['title','editor'], true) ? 'checked' : '';
+      $checked = in_array($k, $supports_selected, true) ? 'checked' : '';
       echo '<label style="display:inline-block;margin-right:12px"><input type="checkbox" name="cpt_supports[]" value="'.esc_attr($k).'" '.$checked.'> '.esc_html($lab).'</label>';
     }
     echo '</td></tr>';
+
     echo '</tbody></table>';
     echo '<p><button type="submit" class="button button-primary">Save CPT</button></p>';
     echo '</form>';
+
     echo '</div>';
   }
 
@@ -326,7 +434,7 @@ class Plugin {
         echo wp_nonce_field('cffp_tax_nonce','cffp_tax_nonce',true,false);
         echo '<input type="hidden" name="tax_key" value="'.esc_attr($key).'">';
         echo '<button class="button" name="cffp_tax_action" value="duplicate">Duplicate</button> ';
-        echo '<button class="button-link-delete" name="cffp_tax_action" value="delete" onclick="return confirm(\'Delete taxonomy?\')">Delete</button>';
+        echo '<button class="button button-link-delete" name="cffp_tax_action" value="delete" onclick="return confirm(\'Delete taxonomy?\')">Delete</button>';
         echo '</form>';
         echo '</td>';
         echo '</tr>';
@@ -334,7 +442,7 @@ class Plugin {
       echo '</tbody></table>';
     }
 
-    echo '<hr><h2>'.($editing?'Edit Taxonomy':'Add New Taxonomy').'</h2>';
+    echo '<hr><h2>'.($editing ? 'Edit Post Type' : 'Add New Post Type').'</h2>';
     echo '<form method="post" class="cff-tools-form cff-tax-form">';
     echo wp_nonce_field('cffp_tax_nonce','cffp_tax_nonce',true,false);
     echo '<input type="hidden" name="cffp_tax_action" value="'.($editing?'update':'add').'">';

@@ -474,3 +474,15 @@ body.post-type-cff_group .cff-tabs textarea,
 .cff-btn-group button:last-child{border-right:0}
 .cff-btn-group button.active{background:#f0f6fc;color:#135e96}
 .cff-check{display:flex;gap:10px;align-items:center;margin:10px 0}
+
+.cff-rep-add.is-disabled,
+.cff-rep-remove.is-disabled{
+  opacity: .4;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+.post-type-cff_group .column-cff_fields { width: 70px; text-align:right; }
+.post-type-cff_group .column-cff_key { width: 260px; }
+.post-type-cff_group .column-cff_location { width: 160px; }
+.post-type-cff_group code { background:#f3f4f6; padding:2px 6px; border-radius:6px; }

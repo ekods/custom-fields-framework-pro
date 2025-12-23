@@ -68,7 +68,14 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       $rows = is_array($val) ? $val : [];
       $subs = isset($f['sub_fields']) ? $f['sub_fields'] : [];
 
-      echo '<div class="cff-repeater" data-field="'.esc_attr($name).'">';
+      $min = isset($f['min']) ? (int) $f['min'] : 1;
+      $max = isset($f['max']) ? (int) $f['max'] : 0;
+
+      echo '<div class="cff-repeater"
+        data-field="'.esc_attr($f['key'] ?? '').'"
+        data-min="'.esc_attr($min).'"
+        data-max="'.esc_attr($max).'"
+      >';
 
       // ✅ FLAG: supaya key repeater tetap ada di $_POST walau 0 row
       echo '<input type="hidden" class="cff-rep-present" name="cff_values['.esc_attr($name).'][__cff_present]" value="1">';
