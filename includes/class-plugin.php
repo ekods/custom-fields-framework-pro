@@ -442,7 +442,7 @@ class Plugin {
       echo '</tbody></table>';
     }
 
-    echo '<hr><h2>'.($editing ? 'Edit Post Type' : 'Add New Post Type').'</h2>';
+    echo '<hr><h2>'.($editing ? 'Edit Taxonomy' : 'Add New Taxonomy').'</h2>';
     echo '<form method="post" class="cff-tools-form cff-tax-form">';
     echo wp_nonce_field('cffp_tax_nonce','cffp_tax_nonce',true,false);
     echo '<input type="hidden" name="cffp_tax_action" value="'.($editing?'update':'add').'">';
@@ -468,8 +468,11 @@ class Plugin {
     }
     echo '</select><p class="description">One or many post types that can be classified with this taxonomy.</p></div>';
 
+    $public_checked = $editing ? !empty($edit_def['public']) : true;
+    $rest_checked = $editing ? !empty($edit_def['show_in_rest']) : true;
+
     echo '<div class="cff-tools-toggles">';
-    echo '<label class="cff-switch"><input type="checkbox" name="public" '.(!empty($edit_def['public'])?'checked':'').' checked><span class="cff-slider"></span></label><div><strong>Public</strong><div class="description">Visible on frontend/admin.</div></div>';
+    echo '<label class="cff-switch"><input type="checkbox" name="public" '.($public_checked?'checked':'').'><span class="cff-slider"></span></label><div><strong>Public</strong><div class="description">Visible on frontend/admin.</div></div>';
     echo '</div>';
 
     echo '<div class="cff-tools-toggles">';
@@ -477,7 +480,7 @@ class Plugin {
     echo '</div>';
 
     echo '<div class="cff-tools-toggles">';
-    echo '<label class="cff-switch"><input type="checkbox" name="show_in_rest" '.(!empty($edit_def['show_in_rest'])?'checked':'').' checked><span class="cff-slider"></span></label><div><strong>REST API</strong><div class="description">Expose in REST.</div></div>';
+    echo '<label class="cff-switch"><input type="checkbox" name="show_in_rest" '.($rest_checked?'checked':'').'><span class="cff-slider"></span></label><div><strong>REST API</strong><div class="description">Expose in REST.</div></div>';
     echo '</div>';
 
     echo '<p><button class="button button-primary">Save Taxonomy</button></p>';
@@ -491,13 +494,13 @@ class Plugin {
     $is_post_edit = $screen && in_array($screen->base, ['post','post-new'], true);
 
     if ($is_group || strpos($hook, 'cff') !== false) {
-      wp_enqueue_style('cff-admin', CFFP_URL . 'assets/admin.css', [], CFFP_VERSION);
+      wp_enqueue_style('cff-admin', CFFP_URL . 'assets/admin.css', [], $this->asset_ver('assets/admin.css'));
 
-      wp_enqueue_style('cff-select2', 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css', [], '4.1.0');
-      wp_enqueue_script('cff-select2', 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js', ['jquery'], '4.1.0', true);
-      wp_enqueue_script('cff-select2-init', plugin_dir_url(__FILE__) . '../assets/js/select2-init.js', ['jquery','cff-select2'], '0.13.9', true);
+      wp_enqueue_style('cff-select2', CFFP_URL . 'assets/vendor/select2/select2.min.css', [], '4.1.0-rc.0');
+      wp_enqueue_script('cff-select2', CFFP_URL . 'assets/vendor/select2/select2.min.js', ['jquery'], '4.1.0-rc.0', true);
+      wp_enqueue_script('cff-select2-init', plugin_dir_url(__FILE__) . '../assets/js/select2-init.js', ['jquery','cff-select2'], $this->asset_ver('assets/js/select2-init.js'), true);
 
-      wp_enqueue_script('cff-admin', CFFP_URL . 'assets/admin.js', ['jquery','jquery-ui-sortable'], CFFP_VERSION, true);
+      wp_enqueue_script('cff-admin', CFFP_URL . 'assets/admin.js', ['jquery','jquery-ui-sortable'], $this->asset_ver('assets/admin.js'), true);
       wp_localize_script('cff-admin', 'CFFP', [
         'ajax' => admin_url('admin-ajax.php'),
         'nonce' => wp_create_nonce('cffp'),
@@ -505,7 +508,7 @@ class Plugin {
     }
 
     if ($is_post_edit) {
-      wp_enqueue_style('cff-post', CFFP_URL . 'assets/post.css', [], CFFP_VERSION);
+      wp_enqueue_style('cff-post', CFFP_URL . 'assets/post.css', [], $this->asset_ver('assets/post.css'));
 
       wp_enqueue_media();
 
@@ -515,7 +518,7 @@ class Plugin {
         'cff-post',
         CFFP_URL . 'assets/post.js',
         ['jquery', 'wp-editor'],
-        CFFP_VERSION,
+        $this->asset_ver('assets/post.js'),
         true
       );
 
@@ -524,6 +527,11 @@ class Plugin {
         'nonce' => wp_create_nonce('cffp'),
       ]);
     }
+  }
+
+  private function asset_ver($rel_path) {
+    $path = CFFP_DIR . ltrim($rel_path, '/');
+    return file_exists($path) ? (string) filemtime($path) : CFFP_VERSION;
   }
 
   public function meta_boxes() {
@@ -667,7 +675,10 @@ class Plugin {
     <!-- Field Builder templates -->
     <script type="text/template" id="tmpl-cff-field">
       <div class="cff-field-row" data-i="{{i}}">
-        <div class="cff-handle"></div>
+        <div class="cff-handle-wrap">
+          <button type="button" class="cff-acc-toggle" aria-expanded="true"></button>
+          <div class="cff-handle"></div>
+        </div>
         <div class="cff-col">
           <label>Label</label>
           <input type="text" class="cff-input cff-label" value="{{label}}">
@@ -682,8 +693,13 @@ class Plugin {
             <option value="text">Text</option>
             <option value="textarea">Textarea</option>
             <option value="wysiwyg">WYSIWYG</option>
+            <option value="color">Color</option>
+            <option value="url">URL</option>
+            <option value="link">Link</option>
+            <option value="checkbox">Checkbox</option>
             <option value="image">Image</option>
             <option value="file">File</option>
+            <option value="group">Group</option>
             <option value="repeater">Repeater</option>
             <option value="flexible">Flexible Content</option>
           </select>
@@ -700,6 +716,14 @@ class Plugin {
               <button type="button" class="button cff-add-sub">Add Sub Field</button>
             </div>
             <div class="cff-subfields"></div>
+          </div>
+
+          <div class="cff-groupbuilder" data-kind="group">
+            <div class="cff-subhead">
+              <strong>Group Fields</strong>
+              <button type="button" class="button cff-add-group-sub">Add Field</button>
+            </div>
+            <div class="cff-group-fields"></div>
           </div>
 
           <div class="cff-flexbuilder" data-kind="flexible">
@@ -730,6 +754,10 @@ class Plugin {
             <option value="text">Text</option>
             <option value="textarea">Textarea</option>
             <option value="wysiwyg">WYSIWYG</option>
+            <option value="color">Color</option>
+            <option value="url">URL</option>
+            <option value="link">Link</option>
+            <option value="checkbox">Checkbox</option>
             <option value="image">Image</option>
             <option value="file">File</option>
           </select>
@@ -842,6 +870,9 @@ class Plugin {
       }
       if ($type === 'flexible') {
         $item['layouts'] = $this->sanitize_layouts($f['layouts'] ?? []);
+      }
+      if ($type === 'group') {
+        $item['sub_fields'] = $this->sanitize_subfields($f['sub_fields'] ?? []);
       }
 
       $clean[] = $item;
@@ -1156,7 +1187,11 @@ class Plugin {
         if (is_array($data)) {
           if (isset($data['post_types'])) update_option('cffp_post_types', (array)$data['post_types']);
           if (isset($data['taxonomies'])) update_option('cffp_taxonomies', (array)$data['taxonomies']);
-          if (isset($data['field_groups'])) $this->import_field_groups((array)$data['field_groups']);
+          if (isset($data['field_groups'])) {
+            $this->import_field_groups((array)$data['field_groups']);
+          } elseif ($this->looks_like_acf_json($data)) {
+            $this->import_acf_json($data);
+          }
           add_settings_error('cff_tools','imported',__('Import completed. If you changed CPT/Taxonomies, re-save permalinks.','cff'),'updated');
         } else {
           add_settings_error('cff_tools','badjson',__('Invalid JSON file.','cff'),'error');
@@ -1221,9 +1256,9 @@ class Plugin {
   private function import_field_groups($groups) {
     foreach ($groups as $g) {
       $title = sanitize_text_field($g['post']['post_title'] ?? 'Imported Group');
-      $existing = get_page_by_title($title, OBJECT, 'cff_group');
+      $existing_id = $this->find_group_by_title($title);
 
-      $post_id = $existing ? $existing->ID : wp_insert_post([
+      $post_id = $existing_id ? $existing_id : wp_insert_post([
         'post_type'=>'cff_group',
         'post_status'=>'publish',
         'post_title'=>$title,
@@ -1234,6 +1269,111 @@ class Plugin {
         update_post_meta($post_id, '_cff_settings', $settings);
       }
     }
+  }
+
+  private function looks_like_acf_json($data) {
+    if (!is_array($data) || empty($data)) return false;
+    $first = reset($data);
+    return is_array($first) && isset($first['key'], $first['title'], $first['fields']) && is_array($first['fields']);
+  }
+
+  private function import_acf_json($groups) {
+    foreach ($groups as $acf_group) {
+      if (!is_array($acf_group)) continue;
+
+      $title = sanitize_text_field($acf_group['title'] ?? 'ACF Group');
+      $existing_id = $this->find_group_by_title($title);
+
+      $post_id = $existing_id ? $existing_id : wp_insert_post([
+        'post_type'=>'cff_group',
+        'post_status'=>'publish',
+        'post_title'=>$title,
+      ]);
+
+      if (!$post_id || is_wp_error($post_id)) continue;
+
+      $loc = $this->convert_acf_location($acf_group['location'] ?? []);
+      $mapped_fields = $this->map_acf_fields($acf_group['fields'] ?? []);
+
+      $settings = [
+        'fields' => $mapped_fields,
+        'location' => $loc ?: [[['param'=>'post_type','operator'=>'==','value'=>'post']]],
+        'presentation' => [
+          'style'=>'standard',
+          'position'=>'normal',
+          'label_placement'=>'top',
+          'instruction_placement'=>'below_labels',
+          'order'=>intval($acf_group['menu_order'] ?? 0),
+          'hide_on_screen'=>$this->map_acf_hide_on_screen($acf_group['hide_on_screen'] ?? []),
+        ],
+      ];
+
+      update_post_meta($post_id, '_cff_settings', $settings);
+    }
+  }
+
+  private function find_group_by_title($title) {
+    $q = new \WP_Query([
+      'post_type' => 'cff_group',
+      'post_status' => 'any',
+      'title' => $title,
+      'posts_per_page' => 1,
+      'no_found_rows' => true,
+      'fields' => 'ids',
+    ]);
+    return !empty($q->posts) ? (int) $q->posts[0] : 0;
+  }
+
+  private function convert_acf_location($loc) {
+    $out = [];
+    if (!is_array($loc)) return $out;
+    foreach ($loc as $or_group) {
+      $and_rules = [];
+      foreach ((array)$or_group as $rule) {
+        $param = $rule['param'] ?? '';
+        $op = ($rule['operator'] ?? '==') === '!=' ? '!=' : '==';
+        $value = $rule['value'] ?? '';
+        if ($param === 'post_type') {
+          $and_rules[] = ['param'=>'post_type','operator'=>$op,'value'=>sanitize_key($value)];
+        } elseif ($param === 'page_template') {
+          $and_rules[] = ['param'=>'page_template','operator'=>$op,'value'=>sanitize_text_field($value)];
+        } elseif ($param === 'post') {
+          $and_rules[] = ['param'=>'post','operator'=>$op,'value'=>intval($value)];
+        } elseif ($param === 'page') {
+          $and_rules[] = ['param'=>'page','operator'=>$op,'value'=>intval($value)];
+        }
+      }
+      if ($and_rules) $out[] = $and_rules;
+    }
+    return $out;
+  }
+
+  private function map_acf_hide_on_screen($hide) {
+    $allowed = [
+      'permalink' => 'permalink',
+      'the_content' => 'editor',
+      'editor' => 'editor',
+      'excerpt' => 'excerpt',
+      'discussion' => 'discussion',
+      'comments' => 'comments',
+      'revisions' => 'revisions',
+      'slug' => 'slug',
+      'author' => 'author',
+      'format' => 'format',
+      'page_attributes' => 'page_attributes',
+      'featured_image' => 'featured_image',
+      'categories' => 'categories',
+      'tags' => 'tags',
+      'trackbacks' => 'trackbacks',
+    ];
+
+    $out = [];
+    if (is_array($hide)) {
+      foreach ($hide as $k) {
+        if (isset($allowed[$k])) $out[$allowed[$k]] = true;
+      }
+    }
+    return $out;
   }
 
   private function migrate_from_acf() {
@@ -1288,6 +1428,7 @@ class Plugin {
       ];
 
       update_post_meta($post_id, '_cff_settings', $settings);
+      $this->migrate_acf_content($acf_group, $mapped_fields);
       $count++;
     }
 
@@ -1303,10 +1444,15 @@ class Plugin {
       $name = sanitize_key($f['name'] ?? '');
       $label= sanitize_text_field($f['label'] ?? $name);
 
+      $mapped_type = $type;
+      if ($type === 'true_false') $mapped_type = 'checkbox';
+      if ($type === 'color_picker') $mapped_type = 'color';
+      if ($type === 'flexible_content') $mapped_type = 'flexible';
+
       $base = [
         'label'=>$label ?: $name,
         'name'=>$name ?: sanitize_key($label),
-        'type'=>$type === 'true_false' ? 'checkbox' : $type,
+        'type'=>$mapped_type,
       ];
 
       if ($type === 'repeater') {
@@ -1315,7 +1461,6 @@ class Plugin {
       }
 
       if ($type === 'flexible_content') {
-        $base['type'] = 'flexible';
         $layouts = [];
         foreach (($f['layouts'] ?? []) as $lay) {
           $layouts[] = [
@@ -1327,9 +1472,194 @@ class Plugin {
         $base['layouts'] = $layouts;
       }
 
+      if ($type === 'group') {
+        $base['sub_fields'] = $this->map_acf_fields($f['sub_fields'] ?? []);
+      }
+
       $out[] = $base;
     }
 
     return $out;
+  }
+
+  /**
+   * Migrasi data meta dari ACF ke CFF untuk field group tertentu.
+   * Hanya menulis jika meta CFF belum ada, supaya tidak menimpa data yang sudah disimpan.
+   */
+  private function migrate_acf_content($acf_group, $mapped_fields) {
+    if (!function_exists('get_field')) return;
+    if (empty($mapped_fields)) return;
+
+    $posts = $this->get_posts_for_acf_group($acf_group);
+    foreach ($posts as $post) {
+      foreach ($mapped_fields as $field) {
+        $name = $field['name'] ?? '';
+        if (!$name) continue;
+
+        $meta_key = $this->meta_key($name);
+        $existing = get_post_meta($post->ID, $meta_key, true);
+        if ($this->is_non_empty($existing)) continue; // jangan timpa data yang sudah ada
+
+        $raw = get_field($name, $post->ID);
+        if ($raw === null || $raw === false || $raw === '') continue;
+
+        $value = $this->acf_value_to_cff($field, $raw);
+        if ($this->is_non_empty($value)) {
+          update_post_meta($post->ID, $meta_key, $value);
+        }
+      }
+    }
+  }
+
+  /**
+   * Ambil daftar post yang masuk dalam location rules ACF, lalu filter lagi memakai match_location().
+   */
+  private function get_posts_for_acf_group($acf_group) {
+    $loc = $acf_group['location'] ?? [];
+
+    $post_types = [];
+    if (is_array($loc)) {
+      foreach ($loc as $or_group) {
+        foreach ((array)$or_group as $rule) {
+          if (($rule['param'] ?? '') === 'post_type' && !empty($rule['value'])) {
+            $post_types[] = sanitize_key($rule['value']);
+          }
+        }
+      }
+    }
+
+    $post_types = array_values(array_unique(array_filter($post_types)));
+    if (!$post_types) $post_types = ['post','page'];
+
+    $posts = get_posts([
+      'post_type' => $post_types,
+      'post_status' => 'any',
+      'numberposts' => -1,
+      'no_found_rows' => true,
+    ]);
+
+    // konversi rules ACF ke format CFF untuk match_location
+    $converted_rules = [];
+    foreach ((array)$loc as $or_group) {
+      $and_rules = [];
+      foreach ((array)$or_group as $rule) {
+        $param = $rule['param'] ?? '';
+        $value = $rule['value'] ?? '';
+        if ($param === 'post_type') {
+          $and_rules[] = ['param'=>'post_type','operator'=>'==','value'=>sanitize_key($value)];
+        } elseif ($param === 'page_template') {
+          $and_rules[] = ['param'=>'page_template','operator'=>'==','value'=>sanitize_text_field($value)];
+        } elseif ($param === 'post') {
+          $and_rules[] = ['param'=>'post','operator'=>'==','value'=>intval($value)];
+        } elseif ($param === 'page') {
+          $and_rules[] = ['param'=>'page','operator'=>'==','value'=>intval($value)];
+        }
+      }
+      if ($and_rules) $converted_rules[] = $and_rules;
+    }
+
+    $out = [];
+    foreach ($posts as $p) {
+      if ($this->match_location($p, $converted_rules)) $out[] = $p;
+    }
+    return $out;
+  }
+
+  private function acf_value_to_cff($field, $value) {
+    $type = $field['type'] ?? 'text';
+
+    if ($type === 'repeater') {
+      $out = [];
+      $subs = isset($field['sub_fields']) && is_array($field['sub_fields']) ? $field['sub_fields'] : [];
+      if (is_array($value)) {
+        foreach ($value as $row) {
+          if (!is_array($row)) continue;
+          $row_out = [];
+          foreach ($subs as $sf) {
+            $sname = $sf['name'] ?? '';
+            if (!$sname) continue;
+            $row_out[$sname] = $this->acf_value_to_cff($sf, $row[$sname] ?? '');
+          }
+          if ($this->is_non_empty($row_out)) $out[] = $row_out;
+        }
+      }
+      return $out;
+    }
+
+    if ($type === 'group') {
+      $out = [];
+      $subs = isset($field['sub_fields']) && is_array($field['sub_fields']) ? $field['sub_fields'] : [];
+      if (is_array($value)) {
+        foreach ($subs as $sf) {
+          $sname = $sf['name'] ?? '';
+          if (!$sname) continue;
+          $out[$sname] = $this->acf_value_to_cff($sf, $value[$sname] ?? '');
+        }
+      }
+      return $out;
+    }
+
+    if ($type === 'flexible') {
+      $out = [];
+      $layouts = isset($field['layouts']) && is_array($field['layouts']) ? $field['layouts'] : [];
+      $layout_map = [];
+      foreach ($layouts as $l) {
+        if (!empty($l['name'])) $layout_map[$l['name']] = $l;
+      }
+
+      if (is_array($value)) {
+        foreach ($value as $row) {
+          if (!is_array($row) || empty($row['acf_fc_layout'])) continue;
+          $layout = sanitize_key($row['acf_fc_layout']);
+          if (!isset($layout_map[$layout])) continue;
+          $l = $layout_map[$layout];
+          $fields = [];
+          foreach (($l['sub_fields'] ?? []) as $sf) {
+            $sname = $sf['name'] ?? '';
+            if (!$sname) continue;
+            $fields[$sname] = $this->acf_value_to_cff($sf, $row[$sname] ?? '');
+          }
+          $out[] = [
+            'layout' => $layout,
+            'fields' => $fields,
+          ];
+        }
+      }
+      return $out;
+    }
+
+    if ($type === 'image' || $type === 'file') {
+      if (is_array($value) && isset($value['ID'])) return intval($value['ID']);
+      if (is_numeric($value)) return intval($value);
+      return 0;
+    }
+
+    if ($type === 'link') {
+      if (is_array($value)) {
+        return [
+          'url' => isset($value['url']) ? (string) $value['url'] : '',
+          'title' => isset($value['title']) ? (string) $value['title'] : '',
+          'target' => isset($value['target']) ? (string) $value['target'] : '',
+        ];
+      }
+      if (is_string($value) && $value !== '') {
+        return ['url' => $value, 'title' => '', 'target' => ''];
+      }
+      return [];
+    }
+
+    if ($type === 'url' || $type === 'color') {
+      if (is_array($value)) return '';
+      return wp_kses_post((string) $value);
+    }
+
+    // default text/scalar
+    if (is_array($value)) return '';
+    return wp_kses_post((string) $value);
+  }
+
+  private function is_non_empty($v) {
+    if (is_array($v)) return !empty($v);
+    return $v !== null && $v !== false && $v !== '';
   }
 }

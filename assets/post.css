@@ -1,7 +1,12 @@
-.cff-field{display:grid;grid-template-columns:220px 1fr;gap:14px;padding:14px 12px;border-top:1px solid #e5e5e5;background:#fff}
-.cff-field:first-child{border-top:0}
-.cff-label label{font-weight:600}
-.cff-label .description{margin-top:4px;color:#646970;font-size:12px}
+.cff-field{display:flex;flex-direction:column;gap:8px;border:1px solid #e5e5e5;background:#fff;border-radius: 10px;}
+.cff-field.is-collapsed .cff-label{border-color:#eee;background-color: #fff;}
+.cff-label{background:#d8eef9;border-radius:10px;padding:12px 14px}
+.cff-label-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.cff-label label{font-weight:700}
+.cff-input{margin-top:12px;padding: 10px;}
+.cff-label .description{margin-top:2px;color:#56606a;font-size:12px}
+.cff-meta-name{text-transform:none}
+.cff-meta-type{text-transform:capitalize}
 .cff-muted{color:#646970}
 .cff-media{border:1px solid #dcdcde;border-radius:10px;padding:10px;background:#fbfbfc;max-width:720px}
 .cff-media-preview{margin-bottom:8px}
@@ -12,6 +17,23 @@
 .cff-subfield-input label{display:block;font-weight:600;margin-bottom:6px}
 .cff-flex-add{display:flex;gap:10px;align-items:center;margin-top:10px}
 .cff-pill{display:inline-block;padding:2px 8px;border:1px solid #ddd;border-radius:999px;background:#fff;font-size:12px;color:#444;margin-left:8px}
+.cff-field .cff-acc-toggle{
+  width:26px;height:26px;border:1px solid #c9dbe6;border-radius:6px;
+  background:#fff;color:#2271b1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.cff-metabox,
+#cff-field-list{display: flex;flex-direction: column; gap: 8px;}
+.cff-field .cff-acc-toggle:before{font-family:dashicons;content:"\f140";font-size:16px}
+.cff-field.is-collapsed .cff-acc-toggle:before{content:"\f142"}
+.cff-field.is-collapsed .cff-input{display:none}
+.cff-link{display:grid;grid-template-columns:1fr;gap:8px;max-width:720px}
+.cff-link .widefat{margin:0}
+.cff-link-target{display:flex;align-items:center;gap:8px}
+.cff-link-target label{font-weight:600}
+.cff-color{display:flex;gap:10px;align-items:center;max-width:420px}
+.cff-color-picker{width:40px;height:40px;padding:0;border:1px solid #dcdcde;border-radius:8px;background:#fff}
+.cff-color-value{max-width:220px}
 
 
 /* === ACF-like repeater rows === */

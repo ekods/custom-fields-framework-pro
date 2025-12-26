@@ -38,14 +38,46 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     $key = $plugin->meta_key($name);
     $val = get_post_meta($post->ID, $key, true);
 
-    echo '<div class="cff-field cff-field-'.$type.'">';
-    echo '<div class="cff-label"><label>'.esc_html($label).'</label><div class="description">'.esc_html($name).'</div></div>';
+    echo '<div class="cff-field cff-field-'.$type.' is-collapsed">';
+    $type_label = ucfirst(str_replace('_', ' ', $type));
+    echo '<div class="cff-label">';
+    echo '<div class="cff-label-head">';
+    echo '<button type="button" class="cff-acc-toggle" aria-expanded="true"></button>';
+    echo '<label>'.esc_html($label).'</label>';
+    echo '</div>';
+    echo '<div class="description cff-meta-name">'.esc_html($name).'</div>';
+    echo '<div class="description cff-meta-type">'.esc_html($type_label).'</div>';
+    echo '</div>';
     echo '<div class="cff-input">';
 
     if ($type === 'text') {
       echo '<input class="widefat" type="text" name="cff_values['.esc_attr($name).']" value="'.esc_attr($val).'">';
     } elseif ($type === 'textarea') {
       echo '<textarea class="widefat" rows="5" name="cff_values['.esc_attr($name).']">'.esc_textarea($val).'</textarea>';
+    } elseif ($type === 'color') {
+      echo '<div class="cff-color">';
+      echo '<input class="cff-color-picker" type="color" value="'.esc_attr($val ?: '#ffffff').'">';
+      echo '<input class="widefat cff-color-value" type="text" placeholder="#ffffff" name="cff_values['.esc_attr($name).']" value="'.esc_attr($val).'">';
+      echo '</div>';
+    } elseif ($type === 'checkbox') {
+      $checked = !empty($val) ? 'checked' : '';
+      echo '<input type="hidden" name="cff_values['.esc_attr($name).']" value="0">';
+      echo '<label><input type="checkbox" name="cff_values['.esc_attr($name).']" value="1" '.$checked.'> ' . esc_html($label) . '</label>';
+    } elseif ($type === 'url') {
+      echo '<input class="widefat" type="url" name="cff_values['.esc_attr($name).']" value="'.esc_attr($val).'">';
+    } elseif ($type === 'link') {
+      $link = is_array($val) ? $val : [];
+      $url = $link['url'] ?? '';
+      $title = $link['title'] ?? '';
+      $target = $link['target'] ?? '';
+      echo '<div class="cff-link">';
+      echo '<input class="widefat" type="url" placeholder="URL" name="cff_values['.esc_attr($name).'][url]" value="'.esc_attr($url).'">';
+      echo '<input class="widefat" type="text" placeholder="Title" name="cff_values['.esc_attr($name).'][title]" value="'.esc_attr($title).'">';
+      echo '<div class="cff-link-target">';
+      echo '<input type="hidden" name="cff_values['.esc_attr($name).'][target]" value="">';
+      echo '<label><input type="checkbox" name="cff_values['.esc_attr($name).'][target]" value="_blank" '.checked($target, '_blank', false).'> Open in new tab</label>';
+      echo '</div>';
+      echo '</div>';
     } elseif ($type === 'wysiwyg') {
       $editor_id = 'cff_wys_' . $name . '_' . $post->ID;
       ob_start();
@@ -92,6 +124,12 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       render_repeater_row($name, $subs, [], '__INDEX__', $post->ID);
       echo '</script>';
 
+      echo '</div>';
+    } elseif ($type === 'group') {
+      $vals = is_array($val) ? $val : [];
+      $subs = isset($f['sub_fields']) ? $f['sub_fields'] : [];
+      echo '<div class="cff-group">';
+      render_group_fields($name, $subs, $vals, $post->ID);
       echo '</div>';
     } elseif ($type === 'flexible') {
       $rows = is_array($val) ? $val : [];
@@ -146,6 +184,30 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       echo '<label>'.esc_html($label).'</label>';
       if ($stype === 'textarea') {
         echo '<textarea class="widefat" rows="3" name="'.esc_attr($name_attr).'">'.esc_textarea($v).'</textarea>';
+      } elseif ($stype === 'color') {
+        echo '<div class="cff-color">';
+        echo '<input class="cff-color-picker" type="color" value="'.esc_attr($v ?: '#ffffff').'">';
+        echo '<input class="widefat cff-color-value" type="text" placeholder="#ffffff" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'">';
+        echo '</div>';
+      } elseif ($stype === 'checkbox') {
+        $checked = !empty($v) ? 'checked' : '';
+        echo '<input type="hidden" name="'.esc_attr($name_attr).'" value="0">';
+        echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'" value="1" '.$checked.'> ' . esc_html($label) . '</label>';
+      } elseif ($stype === 'url') {
+        echo '<input class="widefat" type="url" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'">';
+      } elseif ($stype === 'link') {
+        $link = is_array($v) ? $v : [];
+        $url = $link['url'] ?? '';
+        $title = $link['title'] ?? '';
+        $target = $link['target'] ?? '';
+        echo '<div class="cff-link">';
+        echo '<input class="widefat" type="url" placeholder="URL" name="'.esc_attr($name_attr).'[url]" value="'.esc_attr($url).'">';
+        echo '<input class="widefat" type="text" placeholder="Title" name="'.esc_attr($name_attr).'[title]" value="'.esc_attr($title).'">';
+        echo '<div class="cff-link-target">';
+        echo '<input type="hidden" name="'.esc_attr($name_attr).'[target]" value="">';
+        echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'[target]" value="_blank" '.checked($target, '_blank', false).'> Open in new tab</label>';
+        echo '</div>';
+        echo '</div>';
       } elseif ($stype === 'wysiwyg') {
         $editor_id = 'cff_wys_rep_' . sanitize_key($parent) . '_' . sanitize_key($sname) . '_' . $post_id . '_' . $i;
 
@@ -185,6 +247,79 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     echo '</div></div>';
   }
 
+  function render_group_fields($parent, $subs, $vals, $post_id) {
+    foreach ($subs as $s) {
+      $sname = $s['name'];
+      $stype = $s['type'];
+      $label = $s['label'] ?? $sname;
+      $v = isset($vals[$sname]) ? $vals[$sname] : '';
+      $name_attr = 'cff_values['.$parent.']['.$sname.']';
+      echo '<div class="cff-subfield-input">';
+      echo '<label>'.esc_html($label).'</label>';
+      if ($stype === 'textarea') {
+        echo '<textarea class="widefat" rows="3" name="'.esc_attr($name_attr).'">'.esc_textarea($v).'</textarea>';
+      } elseif ($stype === 'color') {
+        echo '<div class="cff-color">';
+        echo '<input class="cff-color-picker" type="color" value="'.esc_attr($v ?: '#ffffff').'">';
+        echo '<input class="widefat cff-color-value" type="text" placeholder="#ffffff" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'">';
+        echo '</div>';
+      } elseif ($stype === 'checkbox') {
+        $checked = !empty($v) ? 'checked' : '';
+        echo '<input type="hidden" name="'.esc_attr($name_attr).'" value="0">';
+        echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'" value="1" '.$checked.'> ' . esc_html($label) . '</label>';
+      } elseif ($stype === 'url') {
+        echo '<input class="widefat" type="url" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'">';
+      } elseif ($stype === 'link') {
+        $link = is_array($v) ? $v : [];
+        $url = $link['url'] ?? '';
+        $title = $link['title'] ?? '';
+        $target = $link['target'] ?? '';
+        echo '<div class="cff-link">';
+        echo '<input class="widefat" type="url" placeholder="URL" name="'.esc_attr($name_attr).'[url]" value="'.esc_attr($url).'">';
+        echo '<input class="widefat" type="text" placeholder="Title" name="'.esc_attr($name_attr).'[title]" value="'.esc_attr($title).'">';
+        echo '<div class="cff-link-target">';
+        echo '<input type="hidden" name="'.esc_attr($name_attr).'[target]" value="">';
+        echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'[target]" value="_blank" '.checked($target, '_blank', false).'> Open in new tab</label>';
+        echo '</div>';
+        echo '</div>';
+      } elseif ($stype === 'wysiwyg') {
+        $editor_id = 'cff_wys_group_' . sanitize_key($parent) . '_' . sanitize_key($sname) . '_' . $post_id;
+
+        echo '<textarea
+          id="' . esc_attr($editor_id) . '"
+          class="widefat cff-wysiwyg"
+          name="' . esc_attr($name_attr) . '"
+          rows="8"
+        >' . esc_textarea($v) . '</textarea>';
+
+        echo '<input type="hidden"
+          class="cff-wysiwyg-settings"
+          data-editor-id="' . esc_attr($editor_id) . '"
+          value="' . esc_attr(wp_json_encode([
+            'tinymce' => [
+              'wpautop'  => true,
+              'toolbar1' => 'formatselect,bold,italic,bullist,numlist,blockquote,alignleft,aligncenter,alignright,link,unlink,wp_more,spellchecker,wp_adv',
+              'toolbar2' => 'strikethrough,hr,forecolor,pastetext,removeformat,charmap,outdent,indent,undo,redo,wp_help',
+              'menubar'  => false,
+            ],
+            'quicktags'    => true,
+            'mediaButtons' => true,
+          ])) . '">';
+      } elseif ($stype === 'image' || $stype === 'file') {
+        $id = intval($v);
+
+        echo '<div class="cff-media cff-media-inline" data-type="'.esc_attr($stype).'">';
+        echo '<input type="hidden" class="cff-media-id" name="'.esc_attr($name_attr).'" value="'.esc_attr($id).'">';
+        echo '<div class="cff-media-preview">' . cff_media_preview_html($stype, $id) . '</div>';
+        echo '<p><button type="button" class="button cff-media-select">Select</button> <button type="button" class="button cff-media-clear">Clear</button></p>';
+        echo '</div>';
+      } else {
+        echo '<input class="widefat" type="text" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'">';
+      }
+      echo '</div>';
+    }
+  }
+
   function render_flexible_row($parent, $layouts, $layout_map, $row, $i, $post_id) {
     $layout = isset($row['layout']) ? sanitize_key($row['layout']) : '';
     $fields = isset($row['fields']) && is_array($row['fields']) ? $row['fields'] : [];
@@ -207,6 +342,30 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         echo '<label>'.esc_html($slabel).'</label>';
         if ($stype === 'textarea') {
           echo '<textarea class="widefat" rows="4" name="'.esc_attr($name_attr).'">'.esc_textarea($v).'</textarea>';
+        } elseif ($stype === 'color') {
+          echo '<div class="cff-color">';
+          echo '<input class="cff-color-picker" type="color" value="'.esc_attr($v ?: '#ffffff').'">';
+          echo '<input class="widefat cff-color-value" type="text" placeholder="#ffffff" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'">';
+          echo '</div>';
+        } elseif ($stype === 'checkbox') {
+          $checked = !empty($v) ? 'checked' : '';
+          echo '<input type="hidden" name="'.esc_attr($name_attr).'" value="0">';
+          echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'" value="1" '.$checked.'> ' . esc_html($slabel) . '</label>';
+        } elseif ($stype === 'url') {
+          echo '<input class="widefat" type="url" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'">';
+        } elseif ($stype === 'link') {
+          $link = is_array($v) ? $v : [];
+          $url = $link['url'] ?? '';
+          $title = $link['title'] ?? '';
+          $target = $link['target'] ?? '';
+          echo '<div class="cff-link">';
+          echo '<input class="widefat" type="url" placeholder="URL" name="'.esc_attr($name_attr).'[url]" value="'.esc_attr($url).'">';
+          echo '<input class="widefat" type="text" placeholder="Title" name="'.esc_attr($name_attr).'[title]" value="'.esc_attr($title).'">';
+          echo '<div class="cff-link-target">';
+          echo '<input type="hidden" name="'.esc_attr($name_attr).'[target]" value="">';
+          echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'[target]" value="_blank" '.checked($target, '_blank', false).'> Open in new tab</label>';
+          echo '</div>';
+          echo '</div>';
         } elseif ($stype === 'wysiwyg') {
           $editor_id = 'cff_wys_flex_' . sanitize_key($parent) . '_' . sanitize_key($layout) . '_' . sanitize_key($sname) . '_' . $post_id . '_' . $i;
 

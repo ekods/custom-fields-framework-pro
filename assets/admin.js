@@ -104,7 +104,10 @@
     function fallbackFieldTpl(){
       return (
         '<div class="cff-field-row" data-i="{{i}}">' +
-          '<div class="cff-handle"></div>' +
+          '<div class="cff-handle-wrap">' +
+            '<button type="button" class="cff-acc-toggle" aria-expanded="true"></button>' +
+            '<div class="cff-handle"></div>' +
+          '</div>' +
           '<div class="cff-col"><label>Label</label><input type="text" class="cff-input cff-label" value="{{label}}"></div>' +
           '<div class="cff-col"><label>Name</label><input type="text" class="cff-input cff-name" value="{{name}}"></div>' +
           '<div class="cff-col"><label>Type</label>' +
@@ -112,8 +115,13 @@
               '<option value="text">Text</option>' +
               '<option value="textarea">Textarea</option>' +
               '<option value="wysiwyg">WYSIWYG</option>' +
+              '<option value="color">Color</option>' +
+              '<option value="url">URL</option>' +
+              '<option value="link">Link</option>' +
+              '<option value="checkbox">Checkbox</option>' +
               '<option value="image">Image</option>' +
               '<option value="file">File</option>' +
+              '<option value="group">Group</option>' +
               '<option value="repeater">Repeater</option>' +
               '<option value="flexible">Flexible Content</option>' +
             '</select>' +
@@ -128,6 +136,12 @@
                 '<button type="button" class="button cff-add-sub">Add Sub Field</button>' +
               '</div>' +
               '<div class="cff-subfields"></div>' +
+            '</div>' +
+            '<div class="cff-groupbuilder" data-kind="group">' +
+              '<div class="cff-subhead"><strong>Group Fields</strong> ' +
+                '<button type="button" class="button cff-add-group-sub">Add Field</button>' +
+              '</div>' +
+              '<div class="cff-group-fields"></div>' +
             '</div>' +
             '<div class="cff-flexbuilder" data-kind="flexible">' +
               '<div class="cff-subhead"><strong>Layouts (Flexible Content)</strong> ' +
@@ -151,6 +165,10 @@
               '<option value="text">Text</option>' +
               '<option value="textarea">Textarea</option>' +
               '<option value="wysiwyg">WYSIWYG</option>' +
+              '<option value="color">Color</option>' +
+              '<option value="url">URL</option>' +
+              '<option value="link">Link</option>' +
+              '<option value="checkbox">Checkbox</option>' +
               '<option value="image">Image</option>' +
               '<option value="file">File</option>' +
             '</select>' +
@@ -194,6 +212,7 @@
     function toggleBuilders($field){
       var t = $field.find('.cff-type').val();
       $field.find('.cff-subbuilder').toggle(t === 'repeater');
+      $field.find('.cff-groupbuilder').toggle(t === 'group');
       $field.find('.cff-flexbuilder').toggle(t === 'flexible');
     }
 
@@ -261,6 +280,18 @@
           item.sub_fields = subs;
         }
 
+        if (type === 'group') {
+          var gsubs = [];
+          $f.find('.cff-group-fields .cff-subfield').each(function(){
+            gsubs.push({
+              label: $(this).find('.cff-slabel').val() || '',
+              name:  CFF.utils.sanitizeName($(this).find('.cff-sname').val() || ''),
+              type:  $(this).find('.cff-stype').val() || 'text'
+            });
+          });
+          item.sub_fields = gsubs;
+        }
+
         if (type === 'flexible') {
           var layouts = [];
           $f.find('.cff-layouts .cff-layout').each(function(){
@@ -308,6 +339,13 @@
         '<div class="cff-builder-head">' +
           '<strong>Fields</strong>' +
           '<button type="button" class="button button-primary" id="cff-add-field">Add Field</button>' +
+        '</div>' +
+        '<div class="cff-builder-head-row">' +
+          '<div class="cff-head-spacer"></div>' +
+          '<div class="cff-head">Label</div>' +
+          '<div class="cff-head">Name</div>' +
+          '<div class="cff-head">Type</div>' +
+          '<div class="cff-head">Actions</div>' +
         '</div>'
       );
 
@@ -321,6 +359,7 @@
         });
 
         var $el = $(html);
+        $el.addClass('is-collapsed');
         $el.find('.cff-type').val(f.type || 'text');
 
         toggleBuilders($el);
@@ -329,6 +368,12 @@
           var $sf = $el.find('.cff-subfields');
           f.sub_fields.forEach(function(s, si){ $sf.append(renderSub(s, si)); });
           sortableSubs($sf);
+        }
+
+        if (f.type === 'group' && Array.isArray(f.sub_fields)) {
+          var $gf = $el.find('.cff-group-fields');
+          f.sub_fields.forEach(function(s, si){ $gf.append(renderSub(s, si)); });
+          sortableSubs($gf);
         }
 
         if (f.type === 'flexible' && Array.isArray(f.layouts)) {
@@ -457,6 +502,12 @@
         save(readFromDOM());
       });
 
+      $root.on('click', '.cff-acc-toggle', function(){
+        var $row = $(this).closest('.cff-field-row');
+        $row.toggleClass('is-collapsed');
+        $(this).attr('aria-expanded', !$row.hasClass('is-collapsed'));
+      });
+
       $root.on('blur', '.cff-llabel, .cff-lname', function(){
         save(readFromDOM());
       });
@@ -471,6 +522,12 @@
       $root.on('click', '.cff-add-sub', function(){
         var $f = $(this).closest('.cff-field-row');
         $f.find('.cff-subfields').append(renderSub({ label:'', name:'', type:'text' }, Date.now()));
+        save(readFromDOM());
+      });
+
+      $root.on('click', '.cff-add-group-sub', function(){
+        var $f = $(this).closest('.cff-field-row');
+        $f.find('.cff-group-fields').append(renderSub({ label:'', name:'', type:'text' }, Date.now()));
         save(readFromDOM());
       });
 

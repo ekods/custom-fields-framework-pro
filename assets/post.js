@@ -127,6 +127,43 @@ jQuery(function($){
   });
 
   /* -------------------------
+   * Color picker + hexa sync
+   * ------------------------- */
+  function normalizeHex(v){
+    v = String(v || '').trim();
+    if (!v) return '';
+    if (v[0] !== '#') v = '#' + v;
+    if (/^#[0-9a-fA-F]{3}$/.test(v)) {
+      v = '#' + v[1] + v[1] + v[2] + v[2] + v[3] + v[3];
+    }
+    return v;
+  }
+
+  $(document).on('input change', '.cff-color-picker', function(){
+    var $wrap = $(this).closest('.cff-color');
+    var $text = $wrap.find('.cff-color-value');
+    if ($text.length) $text.val(this.value).trigger('change');
+  });
+
+  $(document).on('input change', '.cff-color-value', function(){
+    var $wrap = $(this).closest('.cff-color');
+    var $picker = $wrap.find('.cff-color-picker');
+    var v = normalizeHex($(this).val());
+    if ($picker.length && /^#[0-9a-fA-F]{6}$/.test(v)) {
+      $picker.val(v);
+    }
+  });
+
+  /* -------------------------
+   * Field accordion
+   * ------------------------- */
+  $(document).on('click', '.cff-field .cff-acc-toggle', function(){
+    var $field = $(this).closest('.cff-field');
+    $field.toggleClass('is-collapsed');
+    $(this).attr('aria-expanded', !$field.hasClass('is-collapsed'));
+  });
+
+  /* -------------------------
    * Sortable + reindex
    * ------------------------- */
   function initSortable($rows){
