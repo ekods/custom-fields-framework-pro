@@ -9,12 +9,53 @@ if (!defined('ABSPATH')) exit;
 $GLOBALS['cff_row_stack'] = [];
 
 function cff_meta_key($name) { return '_cff_' . sanitize_key($name); }
+function cff_format_value($val, $format_value = true) {
+  if (!$format_value) return $val;
+  if (is_array($val)) {
+    $out = [];
+    foreach ($val as $k => $v) {
+      if (is_array($v)) {
+        $out[$k] = cff_format_value($v, true);
+        continue;
+      }
+
+      if (is_numeric($v) && is_string($k)) {
+        $id = (int) $v;
+        if ($id && wp_attachment_is_image($id)) {
+          $url_key = $k . '_url';
+          $url = (isset($val[$url_key]) && is_string($val[$url_key])) ? $val[$url_key] : '';
+          if (!$url) $url = wp_get_attachment_url($id);
+          $out[$k] = [
+            'id' => $id,
+            'url' => $url,
+          ];
+          continue;
+        }
+      }
+
+      $out[$k] = $v;
+    }
+    return $out;
+  }
+
+  if (is_numeric($val)) {
+    $id = (int) $val;
+    if ($id && wp_attachment_is_image($id)) {
+      return [
+        'id' => $id,
+        'url' => wp_get_attachment_url($id),
+      ];
+    }
+  }
+  return $val;
+}
 
 if (!function_exists('get_field')) {
   function get_field($selector, $post_id = false, $format_value = true) {
     $post_id = $post_id ? $post_id : get_the_ID();
     if (!$post_id) return null;
-    return get_post_meta($post_id, cff_meta_key($selector), true);
+    $val = get_post_meta($post_id, cff_meta_key($selector), true);
+    return cff_format_value($val, $format_value);
   }
 }
 
@@ -70,7 +111,7 @@ if (!function_exists('get_row_layout')) {
 }
 
 if (!function_exists('get_sub_field')) {
-  function get_sub_field($selector) {
+  function get_sub_field($selector, $format_value = true) {
     end($GLOBALS['cff_row_stack']);
     $key = key($GLOBALS['cff_row_stack']);
     if ($key === null) return null;
@@ -79,10 +120,12 @@ if (!function_exists('get_sub_field')) {
 
     // Flexible stores subfields under ['fields']
     if (isset($cur['fields']) && is_array($cur['fields'])) {
-      return $cur['fields'][sanitize_key($selector)] ?? null;
+      $val = $cur['fields'][sanitize_key($selector)] ?? null;
+      return cff_format_value($val, $format_value);
     }
     // Repeater rows store direct subkeys
-    return $cur[sanitize_key($selector)] ?? null;
+    $val = $cur[sanitize_key($selector)] ?? null;
+    return cff_format_value($val, $format_value);
   }
 }
 

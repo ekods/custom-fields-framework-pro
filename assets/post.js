@@ -52,9 +52,11 @@ jQuery(function($){
    * ------------------------- */
   function renderMedia($wrap, id){
     var $id = $wrap.find('.cff-media-id');
+    var $url = $wrap.find('.cff-media-url');
     var $preview = $wrap.find('.cff-media-preview');
 
     $id.val(id || '');
+    if ($url.length) $url.val('');
 
     if (!id){
       $preview.empty().append($('<span/>', { class: 'cff-muted', text: 'No file selected' }));
@@ -94,6 +96,7 @@ jQuery(function($){
       if (!att || !att.id) return;
 
       $wrap.find('input.cff-media-id').val(att.id).trigger('change');
+      $wrap.find('input.cff-media-url').val(att.url || '');
 
       var $preview = $wrap.find('.cff-media-preview').empty();
 
@@ -157,10 +160,23 @@ jQuery(function($){
   /* -------------------------
    * Field accordion
    * ------------------------- */
-  $(document).on('click', '.cff-field .cff-acc-toggle', function(){
-    var $field = $(this).closest('.cff-field');
-    $field.toggleClass('is-collapsed');
-    $(this).attr('aria-expanded', !$field.hasClass('is-collapsed'));
+  function togglePostbox($field){
+    var isClosed = !$field.hasClass('closed');
+    $field.toggleClass('closed', isClosed);
+    $field.find('.handlediv').attr('aria-expanded', !isClosed);
+    $field.children('.inside').toggle(!isClosed);
+  }
+
+  $(document).on('click', '.cff-field.postbox .postbox-header, .cff-field.postbox .handlediv, .cff-field.postbox .hndle', function(e){
+    if ($(e.target).closest('a').length) return;
+    e.preventDefault();
+    togglePostbox($(this).closest('.cff-field.postbox'));
+  });
+
+  $(document).on('click', '.cff-rep-toggle', function(e){
+    e.preventDefault();
+    var $row = $(this).closest('.cff-rep-row');
+    $row.toggleClass('is-collapsed');
   });
 
   /* -------------------------

@@ -44,8 +44,13 @@
 .cff-loc-group{border:1px solid #dcdcde;border-radius:12px;background:#fff;padding:12px}
 .cff-loc-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 .cff-loc-rules{display:flex;flex-direction:column;gap:10px}
-.cff-loc-rule{display:grid;grid-template-columns: 220px 160px 1fr 44px;gap:10px;align-items:center}
-.cff-loc-rule .button{height:36px}
+.cff-loc-rule{display:grid;grid-template-columns:minmax(160px,220px) minmax(120px,160px) 1fr 44px;gap:10px;align-items:center}
+.cff-loc-rule .button{height:30px;margin-top: 12px;}
+
+@media (max-width: 782px){
+  .cff-loc-rule{grid-template-columns:1fr;align-items:stretch}
+  .cff-loc-rule .button{height:auto;margin-top:0}
+}
 
 
 /* Input styling (ACF-like) */

@@ -133,6 +133,7 @@ class Plugin {
     add_action('save_post', [$this, 'save_content_fields'], 10, 2);
 
     add_action('admin_enqueue_scripts', [$this, 'assets']);
+    add_action('admin_init', [$this, 'handle_export_group']);
 
     add_action('wp_ajax_cff_search_posts', [$this, 'ajax_search_posts']);
     add_action('wp_ajax_cff_get_templates', [$this, 'ajax_get_templates']);
@@ -1079,15 +1080,40 @@ class Plugin {
     if (!is_array($groups) || !$groups) return false;
     foreach ($groups as $rules) {
       if (!is_array($rules) || !$rules) continue;
-      $all = true;
+      $by_key = [];
       foreach ($rules as $r) {
         $param = $r['param'] ?? 'post_type';
         $op = $r['operator'] ?? '==';
-        $val = $r['value'] ?? '';
-        $ok = $this->match_rule($post, $param, $val);
-        if ($op === '!=') $ok = !$ok;
-        if (!$ok) { $all = false; break; }
+        $by_key[$param . '|' . $op][] = $r;
       }
+
+      $all = true;
+      foreach ($by_key as $key => $set) {
+        list($param, $op) = explode('|', $key, 2);
+
+        if ($op === '==') {
+          $any = false;
+          foreach ($set as $r) {
+            $val = $r['value'] ?? '';
+            if ($this->match_rule($post, $param, $val)) {
+              $any = true;
+              break;
+            }
+          }
+          if (!$any) { $all = false; break; }
+        } else {
+          $ok_all = true;
+          foreach ($set as $r) {
+            $val = $r['value'] ?? '';
+            if ($this->match_rule($post, $param, $val)) {
+              $ok_all = false;
+              break;
+            }
+          }
+          if (!$ok_all) { $all = false; break; }
+        }
+      }
+
       if ($all) return true;
     }
     return false;
@@ -1237,8 +1263,45 @@ class Plugin {
     echo '</div></div>';
   }
 
-  private function export_field_groups() {
-    $posts = get_posts(['post_type'=>'cff_group','post_status'=>'any','numberposts'=>-1,'no_found_rows'=>true]);
+  public function handle_export_group() {
+    if (!current_user_can('manage_options')) return;
+    if (empty($_GET['cff_export_group'])) return;
+
+    $group_id = absint($_GET['cff_export_group']);
+    if (!$group_id) return;
+
+    if (!check_admin_referer('cff_export_group_' . $group_id)) return;
+
+    $group = get_post($group_id);
+    if (!$group || $group->post_type !== 'cff_group') return;
+
+    $payload = [
+      'version' => '0.13.0',
+      'exported_at' => gmdate('c'),
+      'post_types' => [],
+      'taxonomies' => [],
+      'field_groups' => $this->export_field_groups($group_id),
+    ];
+
+    $json = wp_json_encode($payload, JSON_PRETTY_PRINT);
+    $slug = $group->post_name ?: ('group-' . $group_id);
+    $filename = 'cff-group-' . sanitize_file_name($slug) . '-' . date('Ymd-His') . '.json';
+
+    header('Content-Type: application/json; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    echo $json;
+    exit;
+  }
+
+  private function export_field_groups($group_id = 0) {
+    $args = [
+      'post_type'=>'cff_group',
+      'post_status'=>'any',
+      'numberposts'=>-1,
+      'no_found_rows'=>true,
+    ];
+    if ($group_id) $args['p'] = $group_id;
+    $posts = get_posts($args);
     $out = [];
     foreach ($posts as $p) {
       $out[] = [

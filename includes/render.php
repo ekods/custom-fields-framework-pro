@@ -38,17 +38,33 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     $key = $plugin->meta_key($name);
     $val = get_post_meta($post->ID, $key, true);
 
-    echo '<div class="cff-field cff-field-'.$type.' is-collapsed">';
+    $is_accordion = ($type === 'repeater');
+    $field_classes = 'cff-field cff-field-' . $type . ($is_accordion ? ' postbox' : '');
+    echo '<div class="' . esc_attr($field_classes) . '">';
     $type_label = ucfirst(str_replace('_', ' ', $type));
-    echo '<div class="cff-label">';
-    echo '<div class="cff-label-head">';
-    echo '<button type="button" class="cff-acc-toggle" aria-expanded="true"></button>';
-    echo '<label>'.esc_html($label).'</label>';
-    echo '</div>';
-    echo '<div class="description cff-meta-name">'.esc_html($name).'</div>';
-    echo '<div class="description cff-meta-type">'.esc_html($type_label).'</div>';
-    echo '</div>';
-    echo '<div class="cff-input">';
+    if ($is_accordion) {
+      echo '<div class="postbox-header">';
+      echo '<h2 class="hndle">'.esc_html($label).'</h2>';
+      echo '<div class="handle-actions hide-if-no-js">';
+      echo '<button type="button" class="handlediv" aria-expanded="false">';
+      echo '<span class="screen-reader-text">'.esc_html__('Toggle panel', 'cff').'</span>';
+      echo '<span class="toggle-indicator" aria-hidden="true"></span>';
+      echo '</button>';
+      echo '</div>';
+      echo '</div>';
+      echo '<div class="inside cff-input">';
+      echo '<div class="description cff-meta-name">'.esc_html($name).'</div>';
+      echo '<div class="description cff-meta-type">'.esc_html($type_label).'</div>';
+    } else {
+      echo '<div class="cff-label">';
+      echo '<div class="cff-label-head">';
+      echo '<label>'.esc_html($label).'</label>';
+      echo '</div>';
+      echo '<div class="description cff-meta-name">'.esc_html($name).'</div>';
+      echo '<div class="description cff-meta-type">'.esc_html($type_label).'</div>';
+      echo '</div>';
+      echo '<div class="cff-input">';
+    }
 
     if ($type === 'text') {
       echo '<input class="widefat" type="text" name="cff_values['.esc_attr($name).']" value="'.esc_attr($val).'">';
@@ -93,6 +109,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       $url = $id ? wp_get_attachment_url($id) : '';
       echo '<div class="cff-media" data-type="'.esc_attr($type).'">';
       echo '<input type="hidden" class="cff-media-id" name="cff_values['.esc_attr($name).']" value="'.esc_attr($id).'">';
+      echo '<input type="hidden" class="cff-media-url" name="cff_values['.esc_attr($name).'_url]" value="'.esc_attr($url).'">';
       echo '<div class="cff-media-preview">' . cff_media_preview_html($type, $id) . '</div>';
       echo '<p><button type="button" class="button cff-media-select">Select</button> <button type="button" class="button cff-media-clear">Clear</button></p>';
       echo '</div>';
@@ -233,9 +250,11 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
           ])) . '">';
       } elseif ($stype === 'image' || $stype === 'file') {
         $id = intval($v);
-
+        $url = $id ? wp_get_attachment_url($id) : '';
+        $url_attr = 'cff_values['.$parent.']['.$i.']['.$sname.'_url]';
         echo '<div class="cff-media cff-media-inline" data-type="'.esc_attr($stype).'">';
         echo '<input type="hidden" class="cff-media-id" name="'.esc_attr($name_attr).'" value="'.esc_attr($id).'">';
+        echo '<input type="hidden" class="cff-media-url" name="'.esc_attr($url_attr).'" value="'.esc_attr($url).'">';
         echo '<div class="cff-media-preview">' . cff_media_preview_html($stype, $id) . '</div>';
         echo '<p><button type="button" class="button cff-media-select">Select</button> <button type="button" class="button cff-media-clear">Clear</button></p>';
         echo '</div>';
@@ -307,9 +326,12 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
           ])) . '">';
       } elseif ($stype === 'image' || $stype === 'file') {
         $id = intval($v);
+        $url = $id ? wp_get_attachment_url($id) : '';
+        $url_attr = 'cff_values['.$parent.']['.$sname.'_url]';
 
         echo '<div class="cff-media cff-media-inline" data-type="'.esc_attr($stype).'">';
         echo '<input type="hidden" class="cff-media-id" name="'.esc_attr($name_attr).'" value="'.esc_attr($id).'">';
+        echo '<input type="hidden" class="cff-media-url" name="'.esc_attr($url_attr).'" value="'.esc_attr($url).'">';
         echo '<div class="cff-media-preview">' . cff_media_preview_html($stype, $id) . '</div>';
         echo '<p><button type="button" class="button cff-media-select">Select</button> <button type="button" class="button cff-media-clear">Clear</button></p>';
         echo '</div>';
@@ -387,8 +409,10 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         } elseif ($stype === 'image' || $stype === 'file') {
           $id = intval($v);
           $url = $id ? wp_get_attachment_url($id) : '';
+          $url_attr = 'cff_values['.$parent.']['.$i.'][fields]['.$sname.'_url]';
           echo '<div class="cff-media cff-media-inline" data-type="'.esc_attr($stype).'">';
           echo '<input type="hidden" class="cff-media-id" name="'.esc_attr($name_attr).'" value="'.esc_attr($id).'">';
+          echo '<input type="hidden" class="cff-media-url" name="'.esc_attr($url_attr).'" value="'.esc_attr($url).'">';
           echo '<div class="cff-media-preview">' . cff_media_preview_html($stype, $id) . '</div>';
           echo '<p><button type="button" class="button cff-media-select">Select</button> <button type="button" class="button cff-media-clear">Clear</button></p>';
           echo '</div>';

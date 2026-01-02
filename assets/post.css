@@ -1,7 +1,7 @@
-.cff-field{display:flex;flex-direction:column;gap:8px;border:1px solid #e5e5e5;background:#fff;border-radius: 10px;}
-.cff-field.is-collapsed .cff-label{border-color:#eee;background-color: #fff;}
-.cff-label{background:#d8eef9;border-radius:10px;padding:12px 14px}
-.cff-label-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.cff-field{display:flex;flex-direction:column;gap:8px;border:1px solid #e5e5e5;background:#fff;border-radius:10px;}
+.cff-field.is-collapsed .cff-label{border-color:#eee;background-color:#fff;}
+.cff-label{background:#d8eef9;border-radius:10px;padding:12px 14px; display: flex; flex-wrap: wrap;gap:20px;row-gap: 5px;}
+.cff-label-head{display:flex;align-items:center;gap:10px;margin-bottom:6px; flex: 0 0 100%;}
 .cff-label label{font-weight:700}
 .cff-input{margin-top:12px;padding: 10px;}
 .cff-label .description{margin-top:2px;color:#56606a;font-size:12px}
@@ -17,16 +17,15 @@
 .cff-subfield-input label{display:block;font-weight:600;margin-bottom:6px}
 .cff-flex-add{display:flex;gap:10px;align-items:center;margin-top:10px}
 .cff-pill{display:inline-block;padding:2px 8px;border:1px solid #ddd;border-radius:999px;background:#fff;font-size:12px;color:#444;margin-left:8px}
-.cff-field .cff-acc-toggle{
-  width:26px;height:26px;border:1px solid #c9dbe6;border-radius:6px;
-  background:#fff;color:#2271b1;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;
-}
 .cff-metabox,
-#cff-field-list{display: flex;flex-direction: column; gap: 8px;}
-.cff-field .cff-acc-toggle:before{font-family:dashicons;content:"\f140";font-size:16px}
-.cff-field.is-collapsed .cff-acc-toggle:before{content:"\f142"}
-.cff-field.is-collapsed .cff-input{display:none}
+#cff-field-list{display: flex;flex-direction: column; gap: 40px;}
+.cff-field.postbox{display:block}
+.cff-field.postbox .postbox-header{background:#f6f7f7;border-bottom:1px solid #dcdcde}
+.cff-field.postbox .postbox-header,
+.cff-field.postbox .handlediv,
+.cff-field.postbox .hndle{cursor:pointer}
+.cff-field.postbox .inside{padding:12px 14px}
+.cff-field.postbox.closed .inside{display:none}
 .cff-link{display:grid;grid-template-columns:1fr;gap:8px;max-width:720px}
 .cff-link .widefat{margin:0}
 .cff-link-target{display:flex;align-items:center;gap:8px}
