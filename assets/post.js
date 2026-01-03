@@ -80,11 +80,12 @@ jQuery(function($){
     var type = $wrap.data('type') || 'file';
     if (!window.wp || !wp.media) return;
 
+    var libType = (type === 'image') ? { type: ['image', 'video'] } : {};
     var frame = wp.media({
-      title: (type === 'image') ? 'Select image' : 'Select file',
+      title: (type === 'image') ? 'Select media' : 'Select file',
       button: { text: 'Use this' },
       multiple: false,
-      library: (type === 'image') ? { type: 'image' } : {}
+      library: libType
     });
 
     frame.on('select', function(){
@@ -100,7 +101,15 @@ jQuery(function($){
 
       var $preview = $wrap.find('.cff-media-preview').empty();
 
-      if (type === 'image') {
+      if (att.type === 'video' || (att.mime && String(att.mime).indexOf('video/') === 0)) {
+        if (att.url) {
+          $('<video>', { src: att.url, class: 'cff-media-video', controls: true })
+            .appendTo($preview);
+          return;
+        }
+      }
+
+      if (type === 'image' && (att.type === 'image' || (att.mime && String(att.mime).indexOf('image/') === 0))) {
         var imgUrl =
           (att.sizes && att.sizes.medium && att.sizes.medium.url) ? att.sizes.medium.url :
           (att.sizes && att.sizes.thumbnail && att.sizes.thumbnail.url) ? att.sizes.thumbnail.url :

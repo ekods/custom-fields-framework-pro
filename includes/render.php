@@ -7,6 +7,13 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     $id = intval($id);
     if (!$id) return '<span class="cff-muted">No file selected</span>';
 
+    if (wp_attachment_is('video', $id)) {
+      $url = wp_get_attachment_url($id);
+      if ($url) {
+        return '<video class="cff-media-video" controls src="' . esc_url($url) . '"></video>';
+      }
+    }
+
     if ($type === 'image') {
       // thumbnail (lebih enak daripada link)
       $img = wp_get_attachment_image(
