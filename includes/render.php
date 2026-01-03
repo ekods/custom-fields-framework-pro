@@ -7,6 +7,17 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     $id = intval($id);
     if (!$id) return '<span class="cff-muted">No file selected</span>';
 
+    if (wp_attachment_is('video', $id)) {
+      $url = wp_get_attachment_url($id);
+      if ($url) {
+        $mime = get_post_mime_type($id);
+        $type_attr = $mime ? ' type="' . esc_attr($mime) . '"' : '';
+        return '<video class="cff-media-video" controls preload="metadata">'
+          . '<source src="' . esc_url($url) . '"' . $type_attr . '>'
+          . '</video>';
+      }
+    }
+
     if ($type === 'image') {
       // thumbnail (lebih enak daripada link)
       $img = wp_get_attachment_image(

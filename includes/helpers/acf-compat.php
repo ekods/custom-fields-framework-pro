@@ -21,15 +21,17 @@ function cff_format_value($val, $format_value = true) {
 
       if (is_numeric($v) && is_string($k)) {
         $id = (int) $v;
-        if ($id && wp_attachment_is_image($id)) {
+        if ($id) {
           $url_key = $k . '_url';
           $url = (isset($val[$url_key]) && is_string($val[$url_key])) ? $val[$url_key] : '';
           if (!$url) $url = wp_get_attachment_url($id);
-          $out[$k] = [
-            'id' => $id,
-            'url' => $url,
-          ];
-          continue;
+          if ($url) {
+            $out[$k] = [
+              'id' => $id,
+              'url' => $url,
+            ];
+            continue;
+          }
         }
       }
 
@@ -40,11 +42,14 @@ function cff_format_value($val, $format_value = true) {
 
   if (is_numeric($val)) {
     $id = (int) $val;
-    if ($id && wp_attachment_is_image($id)) {
-      return [
-        'id' => $id,
-        'url' => wp_get_attachment_url($id),
-      ];
+    if ($id) {
+      $url = wp_get_attachment_url($id);
+      if ($url) {
+        return [
+          'id' => $id,
+          'url' => $url,
+        ];
+      }
     }
   }
   return $val;
@@ -62,7 +67,7 @@ if (!function_exists('get_field')) {
 if (!function_exists('the_field')) {
   function the_field($selector, $post_id = false) {
     $v = get_field($selector, $post_id, true);
-    if (is_scalar($v)) echo esc_html($v);
+    if (is_scalar($v)) echo wp_kses_post(wpautop($v));
   }
 }
 
@@ -132,6 +137,6 @@ if (!function_exists('get_sub_field')) {
 if (!function_exists('the_sub_field')) {
   function the_sub_field($selector) {
     $v = get_sub_field($selector);
-    if (is_scalar($v)) echo esc_html($v);
+    if (is_scalar($v)) echo wp_kses_post(wpautop($v));
   }
 }
