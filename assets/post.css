@@ -10,7 +10,6 @@
 .cff-muted{color:#646970}
 .cff-media{border:1px solid #dcdcde;border-radius:10px;padding:10px;background:#fbfbfc;max-width:720px}
 .cff-media-preview{margin-bottom:8px}
-.cff-media-video{max-width:320px;width:100%;height:auto;display:block}
 .cff-media-inline{max-width:520px}
 .cff-rep-row,.cff-flex-row{border:1px solid #dcdcde;border-radius:12px;margin:10px 0;background:#fbfbfc}
 .cff-rep-row-head,.cff-flex-head{padding:10px 12px;border-bottom:1px solid #e5e5e5;display:flex;justify-content:space-between;align-items:center}

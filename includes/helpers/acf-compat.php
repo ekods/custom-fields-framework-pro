@@ -21,17 +21,15 @@ function cff_format_value($val, $format_value = true) {
 
       if (is_numeric($v) && is_string($k)) {
         $id = (int) $v;
-        if ($id) {
+        if ($id && wp_attachment_is_image($id)) {
           $url_key = $k . '_url';
           $url = (isset($val[$url_key]) && is_string($val[$url_key])) ? $val[$url_key] : '';
           if (!$url) $url = wp_get_attachment_url($id);
-          if ($url) {
-            $out[$k] = [
-              'id' => $id,
-              'url' => $url,
-            ];
-            continue;
-          }
+          $out[$k] = [
+            'id' => $id,
+            'url' => $url,
+          ];
+          continue;
         }
       }
 
@@ -42,14 +40,11 @@ function cff_format_value($val, $format_value = true) {
 
   if (is_numeric($val)) {
     $id = (int) $val;
-    if ($id) {
-      $url = wp_get_attachment_url($id);
-      if ($url) {
+    if ($id && wp_attachment_is_image($id)) {
       return [
         'id' => $id,
-        'url' => $url,
+        'url' => wp_get_attachment_url($id),
       ];
-      }
     }
   }
   return $val;
