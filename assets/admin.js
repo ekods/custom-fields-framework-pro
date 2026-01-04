@@ -1086,7 +1086,7 @@
  * - memastikan panel "Presentation" ada isi markup seperti screenshot
  * - JS presentation module kamu akan langsung jalan di markup ini
  * ------------------------- */
-CFF.presentationUI = (function(){
+  CFF.presentationUI = (function(){
   function init(){
     var $panel = $('.cff-tabpanel[data-panel="presentation"]');
     if (!$panel.length) return;
@@ -1206,6 +1206,205 @@ CFF.presentationUI = (function(){
 })();
 
   /* -------------------------
+   * Reorder (Posts/Terms)
+   * ------------------------- */
+  CFF.reorder = (function(){
+    function init(){
+      var $root = $('#cff-reorder');
+      if (!$root.length) return;
+
+      var $postSelect = $root.find('#cff-reorder-post-type');
+      var $taxSelect = $root.find('#cff-reorder-taxonomy');
+      var $postList = $root.find('.cff-reorder-list[data-kind="post"]');
+      var $termList = $root.find('.cff-reorder-list[data-kind="term"]');
+
+      $postList.sortable({ handle: '.cff-reorder-handle' });
+      $termList.sortable({ handle: '.cff-reorder-handle' });
+
+      $root.on('click', '#cff-reorder-load-posts', function(){
+        loadPosts($postSelect.val(), $postList);
+      });
+
+      $root.on('click', '#cff-reorder-save-posts', function(){
+        savePosts($postSelect.val(), $postList);
+      });
+
+      $root.on('click', '#cff-reorder-load-terms', function(){
+        loadTerms($taxSelect.val(), $termList);
+      });
+
+      $root.on('click', '#cff-reorder-save-terms', function(){
+        saveTerms($taxSelect.val(), $termList);
+      });
+    }
+
+    function renderList($list, items){
+      $list.empty();
+      if (!items || !items.length) {
+        $list.append('<li class="cff-reorder-empty">No items found.</li>');
+        return;
+      }
+      items.forEach(function(it){
+        var meta = it.status ? ('<span class="cff-reorder-meta">' + esc(it.status) + '</span>') : '';
+        if (it.count !== undefined) meta = '<span class="cff-reorder-meta">(' + esc(String(it.count)) + ')</span>';
+        $list.append(
+          '<li class="cff-reorder-item" data-id="' + escAttr(String(it.id)) + '">' +
+            '<span class="cff-reorder-handle">≡</span>' +
+            '<span class="cff-reorder-title">' + esc(it.title || '') + '</span>' +
+            meta +
+          '</li>'
+        );
+      });
+    }
+
+    function loadPosts(postType, $list){
+      if (!postType) return;
+      $list.html('<li class="cff-reorder-empty">Loading…</li>');
+      $.post(CFFP.ajax, { action:'cff_reorder_get_posts', nonce:CFFP.nonce, post_type:postType }, function(res){
+        renderList($list, res && res.success ? res.data : []);
+      });
+    }
+
+    function savePosts(postType, $list){
+      if (!postType) return;
+      var order = [];
+      $list.find('.cff-reorder-item').each(function(){
+        order.push($(this).data('id'));
+      });
+      $.post(CFFP.ajax, { action:'cff_reorder_save_posts', nonce:CFFP.nonce, post_type:postType, order:order }, function(res){
+        if (!res || !res.success) {
+          alert('Failed to save order.');
+        } else {
+          alert('Order saved.');
+        }
+      });
+    }
+
+    function loadTerms(taxonomy, $list){
+      if (!taxonomy) return;
+      $list.html('<li class="cff-reorder-empty">Loading…</li>');
+      $.post(CFFP.ajax, { action:'cff_reorder_get_terms', nonce:CFFP.nonce, taxonomy:taxonomy }, function(res){
+        renderList($list, res && res.success ? res.data : []);
+      });
+    }
+
+    function saveTerms(taxonomy, $list){
+      if (!taxonomy) return;
+      var order = [];
+      $list.find('.cff-reorder-item').each(function(){
+        order.push($(this).data('id'));
+      });
+      $.post(CFFP.ajax, { action:'cff_reorder_save_terms', nonce:CFFP.nonce, taxonomy:taxonomy, order:order }, function(res){
+        if (!res || !res.success) {
+          alert('Failed to save order.');
+        } else {
+          alert('Order saved.');
+        }
+      });
+    }
+
+    function esc(s){
+      return String(s||'').replace(/[&<>"']/g, function(m){
+        return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]);
+      });
+    }
+    function escAttr(s){ return esc(s).replace(/"/g,'&quot;'); }
+
+  return { init:init };
+})();
+
+  /* -------------------------
+   * Language tabs
+   * ------------------------- */
+  CFF.langTabs = (function(){
+    function init(){
+      $(document).on('click', '.cff-lang-tab', function(){
+        var $btn = $(this);
+        var lang = $btn.data('lang');
+        var $wrap = $btn.closest('.cff-lang-tabs');
+        $wrap.find('.cff-lang-tab').removeClass('active');
+        $btn.addClass('active');
+        $wrap.find('.cff-lang-panel').removeClass('active')
+          .filter('[data-lang="'+lang+'"]').addClass('active');
+      });
+
+      $('.cff-lang-tabs').each(function(){
+        var $wrap = $(this);
+        var def = $wrap.data('default');
+        var $btn = def ? $wrap.find('.cff-lang-tab[data-lang="'+def+'"]') : $wrap.find('.cff-lang-tab').first();
+        if ($btn.length) $btn.trigger('click');
+      });
+    }
+    return { init:init };
+  })();
+
+  /* -------------------------
+   * Auto slug (CPT/Taxonomy)
+   * ------------------------- */
+  CFF.autoSlug = (function(){
+    function slugify(v){
+      return String(v || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9\s_-]/g, '')
+        .replace(/[\s_-]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+    }
+
+    function init(){
+      var $doc = $(document);
+
+      $doc.on('input', 'input[name="cpt_singular"], input[name="cpt_plural"]', function(){
+        var $form = $(this).closest('form');
+        var $slug = $form.find('input[name="cpt_slug"]');
+        maybeSetSlug($slug, $(this).val());
+      });
+
+      $doc.on('input', 'input[name^="cpt_singular_i18n["], input[name^="cpt_plural_i18n["]', function(){
+        var name = $(this).attr('name') || '';
+        var match = name.match(/^cpt_(?:singular|plural)_i18n\[(.+)\]$/);
+        if (!match) return;
+        var lang = match[1];
+        var $form = $(this).closest('form');
+        var $slug = $form.find('input[name="cpt_slug_i18n['+lang+']"]');
+        maybeSetSlug($slug, $(this).val());
+      });
+
+      $doc.on('input', 'input[name="singular"], input[name="plural"]', function(){
+        var $form = $(this).closest('form');
+        var $slug = $form.find('input[name="slug"]');
+        maybeSetSlug($slug, $(this).val());
+      });
+
+      $doc.on('input', 'input[name^="singular_i18n["], input[name^="plural_i18n["]', function(){
+        var name = $(this).attr('name') || '';
+        var match = name.match(/^(?:singular|plural)_i18n\[(.+)\]$/);
+        if (!match) return;
+        var lang = match[1];
+        var $form = $(this).closest('form');
+        var $slug = $form.find('input[name="slug_i18n['+lang+']"]');
+        maybeSetSlug($slug, $(this).val());
+      });
+
+      $doc.on('input', 'input[name="cpt_slug"], input[name^="cpt_slug_i18n["], input[name="slug"], input[name^="slug_i18n["]', function(){
+        $(this).data('cffSlugAuto', false);
+      });
+    }
+
+    function maybeSetSlug($slug, sourceVal){
+      if (!$slug.length) return;
+      var current = String($slug.val() || '');
+      var auto = $slug.data('cffSlugAuto');
+      if (current && auto === false) return;
+      var next = slugify(sourceVal);
+      if (!next) return;
+      $slug.val(next);
+      $slug.data('cffSlugAuto', true);
+    }
+
+    return { init:init };
+  })();
+
+  /* -------------------------
    * Boot
    * ------------------------- */
    $(function(){
@@ -1217,5 +1416,8 @@ CFF.presentationUI = (function(){
      CFF.toolsUI.init();
      CFF.dashicons.init();
      CFF.multiselect.init();
+     CFF.reorder.init();
+     CFF.langTabs.init();
+     CFF.autoSlug.init();
    });
 })(jQuery);

@@ -47,6 +47,24 @@
 .cff-loc-rule{display:grid;grid-template-columns:minmax(160px,220px) minmax(120px,160px) 1fr 44px;gap:10px;align-items:center}
 .cff-loc-rule .button{height:30px;margin-top: 12px;}
 
+/* Reorder UI */
+#cff-reorder{display:flex;flex-direction:column;gap:24px}
+.cff-reorder-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+.cff-reorder-list{list-style:none;margin:0;padding:0;border:1px solid #dcdcde;border-radius:10px;background:#fff;min-height:60px}
+.cff-reorder-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid #f0f0f1}
+.cff-reorder-item:last-child{border-bottom:none}
+.cff-reorder-handle{cursor:grab;color:#646970;font-size:18px}
+.cff-reorder-title{flex:1}
+.cff-reorder-meta{color:#646970;font-size:12px}
+.cff-reorder-empty{padding:10px 12px;color:#646970}
+
+/* Language tabs */
+.cff-lang-tabs{border:1px solid #dcdcde;border-radius:10px;background:#fff}
+.cff-lang-tabbar{display:flex;gap:6px;padding:8px;border-bottom:1px solid #f0f0f1;background:#f6f7f7}
+.cff-lang-tab{border:1px solid #dcdcde;background:#fff;border-radius:6px;padding:4px 10px;cursor:pointer}
+.cff-lang-tab.active{background:#2271b1;color:#fff;border-color:#2271b1}
+.cff-lang-panel{display:none;padding:10px}
+.cff-lang-panel.active{display:block}
 @media (max-width: 782px){
   .cff-loc-rule{grid-template-columns:1fr;align-items:stretch}
   .cff-loc-rule .button{height:auto;margin-top:0}

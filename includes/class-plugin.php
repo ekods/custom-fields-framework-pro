@@ -28,7 +28,7 @@ class Plugin {
     ]);
   }
 
-  public static function register_dynamic_cpts() {
+  public function register_dynamic_cpts() {
     $defs = get_option('cffp_post_types', []);
     if (!is_array($defs)) return;
 
@@ -39,6 +39,11 @@ class Plugin {
       $singular = sanitize_text_field($def['singular'] ?? ucfirst($key));
       $plural   = sanitize_text_field($def['plural'] ?? $singular . 's');
       $slug     = sanitize_title($def['slug'] ?? $key);
+      $singular = $this->i18n_value($def, 'singular_i18n', $singular);
+      $plural   = $this->i18n_value($def, 'plural_i18n', $plural);
+      if (!$this->polylang_active()) {
+        $slug = $this->i18n_slug($def, 'slug_i18n', $slug);
+      }
       $public   = !empty($def['public']);
       $has_archive = !empty($def['has_archive']);
       $show_in_rest = !empty($def['show_in_rest']);
@@ -92,6 +97,8 @@ class Plugin {
 
       $singular = sanitize_text_field($def['singular'] ?? ucfirst($tax));
       $plural   = sanitize_text_field($def['plural'] ?? $singular . 's');
+      $singular = $this->i18n_value($def, 'singular_i18n', $singular);
+      $plural   = $this->i18n_value($def, 'plural_i18n', $plural);
       $public   = !empty($def['public']);
       $hier     = !empty($def['hierarchical']);
       $show_in_rest = !empty($def['show_in_rest']);
@@ -113,7 +120,9 @@ class Plugin {
         'query_var' => array_key_exists('query_var',$def) ? (bool)$def['query_var'] : true,
         'show_admin_column' => array_key_exists('show_admin_column',$def) ? (bool)$def['show_admin_column'] : true,
         'rewrite' => [
-          'slug' => sanitize_title($def['slug'] ?? $tax),
+          'slug' => $this->polylang_active()
+            ? sanitize_title($def['slug'] ?? $tax)
+            : $this->i18n_slug($def, 'slug_i18n', sanitize_title($def['slug'] ?? $tax)),
           'with_front' => !empty($def['with_front']),
         ],
       ]);
@@ -122,8 +131,10 @@ class Plugin {
 
   private function __construct() {
     add_action('init', [__CLASS__, 'register_cpt']);
-    add_action('init', [__CLASS__, 'register_dynamic_cpts'], 20); // FIX: static dipanggil via __CLASS__
+    add_action('init', [$this, 'register_dynamic_cpts'], 20);
     add_action('init', [$this, 'register_dynamic_taxonomies'], 25);
+    add_action('init', [$this, 'register_term_meta_fields'], 30);
+    add_action('init', [$this, 'add_polylang_rewrite_rules'], 100);
 
     add_action('admin_menu', [$this, 'admin_menu']);
     add_action('add_meta_boxes', [$this, 'meta_boxes']);
@@ -134,10 +145,22 @@ class Plugin {
 
     add_action('admin_enqueue_scripts', [$this, 'assets']);
     add_action('admin_init', [$this, 'handle_export_group']);
+    add_action('pre_get_posts', [$this, 'apply_reorder_post_types']);
+    add_filter('get_terms_args', [$this, 'apply_reorder_terms_args'], 10, 2);
+    add_filter('category_rewrite_rules', [$this, 'category_rewrite_rules']);
+    add_filter('category_link', [$this, 'category_link_no_base'], 10, 2);
+    add_filter('pll_translate_post_type_rewrite_slug', [$this, 'pll_translate_post_type_rewrite_slug'], 10, 3);
+    add_filter('pll_translate_taxonomy_rewrite_slug', [$this, 'pll_translate_taxonomy_rewrite_slug'], 10, 3);
+    add_filter('pll_the_language_link', [$this, 'pll_fix_archive_lang_link'], 10, 3);
+    add_filter('pll_the_language_link', [$this, 'pll_fix_taxonomy_lang_link'], 10, 3);
 
     add_action('wp_ajax_cff_search_posts', [$this, 'ajax_search_posts']);
     add_action('wp_ajax_cff_get_templates', [$this, 'ajax_get_templates']);
     add_action('wp_ajax_cff_get_post_types', [$this, 'ajax_get_post_types']);
+    add_action('wp_ajax_cff_reorder_get_posts', [$this, 'ajax_reorder_get_posts']);
+    add_action('wp_ajax_cff_reorder_save_posts', [$this, 'ajax_reorder_save_posts']);
+    add_action('wp_ajax_cff_reorder_get_terms', [$this, 'ajax_reorder_get_terms']);
+    add_action('wp_ajax_cff_reorder_save_terms', [$this, 'ajax_reorder_save_terms']);
   }
 
   public function admin_menu() {
@@ -146,6 +169,7 @@ class Plugin {
     add_submenu_page('cff', __('Field Groups','cff'), __('Field Groups','cff'), $cap, 'edit.php?post_type=cff_group');
     add_submenu_page('cff', __('Post Types','cff'), __('Post Types','cff'), $cap, 'cff-post-types', [$this,'page_post_types']);
     add_submenu_page('cff', __('Taxonomies','cff'), __('Taxonomies','cff'), $cap, 'cff-taxonomies', [$this,'page_taxonomies']);
+    add_submenu_page('cff', __('Reorder','cff'), __('Reorder','cff'), $cap, 'cff-reorder', [$this,'page_reorder']);
     add_submenu_page('cff', __('Tools','cff'), __('Tools','cff'), $cap, 'cff-tools', [$this,'page_tools']);
   }
 
@@ -217,6 +241,20 @@ class Plugin {
               : [],
             'menu_icon' => $menu_icon,
           ];
+          if ($this->polylang_active()) {
+            $singular_i18n = isset($_POST['cpt_singular_i18n']) && is_array($_POST['cpt_singular_i18n'])
+              ? array_map('sanitize_text_field', (array) $_POST['cpt_singular_i18n'])
+              : [];
+            $plural_i18n = isset($_POST['cpt_plural_i18n']) && is_array($_POST['cpt_plural_i18n'])
+              ? array_map('sanitize_text_field', (array) $_POST['cpt_plural_i18n'])
+              : [];
+            $slug_i18n = isset($_POST['cpt_slug_i18n']) && is_array($_POST['cpt_slug_i18n'])
+              ? array_map('sanitize_title', (array) $_POST['cpt_slug_i18n'])
+              : [];
+            $defs[$key]['singular_i18n'] = array_filter($singular_i18n);
+            $defs[$key]['plural_i18n'] = array_filter($plural_i18n);
+            $defs[$key]['slug_i18n'] = array_filter($slug_i18n);
+          }
 
           update_option('cffp_post_types', $defs);
           flush_rewrite_rules();
@@ -321,9 +359,29 @@ class Plugin {
     echo '<table class="form-table"><tbody>';
 
     echo '<tr><th><label>Key</label></th><td><input name="cpt_key" class="regular-text" placeholder="custom_post" required value="'.esc_attr($editing ? $edit_key : '').'" '.($editing?'readonly':'').'></td></tr>';
+    $langs = $this->polylang_languages();
     echo '<tr><th><label>Singular</label></th><td><input name="cpt_singular" class="regular-text" placeholder="Custom Post" value="'.esc_attr($edit_def['singular'] ?? '').'"></td></tr>';
     echo '<tr><th><label>Plural</label></th><td><input name="cpt_plural" class="regular-text" placeholder="Custom Posts" value="'.esc_attr($edit_def['plural'] ?? '').'"></td></tr>';
     echo '<tr><th><label>Slug</label></th><td><input name="cpt_slug" class="regular-text" placeholder="custom-post" value="'.esc_attr($edit_def['slug'] ?? '').'"></td></tr>';
+    if ($langs) {
+      echo '<tr><th><label>Translations</label></th><td>';
+      echo '<div class="cff-lang-tabs" data-default="'.esc_attr($langs[0]['slug']).'">';
+      echo '<div class="cff-lang-tabbar">';
+      foreach ($langs as $lang) {
+        echo '<button type="button" class="cff-lang-tab" data-lang="'.esc_attr($lang['slug']).'">'.esc_html($lang['name'] ?: $lang['slug']).'</button>';
+      }
+      echo '</div>';
+      foreach ($langs as $lang) {
+        $slug = $lang['slug'];
+        echo '<div class="cff-lang-panel" data-lang="'.esc_attr($slug).'">';
+        echo '<p><label>Singular</label><br><input class="regular-text" placeholder="Custom Post" name="cpt_singular_i18n['.esc_attr($slug).']" value="'.esc_attr(($edit_def['singular_i18n'][$slug] ?? '')).'"></p>';
+        echo '<p><label>Plural</label><br><input class="regular-text" placeholder="Custom Posts" name="cpt_plural_i18n['.esc_attr($slug).']" value="'.esc_attr(($edit_def['plural_i18n'][$slug] ?? '')).'"></p>';
+        echo '<p><label>Slug</label><br><input class="regular-text" placeholder="custom-post" name="cpt_slug_i18n['.esc_attr($slug).']" value="'.esc_attr(($edit_def['slug_i18n'][$slug] ?? '')).'"></p>';
+        echo '</div>';
+      }
+      echo '</div>';
+      echo '</td></tr>';
+    }
 
     echo '<tr><th><label>Options</label></th><td>';
     echo '<label><input type="checkbox" name="cpt_public" value="1" '.($pub?'checked':'').'> Public</label> &nbsp; ';
@@ -381,6 +439,20 @@ class Plugin {
             'show_in_rest' => !empty($_POST['show_in_rest']),
             'post_types' => isset($_POST['post_types']) ? array_map('sanitize_key',(array)$_POST['post_types']) : [],
           ];
+          if ($this->polylang_active()) {
+            $singular_i18n = isset($_POST['singular_i18n']) && is_array($_POST['singular_i18n'])
+              ? array_map('sanitize_text_field', (array) $_POST['singular_i18n'])
+              : [];
+            $plural_i18n = isset($_POST['plural_i18n']) && is_array($_POST['plural_i18n'])
+              ? array_map('sanitize_text_field', (array) $_POST['plural_i18n'])
+              : [];
+            $slug_i18n = isset($_POST['slug_i18n']) && is_array($_POST['slug_i18n'])
+              ? array_map('sanitize_title', (array) $_POST['slug_i18n'])
+              : [];
+            $defs[$key]['plural_i18n'] = array_filter($plural_i18n);
+            $defs[$key]['singular_i18n'] = array_filter($singular_i18n);
+            $defs[$key]['slug_i18n'] = array_filter($slug_i18n);
+          }
           update_option('cffp_taxonomies', $defs);
           add_settings_error('cffp_taxonomies','saved',__('Taxonomy saved','cff'),'updated');
         }
@@ -449,10 +521,10 @@ class Plugin {
     echo '<input type="hidden" name="cffp_tax_action" value="'.($editing?'update':'add').'">';
 
     echo '<div class="cff-tools-card">';
+    $langs = $this->polylang_languages();
     echo '<div class="cff-tools-field"><label>Plural Label <span class="required">*</span></label>';
     echo '<input class="regular-text" type="text" name="plural" placeholder="Genres" required value="' . esc_attr($edit_def['plural'] ?? '') . '">';
     echo '</div>';
-
     echo '<div class="cff-tools-field"><label>Singular Label <span class="required">*</span></label>';
     echo '<input class="regular-text" type="text" name="singular" placeholder="Genre" required value="' . esc_attr($edit_def['singular'] ?? '') . '">';
     echo '</div>';
@@ -461,6 +533,30 @@ class Plugin {
     echo '<input class="regular-text" type="text" name="tax_key" placeholder="genre" required value="' . esc_attr($editing ? $edit_key : '') . '" ' . ($editing ? 'readonly' : '') . '>';
     echo '<p class="description">Lower case letters, underscores and dashes only. Max 32 characters.</p>';
     echo '</div>';
+    echo '<div class="cff-tools-field"><label>Slug</label>';
+    echo '<input class="regular-text" type="text" name="slug" placeholder="genre" value="' . esc_attr($edit_def['slug'] ?? '') . '">';
+    echo '</div>';
+
+    if ($langs) {
+      echo '<div class="cff-tools-field">';
+      echo '<label>Translations</label>';
+      echo '<div class="cff-lang-tabs" data-default="'.esc_attr($langs[0]['slug']).'">';
+      echo '<div class="cff-lang-tabbar">';
+      foreach ($langs as $lang) {
+        echo '<button type="button" class="cff-lang-tab" data-lang="'.esc_attr($lang['slug']).'">'.esc_html($lang['name'] ?: $lang['slug']).'</button>';
+      }
+      echo '</div>';
+      foreach ($langs as $lang) {
+        $slug = $lang['slug'];
+        echo '<div class="cff-lang-panel" data-lang="'.esc_attr($slug).'">';
+        echo '<p><label>Plural</label><br><input class="regular-text" placeholder="Genres" name="plural_i18n['.esc_attr($slug).']" value="' . esc_attr($edit_def['plural_i18n'][$slug] ?? '') . '"></p>';
+        echo '<p><label>Singular</label><br><input class="regular-text" placeholder="Genre" name="singular_i18n['.esc_attr($slug).']" value="' . esc_attr($edit_def['singular_i18n'][$slug] ?? '') . '"></p>';
+        echo '<p><label>Slug</label><br><input class="regular-text" placeholder="genre" name="slug_i18n['.esc_attr($slug).']" value="' . esc_attr($edit_def['slug_i18n'][$slug] ?? '') . '"></p>';
+        echo '</div>';
+      }
+      echo '</div>';
+      echo '</div>';
+    }
 
     echo '<div class="cff-tools-field"><label>Post Types</label>';
     echo '<select name="post_types[]" multiple class="cff-select2 regular-text">';
@@ -489,10 +585,55 @@ class Plugin {
     echo '</div>';
   }
 
+  public function page_reorder() {
+    if (!current_user_can('manage_options')) return;
+
+    $post_types = get_post_types(['public'=>true], 'objects');
+    $taxonomies = get_taxonomies(['public'=>true], 'objects');
+
+    echo '<div class="wrap cff-admin"><h1>Reorder</h1>';
+    echo '<div id="cff-reorder">';
+
+    echo '<div class="cff-reorder-section">';
+    echo '<h2>Posts / Pages / Custom Post Types</h2>';
+    echo '<div class="cff-reorder-controls">';
+    echo '<label for="cff-reorder-post-type">Post Type</label> ';
+    echo '<select id="cff-reorder-post-type">';
+    foreach ($post_types as $pt) {
+      echo '<option value="'.esc_attr($pt->name).'">'.esc_html($pt->labels->name).'</option>';
+    }
+    echo '</select> ';
+    echo '<button type="button" class="button" id="cff-reorder-load-posts">Load</button>';
+    echo '</div>';
+    echo '<ul class="cff-reorder-list" data-kind="post"></ul>';
+    echo '<p><button type="button" class="button button-primary" id="cff-reorder-save-posts">Save Order</button></p>';
+    echo '</div>';
+
+    echo '<hr>';
+
+    echo '<div class="cff-reorder-section">';
+    echo '<h2>Taxonomies / Categories</h2>';
+    echo '<div class="cff-reorder-controls">';
+    echo '<label for="cff-reorder-taxonomy">Taxonomy</label> ';
+    echo '<select id="cff-reorder-taxonomy">';
+    foreach ($taxonomies as $tax) {
+      echo '<option value="'.esc_attr($tax->name).'">'.esc_html($tax->labels->name).'</option>';
+    }
+    echo '</select> ';
+    echo '<button type="button" class="button" id="cff-reorder-load-terms">Load</button>';
+    echo '</div>';
+    echo '<ul class="cff-reorder-list" data-kind="term"></ul>';
+    echo '<p><button type="button" class="button button-primary" id="cff-reorder-save-terms">Save Order</button></p>';
+    echo '</div>';
+
+    echo '</div></div>';
+  }
+
   public function assets($hook) {
     $screen = function_exists('get_current_screen') ? get_current_screen() : null;
     $is_group = $screen && $screen->post_type === 'cff_group';
     $is_post_edit = $screen && in_array($screen->base, ['post','post-new'], true);
+    $is_term_edit = $screen && in_array($screen->base, ['edit-tags','term'], true);
 
     if ($is_group || strpos($hook, 'cff') !== false) {
       wp_enqueue_style('cff-admin', CFFP_URL . 'assets/admin.css', [], $this->asset_ver('assets/admin.css'));
@@ -528,12 +669,518 @@ class Plugin {
         'nonce' => wp_create_nonce('cffp'),
       ]);
     }
+
+    if ($is_term_edit) {
+      wp_enqueue_media();
+      wp_enqueue_style('cff-taxonomy', CFFP_URL . 'assets/taxonomy.css', [], $this->asset_ver('assets/taxonomy.css'));
+      wp_enqueue_script('cff-taxonomy', CFFP_URL . 'assets/taxonomy.js', ['jquery'], $this->asset_ver('assets/taxonomy.js'), true);
+    }
   }
 
   private function asset_ver($rel_path) {
     $path = CFFP_DIR . ltrim($rel_path, '/');
     return file_exists($path) ? (string) filemtime($path) : CFFP_VERSION;
   }
+
+  public function register_term_meta_fields() {
+    $taxonomies = get_taxonomies(['public'=>true], 'names');
+    foreach ($taxonomies as $tax) {
+      add_action($tax . '_add_form_fields', [$this, 'render_term_fields_add'], 10, 1);
+      add_action($tax . '_edit_form_fields', [$this, 'render_term_fields_edit'], 10, 2);
+      add_action('created_' . $tax, [$this, 'save_term_fields'], 10, 2);
+      add_action('edited_' . $tax, [$this, 'save_term_fields'], 10, 2);
+    }
+  }
+
+  private function term_image_preview($image_id) {
+    if ($image_id) {
+      $img = wp_get_attachment_image($image_id, 'thumbnail', false, ['class' => 'cff-term-thumb']);
+      if ($img) return $img;
+    }
+    return '<span class="description">No image selected</span>';
+  }
+
+  public function render_term_fields_add($taxonomy) {
+    echo '<div class="form-field cff-term-field">';
+    echo '<label>Image</label>';
+    echo '<div class="cff-term-image">';
+    echo '<input type="hidden" class="cff-term-image-id" name="cffp_term_image_id" value="">';
+    echo '<div class="cff-term-image-preview">' . $this->term_image_preview(0) . '</div>';
+    echo '<p><button type="button" class="button cff-term-image-select">Select</button> ';
+    echo '<button type="button" class="button cff-term-image-clear">Clear</button></p>';
+    echo '</div>';
+    echo '</div>';
+
+    echo '<div class="form-field cff-term-field">';
+    echo '<label>Short Description</label>';
+    echo '<textarea name="cffp_term_short_description" rows="3"></textarea>';
+    echo '</div>';
+
+    echo '<div class="form-field cff-term-field">';
+    echo '<label>Description</label>';
+    echo '<textarea name="cffp_term_description" rows="5"></textarea>';
+    echo '</div>';
+  }
+
+  public function render_term_fields_edit($term, $taxonomy) {
+    $image_id = (int) get_term_meta($term->term_id, 'cffp_term_image_id', true);
+    $short = (string) get_term_meta($term->term_id, 'cffp_term_short_description', true);
+    $desc = (string) get_term_meta($term->term_id, 'cffp_term_description', true);
+
+    echo '<tr class="form-field cff-term-field"><th scope="row"><label>Image</label></th><td>';
+    echo '<div class="cff-term-image">';
+    echo '<input type="hidden" class="cff-term-image-id" name="cffp_term_image_id" value="' . esc_attr($image_id) . '">';
+    echo '<div class="cff-term-image-preview">' . $this->term_image_preview($image_id) . '</div>';
+    echo '<p><button type="button" class="button cff-term-image-select">Select</button> ';
+    echo '<button type="button" class="button cff-term-image-clear">Clear</button></p>';
+    echo '</div>';
+    echo '</td></tr>';
+
+    echo '<tr class="form-field cff-term-field"><th scope="row"><label>Short Description</label></th><td>';
+    echo '<textarea name="cffp_term_short_description" rows="3">' . esc_textarea($short) . '</textarea>';
+    echo '</td></tr>';
+
+    echo '<tr class="form-field cff-term-field"><th scope="row"><label>Description</label></th><td>';
+    echo '<textarea name="cffp_term_description" rows="5">' . esc_textarea($desc) . '</textarea>';
+    echo '</td></tr>';
+  }
+
+  public function save_term_fields($term_id, $tt_id = 0) {
+    if (!current_user_can('manage_categories')) return;
+    $image_id = isset($_POST['cffp_term_image_id']) ? absint($_POST['cffp_term_image_id']) : 0;
+    $short = isset($_POST['cffp_term_short_description']) ? wp_kses_post(wp_unslash($_POST['cffp_term_short_description'])) : '';
+    $desc = isset($_POST['cffp_term_description']) ? wp_kses_post(wp_unslash($_POST['cffp_term_description'])) : '';
+
+    if ($image_id) {
+      update_term_meta($term_id, 'cffp_term_image_id', $image_id);
+    } else {
+      delete_term_meta($term_id, 'cffp_term_image_id');
+    }
+
+    if ($short !== '') {
+      update_term_meta($term_id, 'cffp_term_short_description', $short);
+    } else {
+      delete_term_meta($term_id, 'cffp_term_short_description');
+    }
+
+    if ($desc !== '') {
+      update_term_meta($term_id, 'cffp_term_description', $desc);
+    } else {
+      delete_term_meta($term_id, 'cffp_term_description');
+    }
+  }
+
+  public function apply_reorder_post_types($q) {
+    if (!($q instanceof \WP_Query)) return;
+    if (!$q->is_main_query()) return;
+
+    $types = get_option('cffp_reorder_post_types', []);
+    if (!is_array($types) || !$types) return;
+
+    $pt = $q->get('post_type');
+    if (!$pt) $pt = 'post';
+    $pt_list = is_array($pt) ? $pt : [$pt];
+
+    $match = false;
+    foreach ($pt_list as $t) {
+      if (in_array($t, $types, true)) { $match = true; break; }
+    }
+    if (!$match) return;
+
+    $orderby = $q->get('orderby');
+    if ($orderby && $orderby !== 'date') return;
+    $q->set('orderby', ['menu_order' => 'ASC', 'date' => 'DESC']);
+    if (!$q->get('order')) $q->set('order', 'ASC');
+  }
+
+  public function apply_reorder_terms_args($args, $taxonomies) {
+    $enabled = get_option('cffp_reorder_taxonomies', []);
+    if (!is_array($enabled) || !$enabled) return $args;
+
+    $tax_list = (array) $taxonomies;
+    $match = false;
+    foreach ($tax_list as $tax) {
+      if (in_array($tax, $enabled, true)) { $match = true; break; }
+    }
+    if (!$match) return $args;
+    if (!empty($args['orderby']) && $args['orderby'] !== 'name') return $args;
+
+    $args['meta_key'] = 'cffp_term_order';
+    $args['orderby'] = 'meta_value_num';
+    if (empty($args['order'])) $args['order'] = 'ASC';
+    return $args;
+  }
+
+  public function category_rewrite_rules($rules) {
+    $base = get_option('category_base');
+    $base = is_string($base) ? trim($base) : '';
+    if ($base !== 'category') return $rules;
+
+    $terms = get_terms([
+      'taxonomy' => 'category',
+      'hide_empty' => false,
+    ]);
+    if (is_wp_error($terms) || empty($terms)) return $rules;
+
+    $new = [];
+    foreach ($terms as $term) {
+      $slug = $term->slug;
+      if (!$slug) continue;
+      $new[$slug . '/?$'] = 'index.php?category_name=' . $slug;
+      $new[$slug . '/page/([0-9]+)/?$'] = 'index.php?category_name=' . $slug . '&paged=$matches[1]';
+    }
+    return $new + $rules;
+  }
+
+  public function category_link_no_base($link, $term_id) {
+    $base = get_option('category_base');
+    $base = is_string($base) ? trim($base) : '';
+    if ($base !== 'category') return $link;
+    return str_replace('/' . trim($base, '/') . '/', '/', $link);
+  }
+
+  public function ajax_reorder_get_posts() {
+    check_ajax_referer('cffp', 'nonce');
+    if (!current_user_can('manage_options')) wp_send_json_error(['message'=>'Forbidden'], 403);
+
+    $pt = sanitize_key($_POST['post_type'] ?? '');
+    if (!$pt || !post_type_exists($pt)) wp_send_json_error(['message'=>'Invalid post_type'], 400);
+
+    $posts = get_posts([
+      'post_type' => $pt,
+      'post_status' => 'any',
+      'orderby' => 'menu_order',
+      'order' => 'ASC',
+      'numberposts' => -1,
+      'no_found_rows' => true,
+    ]);
+
+    $out = [];
+    foreach ($posts as $p) {
+      $out[] = [
+        'id' => $p->ID,
+        'title' => $p->post_title ?: '(no title)',
+        'status' => $p->post_status,
+      ];
+    }
+    wp_send_json_success($out);
+  }
+
+  public function ajax_reorder_save_posts() {
+    check_ajax_referer('cffp', 'nonce');
+    if (!current_user_can('manage_options')) wp_send_json_error(['message'=>'Forbidden'], 403);
+
+    $pt = sanitize_key($_POST['post_type'] ?? '');
+    $order = isset($_POST['order']) && is_array($_POST['order']) ? array_map('absint', $_POST['order']) : [];
+    if (!$pt || !post_type_exists($pt) || !$order) wp_send_json_error(['message'=>'Invalid payload'], 400);
+
+    foreach ($order as $i => $id) {
+      if ($id) wp_update_post(['ID' => $id, 'menu_order' => $i]);
+    }
+
+    $enabled = get_option('cffp_reorder_post_types', []);
+    if (!is_array($enabled)) $enabled = [];
+    if (!in_array($pt, $enabled, true)) {
+      $enabled[] = $pt;
+      update_option('cffp_reorder_post_types', $enabled);
+    }
+
+    wp_send_json_success(['count' => count($order)]);
+  }
+
+  public function ajax_reorder_get_terms() {
+    check_ajax_referer('cffp', 'nonce');
+    if (!current_user_can('manage_options')) wp_send_json_error(['message'=>'Forbidden'], 403);
+
+    $tax = sanitize_key($_POST['taxonomy'] ?? '');
+    if (!$tax || !taxonomy_exists($tax)) wp_send_json_error(['message'=>'Invalid taxonomy'], 400);
+
+    $terms = get_terms([
+      'taxonomy' => $tax,
+      'hide_empty' => false,
+    ]);
+    if (is_wp_error($terms)) wp_send_json_error(['message'=>'Failed to load terms'], 500);
+
+    usort($terms, function($a, $b){
+      $oa = (int) get_term_meta($a->term_id, 'cffp_term_order', true);
+      $ob = (int) get_term_meta($b->term_id, 'cffp_term_order', true);
+      if ($oa === $ob) return strcasecmp($a->name, $b->name);
+      return ($oa < $ob) ? -1 : 1;
+    });
+
+    $out = [];
+    foreach ($terms as $t) {
+      $out[] = [
+        'id' => $t->term_id,
+        'title' => $t->name,
+        'count' => $t->count,
+      ];
+    }
+    wp_send_json_success($out);
+  }
+
+  public function ajax_reorder_save_terms() {
+    check_ajax_referer('cffp', 'nonce');
+    if (!current_user_can('manage_options')) wp_send_json_error(['message'=>'Forbidden'], 403);
+
+    $tax = sanitize_key($_POST['taxonomy'] ?? '');
+    $order = isset($_POST['order']) && is_array($_POST['order']) ? array_map('absint', $_POST['order']) : [];
+    if (!$tax || !taxonomy_exists($tax) || !$order) wp_send_json_error(['message'=>'Invalid payload'], 400);
+
+    foreach ($order as $i => $id) {
+      if ($id) update_term_meta($id, 'cffp_term_order', $i);
+    }
+
+    $enabled = get_option('cffp_reorder_taxonomies', []);
+    if (!is_array($enabled)) $enabled = [];
+    if (!in_array($tax, $enabled, true)) {
+      $enabled[] = $tax;
+      update_option('cffp_reorder_taxonomies', $enabled);
+    }
+
+    wp_send_json_success(['count' => count($order)]);
+  }
+
+  private function current_lang() {
+    if (function_exists('pll_current_language')) {
+      $lang = pll_current_language('slug');
+      if ($lang) return $lang;
+    }
+    return '';
+  }
+
+  private function polylang_active() {
+    return function_exists('pll_current_language');
+  }
+
+  private function polylang_languages() {
+    if (!function_exists('pll_languages_list')) return [];
+    $slugs = pll_languages_list(['fields' => 'slug']);
+    $names = pll_languages_list(['fields' => 'name']);
+    if (!is_array($slugs)) return [];
+    $out = [];
+    foreach ($slugs as $i => $slug) {
+      $name = (is_array($names) && isset($names[$i])) ? $names[$i] : $slug;
+      $out[] = ['slug' => $slug, 'name' => $name];
+    }
+    return $out;
+  }
+
+  private function i18n_value($def, $key, $fallback) {
+    $lang = $this->current_lang();
+    if (!$lang) return $fallback;
+    $map = $def[$key] ?? [];
+    if (is_array($map) && !empty($map[$lang])) {
+      return sanitize_text_field($map[$lang]);
+    }
+    return $fallback;
+  }
+
+  private function i18n_slug($def, $key, $fallback) {
+    $lang = $this->current_lang();
+    if (!$lang) return $fallback;
+    $map = $def[$key] ?? [];
+    if (is_array($map) && !empty($map[$lang])) {
+      return sanitize_title($map[$lang]);
+    }
+    return $fallback;
+  }
+
+  private function i18n_slug_for_lang($def, $key, $lang, $fallback) {
+    if (!$lang) return $fallback;
+    $map = $def[$key] ?? [];
+    if (is_array($map) && !empty($map[$lang])) {
+      return sanitize_title($map[$lang]);
+    }
+    return $fallback;
+  }
+
+  public function add_polylang_rewrite_rules() {
+    if (!function_exists('pll_default_language') || !function_exists('pll_home_url')) return;
+
+    $default_lang = pll_default_language('slug');
+    if (!$default_lang) return;
+    $hide_default = trailingslashit(pll_home_url($default_lang)) === trailingslashit(home_url('/'));
+
+    $langs = function_exists('pll_languages_list') ? pll_languages_list(['fields' => 'slug']) : [];
+    if (!is_array($langs) || !$langs) return;
+
+    $defs = get_option('cffp_post_types', []);
+    if (is_array($defs)) {
+      foreach ($defs as $key => $def) {
+        if (empty($def['has_archive'])) continue;
+        $base_slug = sanitize_title($def['slug'] ?? $key);
+        foreach ($langs as $lang) {
+          $slug = $this->i18n_slug_for_lang($def, 'slug_i18n', $lang, $base_slug);
+          if (!$slug) continue;
+          $prefix = ($hide_default && $lang === $default_lang) ? '' : $lang . '/';
+
+          add_rewrite_rule(
+            '^' . $prefix . $slug . '/?$',
+            'index.php?post_type=' . $key . '&lang=' . $lang,
+            'top'
+          );
+          add_rewrite_rule(
+            '^' . $prefix . $slug . '/page/([0-9]+)/?$',
+            'index.php?post_type=' . $key . '&paged=$matches[1]&lang=' . $lang,
+            'top'
+          );
+        }
+      }
+    }
+
+    $tax_defs = get_option('cffp_taxonomies', []);
+    if (is_array($tax_defs)) {
+      foreach ($tax_defs as $tax => $def) {
+        if (!taxonomy_exists($tax)) continue;
+        $tax_obj = get_taxonomy($tax);
+        if (!$tax_obj || empty($tax_obj->rewrite)) continue;
+
+        $base_slug = sanitize_title($def['slug'] ?? $tax_obj->rewrite['slug'] ?? $tax);
+        $query_var = $tax_obj->query_var ? $tax_obj->query_var : $tax;
+
+        foreach ($langs as $lang) {
+          $slug = $this->i18n_slug_for_lang($def, 'slug_i18n', $lang, $base_slug);
+          if (!$slug) continue;
+          $prefix = ($hide_default && $lang === $default_lang) ? '' : $lang . '/';
+
+          add_rewrite_rule(
+            '^' . $prefix . $slug . '/(.+?)/?$',
+            'index.php?' . $query_var . '=$matches[1]&lang=' . $lang,
+            'top'
+          );
+        }
+      }
+    }
+
+    if (taxonomy_exists('category')) {
+      $cat_base = get_option('category_base');
+      $cat_base = is_string($cat_base) ? trim($cat_base) : '';
+      $use_base = ($cat_base !== '' && $cat_base !== 'category');
+      $terms = get_terms([
+        'taxonomy' => 'category',
+        'hide_empty' => false,
+      ]);
+
+      foreach ($langs as $lang) {
+        $prefix = ($hide_default && $lang === $default_lang) ? '' : $lang . '/';
+
+        if ($use_base) {
+          add_rewrite_rule(
+            '^' . $prefix . preg_quote($cat_base, '/') . '/(.+?)/?$',
+            'index.php?category_name=$matches[1]&lang=' . $lang,
+            'top'
+          );
+          add_rewrite_rule(
+            '^' . $prefix . preg_quote($cat_base, '/') . '/(.+?)/page/([0-9]+)/?$',
+            'index.php?category_name=$matches[1]&paged=$matches[2]&lang=' . $lang,
+            'top'
+          );
+          continue;
+        }
+
+        if (is_wp_error($terms) || empty($terms)) continue;
+        $seen = [];
+        foreach ($terms as $t) {
+          $term_id = function_exists('pll_get_term') ? pll_get_term($t->term_id, $lang) : $t->term_id;
+          if (!$term_id) continue;
+          $term_obj = get_term($term_id, 'category');
+          if (!$term_obj || is_wp_error($term_obj)) continue;
+          $slug = $term_obj->slug;
+          if (!$slug || isset($seen[$slug])) continue;
+          $seen[$slug] = true;
+
+          add_rewrite_rule(
+            '^' . $prefix . preg_quote($slug, '/') . '/?$',
+            'index.php?category_name=' . $slug . '&lang=' . $lang,
+            'top'
+          );
+          add_rewrite_rule(
+            '^' . $prefix . preg_quote($slug, '/') . '/page/([0-9]+)/?$',
+            'index.php?category_name=' . $slug . '&paged=$matches[1]&lang=' . $lang,
+            'top'
+          );
+        }
+      }
+    }
+  }
+
+  public function pll_translate_post_type_rewrite_slug($slug, $post_type, $lang) {
+    if (!function_exists('pll_current_language')) return $slug;
+    $defs = get_option('cffp_post_types', []);
+    if (!is_array($defs) || !isset($defs[$post_type])) return $slug;
+    $def = $defs[$post_type];
+    $map = isset($def['slug_i18n']) && is_array($def['slug_i18n']) ? $def['slug_i18n'] : [];
+    if (!empty($map[$lang])) return sanitize_title($map[$lang]);
+    return $slug;
+  }
+
+  public function pll_translate_taxonomy_rewrite_slug($slug, $taxonomy, $lang) {
+    if (!function_exists('pll_current_language')) return $slug;
+    $defs = get_option('cffp_taxonomies', []);
+    if (!is_array($defs) || !isset($defs[$taxonomy])) return $slug;
+    $def = $defs[$taxonomy];
+    $map = isset($def['slug_i18n']) && is_array($def['slug_i18n']) ? $def['slug_i18n'] : [];
+    if (!empty($map[$lang])) return sanitize_title($map[$lang]);
+    return $slug;
+  }
+
+  public function pll_fix_archive_lang_link($url, $lang, $args) {
+    if (!function_exists('pll_home_url')) return $url;
+    if (!is_post_type_archive()) return $url;
+
+    $pt = get_query_var('post_type');
+    if (is_array($pt)) $pt = reset($pt);
+    if (!$pt) return $url;
+
+    $defs = get_option('cffp_post_types', []);
+    if (!is_array($defs) || !isset($defs[$pt])) return $url;
+    $def = $defs[$pt];
+    $slug = $this->i18n_slug_for_lang($def, 'slug_i18n', $lang, sanitize_title($def['slug'] ?? $pt));
+    if (!$slug) return $url;
+
+    $base = pll_home_url($lang);
+    return trailingslashit($base . ltrim($slug, '/'));
+  }
+
+  public function pll_fix_taxonomy_lang_link($url, $lang, $args) {
+    if (!function_exists('pll_home_url')) return $url;
+    if (!is_tax() && !is_category() && !is_tag()) return $url;
+
+    $term = get_queried_object();
+    if (!$term || empty($term->taxonomy)) return $url;
+
+    $tax = $term->taxonomy;
+    $tax_obj = get_taxonomy($tax);
+    if (!$tax_obj || empty($tax_obj->rewrite)) return $url;
+
+    $defs = get_option('cffp_taxonomies', []);
+    $def = (is_array($defs) && isset($defs[$tax])) ? $defs[$tax] : [];
+
+    $base_slug = sanitize_title($def['slug'] ?? $tax_obj->rewrite['slug'] ?? $tax);
+    $tax_slug = $this->i18n_slug_for_lang($def, 'slug_i18n', $lang, $base_slug);
+    if ($tax === 'category') {
+      $cat_base = get_option('category_base');
+      $cat_base = is_string($cat_base) ? trim($cat_base) : '';
+      if ($cat_base === 'category') $tax_slug = '';
+    }
+
+    $term_slug = $term->slug;
+    if (function_exists('pll_get_term')) {
+      $term_id = pll_get_term($term->term_id, $lang);
+      if ($term_id) {
+        $term_obj = get_term($term_id, $tax);
+        if ($term_obj && !is_wp_error($term_obj)) {
+          $term_slug = $term_obj->slug;
+        }
+      }
+    }
+
+    $base = pll_home_url($lang);
+    $path = $tax_slug ? (ltrim($tax_slug, '/') . '/' . ltrim($term_slug, '/')) : ltrim($term_slug, '/');
+    return trailingslashit($base . $path);
+  }
+
 
   public function meta_boxes() {
     add_meta_box('cff_group_settings', __('Settings', 'cff'), [$this,'render_group_settings'], 'cff_group', 'normal', 'high');
