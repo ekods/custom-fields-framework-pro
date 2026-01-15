@@ -157,7 +157,10 @@
     function fallbackSubTpl(){
       return (
         '<div class="cff-subfield" data-si="{{si}}">' +
-          '<div class="cff-handle"></div>' +
+          '<div class="cff-handle-wrap">' +
+            '<button type="button" class="cff-sub-acc-toggle" aria-expanded="true"></button>' +
+            '<div class="cff-handle"></div>' +
+          '</div>' +
           '<div class="cff-col"><label>Label</label><input type="text" class="cff-input cff-slabel" value="{{label}}"></div>' +
           '<div class="cff-col"><label>Name</label><input type="text" class="cff-input cff-sname" value="{{name}}"></div>' +
           '<div class="cff-col"><label>Type</label>' +
@@ -171,9 +174,16 @@
               '<option value="checkbox">Checkbox</option>' +
               '<option value="image">Image</option>' +
               '<option value="file">File</option>' +
+              '<option value="group">Group</option>' +
             '</select>' +
           '</div>' +
           '<div class="cff-col cff-actions"><button type="button" class="button cff-remove-sub">Remove</button></div>' +
+          '<div class="cff-groupbuilder cff-subgroupbuilder" data-kind="group">' +
+            '<div class="cff-subhead"><strong>Group Fields</strong> ' +
+              '<button type="button" class="button cff-add-group-sub">Add Field</button>' +
+            '</div>' +
+            '<div class="cff-group-fields"></div>' +
+          '</div>' +
         '</div>'
       );
     }
@@ -211,9 +221,41 @@
 
     function toggleBuilders($field){
       var t = $field.find('.cff-type').val();
-      $field.find('.cff-subbuilder').toggle(t === 'repeater');
-      $field.find('.cff-groupbuilder').toggle(t === 'group');
-      $field.find('.cff-flexbuilder').toggle(t === 'flexible');
+      $field.find('> .cff-advanced > .cff-subbuilder').toggle(t === 'repeater');
+      $field.find('> .cff-advanced > .cff-groupbuilder').toggle(t === 'group');
+      $field.find('> .cff-advanced > .cff-flexbuilder').toggle(t === 'flexible');
+    }
+
+    function toggleSubGroup($sub){
+      var t = $sub.find('.cff-stype').val();
+      var $builder = $sub.find('.cff-groupbuilder');
+      var $wrap = $sub.find('.cff-handle-wrap');
+      if ($wrap.length && !$wrap.find('.cff-sub-acc-toggle').length) {
+        $wrap.prepend('<button type="button" class="cff-sub-acc-toggle" aria-expanded="true"></button>');
+      }
+      if (!$builder.length) {
+        $builder = $(
+          '<div class="cff-groupbuilder cff-subgroupbuilder" data-kind="group">' +
+            '<div class="cff-subhead">' +
+              '<strong>Group Fields</strong>' +
+              '<button type="button" class="button cff-add-group-sub">Add Field</button>' +
+            '</div>' +
+            '<div class="cff-group-fields"></div>' +
+          '</div>'
+        );
+        $sub.append($builder);
+      }
+      var isGroup = (t === 'group');
+      $sub.toggleClass('is-group', isGroup);
+      $builder.toggle(isGroup);
+      $sub.find('.cff-sub-acc-toggle').toggle(isGroup);
+      if (t !== 'group') {
+        $sub.removeClass('is-collapsed');
+        $sub.find('.cff-sub-acc-toggle').attr('aria-expanded', 'true');
+      }
+      if (t === 'group') {
+        sortableSubs($builder.find('.cff-group-fields'));
+      }
     }
 
     function sortableSubs($container){
@@ -237,7 +279,25 @@
         name:  CFF.utils.escapeHtml(s.name  || '')
       });
       var $el = $(html);
+      var $wrap = $el.find('.cff-handle-wrap');
+      if (!$wrap.length) {
+        var $handle = $el.find('.cff-handle').first();
+        if ($handle.length) {
+          $wrap = $('<div class="cff-handle-wrap"></div>');
+          $handle.before($wrap);
+          $wrap.append($handle);
+        }
+      }
+      if ($wrap.length && !$wrap.find('.cff-sub-acc-toggle').length) {
+        $wrap.prepend('<button type="button" class="cff-sub-acc-toggle" aria-expanded="true"></button>');
+      }
       $el.find('.cff-stype').val(s.type || 'text');
+      toggleSubGroup($el);
+      if (s.type === 'group' && Array.isArray(s.sub_fields)) {
+        var $gf = $el.find('.cff-group-fields');
+        s.sub_fields.forEach(function(sf, sfi){ $gf.append(renderSub(sf, sfi)); });
+        sortableSubs($gf);
+      }
       return $el;
     }
 
@@ -269,27 +329,11 @@
         var item = { label: label, name: name, type: type };
 
         if (type === 'repeater') {
-          var subs = [];
-          $f.find('.cff-subfields .cff-subfield').each(function(){
-            subs.push({
-              label: $(this).find('.cff-slabel').val() || '',
-              name:  CFF.utils.sanitizeName($(this).find('.cff-sname').val() || ''),
-              type:  $(this).find('.cff-stype').val() || 'text'
-            });
-          });
-          item.sub_fields = subs;
+          item.sub_fields = readSubfields($f.find('.cff-subfields'));
         }
 
         if (type === 'group') {
-          var gsubs = [];
-          $f.find('.cff-group-fields .cff-subfield').each(function(){
-            gsubs.push({
-              label: $(this).find('.cff-slabel').val() || '',
-              name:  CFF.utils.sanitizeName($(this).find('.cff-sname').val() || ''),
-              type:  $(this).find('.cff-stype').val() || 'text'
-            });
-          });
-          item.sub_fields = gsubs;
+          item.sub_fields = readSubfields($f.find('.cff-group-fields'));
         }
 
         if (type === 'flexible') {
@@ -302,13 +346,7 @@
               sub_fields: []
             };
 
-            $l.find('.cff-layout-fields .cff-subfield').each(function(){
-              litem.sub_fields.push({
-                label: $(this).find('.cff-slabel').val() || '',
-                name:  CFF.utils.sanitizeName($(this).find('.cff-sname').val() || ''),
-                type:  $(this).find('.cff-stype').val() || 'text'
-              });
-            });
+            litem.sub_fields = readSubfields($l.find('.cff-layout-fields'));
 
             layouts.push(litem);
           });
@@ -391,6 +429,28 @@
         handle: '.cff-handle',
         update: function(){ save(readFromDOM()); }
       });
+
+      $root.find('.cff-subfield').each(function(){
+        toggleSubGroup($(this));
+      });
+    }
+
+    function readSubfields($container){
+      var subs = [];
+      $container.children('.cff-subfield').each(function(){
+        var $sub = $(this);
+        var stype = $sub.find('.cff-stype').val() || 'text';
+        var item = {
+          label: $sub.find('.cff-slabel').val() || '',
+          name:  CFF.utils.sanitizeName($sub.find('.cff-sname').val() || ''),
+          type:  stype
+        };
+        if (stype === 'group') {
+          item.sub_fields = readSubfields($sub.find('> .cff-groupbuilder .cff-group-fields'));
+        }
+        subs.push(item);
+      });
+      return subs;
     }
 
     function autoNameFromLabel($row){
@@ -502,10 +562,21 @@
         save(readFromDOM());
       });
 
+      $root.on('change', '.cff-stype', function(){
+        toggleSubGroup($(this).closest('.cff-subfield'));
+        save(readFromDOM());
+      });
+
       $root.on('click', '.cff-acc-toggle', function(){
         var $row = $(this).closest('.cff-field-row');
         $row.toggleClass('is-collapsed');
         $(this).attr('aria-expanded', !$row.hasClass('is-collapsed'));
+      });
+
+      $root.on('click', '.cff-sub-acc-toggle', function(){
+        var $sub = $(this).closest('.cff-subfield');
+        $sub.toggleClass('is-collapsed');
+        $(this).attr('aria-expanded', !$sub.hasClass('is-collapsed'));
       });
 
       $root.on('blur', '.cff-llabel, .cff-lname', function(){
@@ -526,8 +597,8 @@
       });
 
       $root.on('click', '.cff-add-group-sub', function(){
-        var $f = $(this).closest('.cff-field-row');
-        $f.find('.cff-group-fields').append(renderSub({ label:'', name:'', type:'text' }, Date.now()));
+        var $builder = $(this).closest('.cff-groupbuilder');
+        $builder.find('.cff-group-fields').append(renderSub({ label:'', name:'', type:'text' }, Date.now()));
         save(readFromDOM());
       });
 
@@ -1407,9 +1478,9 @@
   /* -------------------------
    * Boot
    * ------------------------- */
-   $(function(){
-     CFF.tabs.init();
-     CFF.fieldBuilder.init();
+  $(function(){
+    CFF.tabs.init();
+    CFF.fieldBuilder.init();
      CFF.locationBuilder.init();
      CFF.presentationUI.init();
      CFF.presentation.init();
@@ -1417,7 +1488,7 @@
      CFF.dashicons.init();
      CFF.multiselect.init();
      CFF.reorder.init();
-     CFF.langTabs.init();
-     CFF.autoSlug.init();
-   });
+    CFF.langTabs.init();
+    CFF.autoSlug.init();
+  });
 })(jQuery);

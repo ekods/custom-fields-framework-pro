@@ -30,6 +30,11 @@
 .cff-link .widefat{margin:0}
 .cff-link-target{display:flex;align-items:center;gap:8px}
 .cff-link-target label{font-weight:600}
+.cff-link-mode{display:flex;gap:12px;align-items:center;font-weight:600}
+.cff-link-mode input{margin-right:4px}
+.cff-link-internal,.cff-link-custom{display:block}
+.cff-link-picker.is-mode-internal .cff-link-custom{display:none}
+.cff-link-picker.is-mode-custom .cff-link-internal{display:none}
 .cff-color{display:flex;gap:10px;align-items:center;max-width:420px}
 .cff-color-picker{width:40px;height:40px;padding:0;border:1px solid #dcdcde;border-radius:8px;background:#fff}
 .cff-color-value{max-width:220px}

@@ -93,18 +93,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     } elseif ($type === 'url') {
       echo '<input class="widefat" type="url" name="cff_values['.esc_attr($name).']" value="'.esc_attr($val).'">';
     } elseif ($type === 'link') {
-      $link = is_array($val) ? $val : [];
-      $url = $link['url'] ?? '';
-      $title = $link['title'] ?? '';
-      $target = $link['target'] ?? '';
-      echo '<div class="cff-link">';
-      echo '<input class="widefat" type="url" placeholder="URL" name="cff_values['.esc_attr($name).'][url]" value="'.esc_attr($url).'">';
-      echo '<input class="widefat" type="text" placeholder="Title" name="cff_values['.esc_attr($name).'][title]" value="'.esc_attr($title).'">';
-      echo '<div class="cff-link-target">';
-      echo '<input type="hidden" name="cff_values['.esc_attr($name).'][target]" value="">';
-      echo '<label><input type="checkbox" name="cff_values['.esc_attr($name).'][target]" value="_blank" '.checked($target, '_blank', false).'> Open in new tab</label>';
-      echo '</div>';
-      echo '</div>';
+      render_link_field('cff_values[' . $name . ']', $val);
     } elseif ($type === 'wysiwyg') {
       $editor_id = 'cff_wys_' . $name . '_' . $post->ID;
       ob_start();
@@ -157,7 +146,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       $vals = is_array($val) ? $val : [];
       $subs = isset($f['sub_fields']) ? $f['sub_fields'] : [];
       echo '<div class="cff-group">';
-      render_group_fields($name, $subs, $vals, $post->ID);
+      render_group_fields('cff_values[' . $name . ']', $subs, $vals, $post->ID);
       echo '</div>';
     } elseif ($type === 'flexible') {
       $rows = is_array($val) ? $val : [];
@@ -224,18 +213,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       } elseif ($stype === 'url') {
         echo '<input class="widefat" type="url" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'">';
       } elseif ($stype === 'link') {
-        $link = is_array($v) ? $v : [];
-        $url = $link['url'] ?? '';
-        $title = $link['title'] ?? '';
-        $target = $link['target'] ?? '';
-        echo '<div class="cff-link">';
-        echo '<input class="widefat" type="url" placeholder="URL" name="'.esc_attr($name_attr).'[url]" value="'.esc_attr($url).'">';
-        echo '<input class="widefat" type="text" placeholder="Title" name="'.esc_attr($name_attr).'[title]" value="'.esc_attr($title).'">';
-        echo '<div class="cff-link-target">';
-        echo '<input type="hidden" name="'.esc_attr($name_attr).'[target]" value="">';
-        echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'[target]" value="_blank" '.checked($target, '_blank', false).'> Open in new tab</label>';
-        echo '</div>';
-        echo '</div>';
+        render_link_field($name_attr, $v);
       } elseif ($stype === 'wysiwyg') {
         $editor_id = 'cff_wys_rep_' . sanitize_key($parent) . '_' . sanitize_key($sname) . '_' . $post_id . '_' . $i;
 
@@ -269,6 +247,13 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         echo '<div class="cff-media-preview">' . cff_media_preview_html($stype, $id) . '</div>';
         echo '<p><button type="button" class="button cff-media-select">Select</button> <button type="button" class="button cff-media-clear">Clear</button></p>';
         echo '</div>';
+      } elseif ($stype === 'group') {
+        $gsubs = isset($s['sub_fields']) ? $s['sub_fields'] : [];
+        $gvals = is_array($v) ? $v : [];
+        $group_prefix = 'cff_values['.$parent.']['.$i.']['.$sname.']';
+        echo '<div class="cff-group cff-group-nested">';
+        render_group_fields($group_prefix, $gsubs, $gvals, $post_id);
+        echo '</div>';
       } else {
         echo '<input class="widefat" type="text" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'">';
       }
@@ -277,13 +262,13 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     echo '</div></div>';
   }
 
-  function render_group_fields($parent, $subs, $vals, $post_id) {
+  function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
     foreach ($subs as $s) {
       $sname = $s['name'];
       $stype = $s['type'];
       $label = $s['label'] ?? $sname;
       $v = isset($vals[$sname]) ? $vals[$sname] : '';
-      $name_attr = 'cff_values['.$parent.']['.$sname.']';
+      $name_attr = $parent_prefix . '[' . $sname . ']';
       echo '<div class="cff-subfield-input">';
       echo '<label>'.esc_html($label).'</label>';
       if ($stype === 'textarea') {
@@ -300,20 +285,9 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       } elseif ($stype === 'url') {
         echo '<input class="widefat" type="url" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'">';
       } elseif ($stype === 'link') {
-        $link = is_array($v) ? $v : [];
-        $url = $link['url'] ?? '';
-        $title = $link['title'] ?? '';
-        $target = $link['target'] ?? '';
-        echo '<div class="cff-link">';
-        echo '<input class="widefat" type="url" placeholder="URL" name="'.esc_attr($name_attr).'[url]" value="'.esc_attr($url).'">';
-        echo '<input class="widefat" type="text" placeholder="Title" name="'.esc_attr($name_attr).'[title]" value="'.esc_attr($title).'">';
-        echo '<div class="cff-link-target">';
-        echo '<input type="hidden" name="'.esc_attr($name_attr).'[target]" value="">';
-        echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'[target]" value="_blank" '.checked($target, '_blank', false).'> Open in new tab</label>';
-        echo '</div>';
-        echo '</div>';
+        render_link_field($name_attr, $v);
       } elseif ($stype === 'wysiwyg') {
-        $editor_id = 'cff_wys_group_' . sanitize_key($parent) . '_' . sanitize_key($sname) . '_' . $post_id;
+        $editor_id = 'cff_wys_group_' . sanitize_key($parent_prefix) . '_' . sanitize_key($sname) . '_' . $post_id;
 
         echo '<textarea
           id="' . esc_attr($editor_id) . '"
@@ -338,7 +312,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       } elseif ($stype === 'image' || $stype === 'file') {
         $id = intval($v);
         $url = $id ? wp_get_attachment_url($id) : '';
-        $url_attr = 'cff_values['.$parent.']['.$sname.'_url]';
+        $url_attr = $parent_prefix . '[' . $sname . '_url]';
 
         echo '<div class="cff-media cff-media-inline" data-type="'.esc_attr($stype).'">';
         echo '<input type="hidden" class="cff-media-id" name="'.esc_attr($name_attr).'" value="'.esc_attr($id).'">';
@@ -346,11 +320,65 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         echo '<div class="cff-media-preview">' . cff_media_preview_html($stype, $id) . '</div>';
         echo '<p><button type="button" class="button cff-media-select">Select</button> <button type="button" class="button cff-media-clear">Clear</button></p>';
         echo '</div>';
+      } elseif ($stype === 'group') {
+        $gsubs = isset($s['sub_fields']) ? $s['sub_fields'] : [];
+        $gvals = is_array($v) ? $v : [];
+        echo '<div class="cff-group cff-group-nested">';
+        render_group_fields($name_attr, $gsubs, $gvals, $post_id);
+        echo '</div>';
       } else {
         echo '<input class="widefat" type="text" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'">';
       }
       echo '</div>';
     }
+  }
+
+  function render_link_field($name_attr, $value) {
+    $link = is_array($value) ? $value : [];
+    $url = $link['url'] ?? '';
+    $title = $link['title'] ?? '';
+    $target = $link['target'] ?? '';
+    $internal_id = isset($link['internal_id']) ? intval($link['internal_id']) : 0;
+    $mode = sanitize_key($link['mode'] ?? '');
+    if (!$mode) $mode = $internal_id ? 'internal' : 'custom';
+
+    if ($internal_id) {
+      $p = get_post($internal_id);
+      if ($p) {
+        if ($title === '') $title = $p->post_title;
+        if ($url === '') $url = get_permalink($p);
+      }
+    }
+
+    $mode_class = ($mode === 'internal') ? ' is-mode-internal' : ' is-mode-custom';
+
+    echo '<div class="cff-link cff-link-picker' . esc_attr($mode_class) . '" data-mode="' . esc_attr($mode) . '">';
+
+    echo '<div class="cff-link-mode">';
+    echo '<label><input type="radio" name="' . esc_attr($name_attr) . '[mode]" value="internal" ' . checked($mode, 'internal', false) . '> Internal</label>';
+    echo '<label><input type="radio" name="' . esc_attr($name_attr) . '[mode]" value="custom" ' . checked($mode, 'custom', false) . '> Custom</label>';
+    echo '</div>';
+
+    echo '<div class="cff-link-internal">';
+    echo '<select class="cff-link-select" data-post-type="any" data-placeholder="Search content…">';
+    if ($internal_id) {
+      echo '<option value="' . esc_attr($internal_id) . '" selected>' . esc_html($title ?: ('#' . $internal_id)) . '</option>';
+    }
+    echo '</select>';
+    echo '<input type="hidden" class="cff-link-internal-id" name="' . esc_attr($name_attr) . '[internal_id]" value="' . esc_attr($internal_id) . '">';
+    echo '</div>';
+
+    echo '<div class="cff-link-custom">';
+    echo '<input class="widefat" type="url" placeholder="URL" name="' . esc_attr($name_attr) . '[url]" value="' . esc_attr($url) . '" style="margin-bottom: 10px;">';
+    echo '<input class="widefat" type="text" placeholder="Title" name="' . esc_attr($name_attr) . '[title]" value="' . esc_attr($title) . '">';
+    echo '</div>';
+
+    echo '<div class="cff-link-target">';
+    echo '<input type="hidden" name="' . esc_attr($name_attr) . '[target]" value="">';
+    echo '<label><input type="checkbox" name="' . esc_attr($name_attr) . '[target]" value="_blank" ' . checked($target, '_blank', false) . '> Open in new tab</label>';
+    echo '</div>';
+
+    echo '</div>';
   }
 
   function render_flexible_row($parent, $layouts, $layout_map, $row, $i, $post_id) {
@@ -387,18 +415,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         } elseif ($stype === 'url') {
           echo '<input class="widefat" type="url" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'">';
         } elseif ($stype === 'link') {
-          $link = is_array($v) ? $v : [];
-          $url = $link['url'] ?? '';
-          $title = $link['title'] ?? '';
-          $target = $link['target'] ?? '';
-          echo '<div class="cff-link">';
-          echo '<input class="widefat" type="url" placeholder="URL" name="'.esc_attr($name_attr).'[url]" value="'.esc_attr($url).'">';
-          echo '<input class="widefat" type="text" placeholder="Title" name="'.esc_attr($name_attr).'[title]" value="'.esc_attr($title).'">';
-          echo '<div class="cff-link-target">';
-          echo '<input type="hidden" name="'.esc_attr($name_attr).'[target]" value="">';
-          echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'[target]" value="_blank" '.checked($target, '_blank', false).'> Open in new tab</label>';
-          echo '</div>';
-          echo '</div>';
+          render_link_field($name_attr, $v);
         } elseif ($stype === 'wysiwyg') {
           $editor_id = 'cff_wys_flex_' . sanitize_key($parent) . '_' . sanitize_key($layout) . '_' . sanitize_key($sname) . '_' . $post_id . '_' . $i;
 
@@ -427,6 +444,13 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
           echo '<div class="cff-media-preview">' . cff_media_preview_html($stype, $id) . '</div>';
           echo '<p><button type="button" class="button cff-media-select">Select</button> <button type="button" class="button cff-media-clear">Clear</button></p>';
           echo '</div>';
+        } elseif ($stype === 'group') {
+          $gsubs = isset($sf['sub_fields']) ? $sf['sub_fields'] : [];
+          $gvals = is_array($v) ? $v : [];
+          $group_prefix = 'cff_values['.$parent.']['.$i.'][fields]['.$sname.']';
+          echo '<div class="cff-group cff-group-nested">';
+          render_group_fields($group_prefix, $gsubs, $gvals, $post_id);
+          echo '</div>';
         } else {
           echo '<input class="widefat" type="text" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'">';
         }
@@ -452,6 +476,10 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       $key  = $plugin->meta_key($name);
 
       if (is_array($value)) {
+        $existing = get_post_meta($post_id, $key, true);
+        if (is_array($existing) && is_assoc_array($value) && is_assoc_array($existing)) {
+          $value = deep_merge_assoc($existing, $value);
+        }
         $value = deep_sanitize($value);
 
         // ✅ PENTING: kalau repeater/flex sudah kosong -> hapus meta lama
@@ -486,6 +514,24 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       return $out;
     }
     return wp_kses_post((string) $v);
+  }
+
+  function is_assoc_array($arr) {
+    if (!is_array($arr)) return false;
+    $keys = array_keys($arr);
+    return $keys !== range(0, count($keys) - 1);
+  }
+
+  function deep_merge_assoc($base, $override) {
+    foreach ($override as $k => $v) {
+      if (is_array($v) && isset($base[$k]) && is_array($base[$k])
+        && is_assoc_array($v) && is_assoc_array($base[$k])) {
+        $base[$k] = deep_merge_assoc($base[$k], $v);
+      } else {
+        $base[$k] = $v;
+      }
+    }
+    return $base;
   }
 
 }

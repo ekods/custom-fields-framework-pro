@@ -144,6 +144,7 @@ class Plugin {
     add_action('save_post', [$this, 'save_content_fields'], 10, 2);
 
     add_action('admin_enqueue_scripts', [$this, 'assets']);
+    add_action('admin_init', [$this, 'handle_export_tools']);
     add_action('admin_init', [$this, 'handle_export_group']);
     add_action('pre_get_posts', [$this, 'apply_reorder_post_types']);
     add_filter('get_terms_args', [$this, 'apply_reorder_terms_args'], 10, 2);
@@ -430,6 +431,23 @@ class Plugin {
       if (in_array($action, ['add','update'], true)) {
         $key = sanitize_key($_POST['tax_key'] ?? '');
         if ($key) {
+          if ($key === 'category') {
+            $raw_pts = isset($_POST['post_types']) ? (array) $_POST['post_types'] : [];
+            $pts = array_filter(array_map('sanitize_key', $raw_pts));
+            $suffix = $pts ? implode('_', $pts) : 'post';
+            $new_key = sanitize_key('category_' . $suffix);
+            if (isset($defs[$key]) && !isset($defs[$new_key])) {
+              $defs[$new_key] = $defs[$key];
+              unset($defs[$key]);
+            }
+            $key = $new_key;
+            add_settings_error(
+              'cffp_taxonomies',
+              'renamed',
+              sprintf(__('Taxonomy key "category" reserved. Renamed to "%s".','cff'), $key),
+              'warning'
+            );
+          }
           $defs[$key] = [
             'plural' => sanitize_text_field($_POST['plural'] ?? ''),
             'singular' => sanitize_text_field($_POST['singular'] ?? ''),
@@ -656,10 +674,13 @@ class Plugin {
 
       wp_enqueue_editor();
 
+      wp_enqueue_style('cff-select2', CFFP_URL . 'assets/vendor/select2/select2.min.css', [], '4.1.0-rc.0');
+      wp_enqueue_script('cff-select2', CFFP_URL . 'assets/vendor/select2/select2.min.js', ['jquery'], '4.1.0-rc.0', true);
+
       wp_enqueue_script(
         'cff-post',
         CFFP_URL . 'assets/post.js',
-        ['jquery', 'wp-editor'],
+        ['jquery', 'wp-editor', 'cff-select2'],
         $this->asset_ver('assets/post.js'),
         true
       );
@@ -1387,7 +1408,10 @@ class Plugin {
 
     <script type="text/template" id="tmpl-cff-subfield">
       <div class="cff-subfield" data-si="{{si}}">
-        <div class="cff-handle"></div>
+        <div class="cff-handle-wrap">
+          <button type="button" class="cff-sub-acc-toggle" aria-expanded="true"></button>
+          <div class="cff-handle"></div>
+        </div>
         <div class="cff-col">
           <label>Label</label>
           <input type="text" class="cff-input cff-slabel" value="{{label}}">
@@ -1408,10 +1432,18 @@ class Plugin {
             <option value="checkbox">Checkbox</option>
             <option value="image">Image</option>
             <option value="file">File</option>
+            <option value="group">Group</option>
           </select>
         </div>
         <div class="cff-col cff-actions">
           <button type="button" class="button cff-remove-sub">Remove</button>
+        </div>
+        <div class="cff-groupbuilder cff-subgroupbuilder" data-kind="group">
+          <div class="cff-subhead">
+            <strong>Group Fields</strong>
+            <button type="button" class="button cff-add-group-sub">Add Field</button>
+          </div>
+          <div class="cff-group-fields"></div>
         </div>
       </div>
     </script>
@@ -1585,11 +1617,16 @@ class Plugin {
     foreach ($subs as $s) {
       $name = sanitize_key($s['name'] ?? '');
       if (!$name) continue;
-      $out[] = [
+      $type = sanitize_key($s['type'] ?? 'text');
+      $item = [
         'label' => sanitize_text_field($s['label'] ?? $name),
         'name'  => $name,
-        'type'  => sanitize_key($s['type'] ?? 'text'),
+        'type'  => $type,
       ];
+      if ($type === 'group') {
+        $item['sub_fields'] = $this->sanitize_subfields($s['sub_fields'] ?? []);
+      }
+      $out[] = $item;
     }
     return $out;
   }
@@ -1797,7 +1834,17 @@ class Plugin {
     ]);
     $out = [];
     foreach ($posts as $p) {
-      $out[] = ['id'=>$p->ID, 'text'=>$p->post_title, 'meta'=>get_post_type($p->ID).' • '.get_the_date('', $p->ID)];
+      $pt = get_post_type($p->ID);
+      $pt_obj = $pt ? get_post_type_object($pt) : null;
+      $pt_label = $pt_obj && !empty($pt_obj->labels->singular_name) ? $pt_obj->labels->singular_name : $pt;
+      $date = get_the_date('', $p->ID);
+      $label = trim($pt_label . ' - (' . $date . ') - ' . $p->post_title);
+      $out[] = [
+        'id' => $p->ID,
+        'text' => $label,
+        'meta' => '',
+        'url' => get_permalink($p->ID),
+      ];
     }
     wp_send_json_success($out);
   }
@@ -1837,21 +1884,6 @@ class Plugin {
   public function page_tools() {
     if (!current_user_can('manage_options')) return;
 
-    if (isset($_GET['cff_export']) && check_admin_referer('cff_export_nonce')) {
-      $payload = [
-        'version' => '0.13.0',
-        'exported_at' => gmdate('c'),
-        'post_types' => get_option('cffp_post_types', []),
-        'taxonomies' => get_option('cffp_taxonomies', []),
-        'field_groups' => $this->export_field_groups(),
-      ];
-      $json = wp_json_encode($payload, JSON_PRETTY_PRINT);
-      header('Content-Type: application/json; charset=utf-8');
-      header('Content-Disposition: attachment; filename="cff-export-'.date('Ymd-His').'.json"');
-      echo $json;
-      exit;
-    }
-
     if (!empty($_POST['cff_tools_action']) && check_admin_referer('cff_tools_nonce','cff_tools_nonce')) {
       if ($_POST['cff_tools_action'] === 'import' && !empty($_FILES['cff_json']['tmp_name'])) {
         $raw = file_get_contents($_FILES['cff_json']['tmp_name']);
@@ -1879,13 +1911,37 @@ class Plugin {
 
     settings_errors('cff_tools');
 
-    $export_url = wp_nonce_url(admin_url('admin.php?page=cff-tools&cff_export=1'), 'cff_export_nonce');
+    $export_url = admin_url('admin.php?page=cff-tools&cff_export=1');
+    $export_groups = get_posts([
+      'post_type' => 'cff_group',
+      'post_status' => 'any',
+      'numberposts' => -1,
+      'no_found_rows' => true,
+    ]);
 
     echo '<div class="wrap cff-admin"><h1>Tools</h1><div class="cff-tools-grid">';
 
     echo '<div class="cff-tools-card">';
     echo '<h2>Export</h2><p class="description">Download JSON export of Field Groups, Post Types, and Taxonomies.</p>';
-    echo '<p><a class="button button-primary" href="'.esc_url($export_url).'">Download Export JSON</a></p>';
+    echo '<form method="post" action="'.esc_url($export_url).'">';
+    echo wp_nonce_field('cff_export_nonce','cff_export_nonce',true,false);
+    echo '<input type="hidden" name="cff_export" value="1">';
+    echo '<p><label><input type="checkbox" name="cff_export_post_types" checked> Post Types</label></p>';
+    echo '<p><label><input type="checkbox" name="cff_export_taxonomies" checked> Taxonomies</label></p>';
+    echo '<div class="cff-tools-field"><label>Field Groups</label>';
+    if ($export_groups) {
+      echo '<div class="cff-export-checklist">';
+      foreach ($export_groups as $group) {
+        echo '<label><input type="checkbox" name="cff_export_groups[]" value="' . esc_attr($group->ID) . '" checked> ' . esc_html($group->post_title) . '</label>';
+      }
+      echo '</div>';
+      echo '<p class="description">Uncheck to exclude specific groups.</p>';
+    } else {
+      echo '<p class="description">No field groups found.</p>';
+    }
+    echo '</div>';
+    echo '<p><button class="button button-primary">Download Export JSON</button></p>';
+    echo '</form>';
     echo '</div>';
 
     echo '<div class="cff-tools-card">';
@@ -1940,6 +1996,33 @@ class Plugin {
     exit;
   }
 
+  public function handle_export_tools() {
+    if (!current_user_can('manage_options')) return;
+    if (empty($_GET['cff_export']) && empty($_POST['cff_export'])) return;
+
+    if (!check_admin_referer('cff_export_nonce', 'cff_export_nonce')) return;
+
+    $include_post_types = !empty($_REQUEST['cff_export_post_types']);
+    $include_taxonomies = !empty($_REQUEST['cff_export_taxonomies']);
+    $has_group_filter = isset($_REQUEST['cff_export_groups']);
+    $group_ids = $has_group_filter ? array_filter(array_map('absint', (array) $_REQUEST['cff_export_groups'])) : [];
+
+    $payload = [
+      'version' => '0.13.0',
+      'exported_at' => gmdate('c'),
+      'post_types' => $include_post_types ? get_option('cffp_post_types', []) : [],
+      'taxonomies' => $include_taxonomies ? get_option('cffp_taxonomies', []) : [],
+      'field_groups' => $has_group_filter ? $this->export_field_groups($group_ids) : $this->export_field_groups(),
+    ];
+
+    $json = wp_json_encode($payload, JSON_PRETTY_PRINT);
+
+    header('Content-Type: application/json; charset=utf-8');
+    header('Content-Disposition: attachment; filename="cff-export-' . date('Ymd-His') . '.json"');
+    echo $json;
+    exit;
+  }
+
   private function export_field_groups($group_id = 0) {
     $args = [
       'post_type'=>'cff_group',
@@ -1947,7 +2030,14 @@ class Plugin {
       'numberposts'=>-1,
       'no_found_rows'=>true,
     ];
-    if ($group_id) $args['p'] = $group_id;
+    if (is_array($group_id)) {
+      $ids = array_filter(array_map('absint', $group_id));
+      if (!$ids) return [];
+      $args['post__in'] = $ids;
+      $args['orderby'] = 'post__in';
+    } elseif ($group_id) {
+      $args['p'] = $group_id;
+    }
     $posts = get_posts($args);
     $out = [];
     foreach ($posts as $p) {

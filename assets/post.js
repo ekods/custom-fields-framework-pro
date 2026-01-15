@@ -167,6 +167,95 @@ jQuery(function($){
   });
 
   /* -------------------------
+   * Link picker (internal/custom)
+   * ------------------------- */
+  function initLinkPickers($scope){
+    $scope = $scope && $scope.length ? $scope : $(document);
+    $scope.find('.cff-link-picker').each(function(){
+      var $wrap = $(this);
+      var $modeInputs = $wrap.find('input[type=radio][name$="[mode]"]');
+      var $internal = $wrap.find('.cff-link-internal');
+      var $custom = $wrap.find('.cff-link-custom');
+      var $select = $wrap.find('.cff-link-select');
+      var $internalId = $wrap.find('.cff-link-internal-id');
+      var $url = $wrap.find('input[name$="[url]"]');
+      var $title = $wrap.find('input[name$="[title]"]');
+
+      function applyMode(mode){
+        var isInternal = (mode === 'internal');
+        $wrap.toggleClass('is-mode-internal', isInternal);
+        $wrap.toggleClass('is-mode-custom', !isInternal);
+        $internal.toggle(isInternal);
+        $custom.toggle(!isInternal);
+      }
+
+      var mode = $modeInputs.filter(':checked').val() || $wrap.data('mode') || 'custom';
+      $modeInputs.filter('[value="' + mode + '"]').prop('checked', true);
+      applyMode(mode);
+
+      if ($select.length && $.fn.select2 && !$select.data('select2')) {
+        $select.select2({
+          width: '100%',
+          placeholder: $select.data('placeholder') || 'Search…',
+          allowClear: true,
+          ajax: {
+            delay: 250,
+            transport: function(params, success, failure){
+              var term = params.data.term || '';
+              var postType = $select.data('post-type') || 'any';
+              $.post(CFFP.ajax, {
+                action: 'cff_search_posts',
+                nonce: CFFP.nonce,
+                q: term,
+                post_type: postType
+              }, function(res){
+                if (res && res.success) {
+                  success({ results: res.data });
+                } else {
+                  success({ results: [] });
+                }
+              }, 'json').fail(failure);
+            },
+            processResults: function(data){ return data; }
+          },
+          templateResult: function(item){
+            if (!item.id) return item.text;
+            var meta = item.meta ? ' — ' + item.meta : '';
+            return item.text + meta;
+          },
+          templateSelection: function(item){
+            return item.text || item.id || '';
+          },
+          escapeMarkup: function(m){ return m; }
+        });
+      }
+
+      $select.off('.cffLink');
+      $select.on('select2:select.cffLink', function(e){
+        var data = e.params && e.params.data ? e.params.data : {};
+        $internalId.val(data.id || '');
+        if (data.url) $url.val(data.url);
+        if (data.text) $title.val(data.text);
+        $modeInputs.filter('[value="internal"]').prop('checked', true);
+        applyMode('internal');
+      });
+      $select.on('select2:clear.cffLink', function(){
+        $internalId.val('');
+      });
+
+      $modeInputs.off('.cffLink');
+      $modeInputs.on('change.cffLink', function(){
+        var m = $modeInputs.filter(':checked').val() || 'custom';
+        applyMode(m);
+        if (m === 'custom') {
+          $internalId.val('');
+          if ($select.data('select2')) $select.val(null).trigger('change');
+        }
+      });
+    });
+  }
+
+  /* -------------------------
    * Field accordion
    * ------------------------- */
   function togglePostbox($field){
@@ -307,6 +396,7 @@ jQuery(function($){
     initSortable($(this));
   });
   window.cffInitWysiwyg($(document)); // sekali saja
+  initLinkPickers($(document));
 
   $('.cff-repeater').each(function(){
     updateRepeaterControls($(this));
@@ -335,6 +425,7 @@ jQuery(function($){
 
       initSortable($rows);
       window.cffInitWysiwyg($new);
+      initLinkPickers($new);
 
       updateRepeaterControls($rep);
 
