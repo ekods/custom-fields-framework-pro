@@ -146,6 +146,7 @@ class Plugin {
     add_action('admin_enqueue_scripts', [$this, 'assets']);
     add_action('admin_init', [$this, 'handle_export_tools']);
     add_action('admin_init', [$this, 'handle_export_group']);
+    add_action('admin_init', [$this, 'handle_export_acf_data']);
     add_action('pre_get_posts', [$this, 'apply_reorder_post_types']);
     add_filter('get_terms_args', [$this, 'apply_reorder_terms_args'], 10, 2);
     add_filter('category_rewrite_rules', [$this, 'category_rewrite_rules']);
@@ -1890,8 +1891,12 @@ class Plugin {
         $data = json_decode($raw, true);
 
         if (is_array($data)) {
-          if (isset($data['post_types'])) update_option('cffp_post_types', (array)$data['post_types']);
-          if (isset($data['taxonomies'])) update_option('cffp_taxonomies', (array)$data['taxonomies']);
+          if (isset($data['post_types'])) {
+            update_option('cffp_post_types', $this->sanitize_import_post_types((array)$data['post_types']));
+          }
+          if (isset($data['taxonomies'])) {
+            update_option('cffp_taxonomies', $this->sanitize_import_taxonomies((array)$data['taxonomies']));
+          }
           if (isset($data['field_groups'])) {
             $this->import_field_groups((array)$data['field_groups']);
           } elseif ($this->looks_like_acf_json($data)) {
@@ -1941,6 +1946,17 @@ class Plugin {
     }
     echo '</div>';
     echo '<p><button class="button button-primary">Download Export JSON</button></p>';
+    echo '</form>';
+    echo '</div>';
+
+    echo '<div class="cff-tools-card">';
+    echo '<h2>' . esc_html__('Export ACF Values', 'cff') . '</h2>';
+    echo '<p class="description">' . esc_html__('Generate SQL that copies ACF post meta into the `_cff_` meta keys so it can be imported by CFF without losing existing content.', 'cff') . '</p>';
+    echo '<form method="post">';
+    echo wp_nonce_field('cff_export_acf_data', 'cff_export_acf_nonce', true, false);
+    echo '<input type="hidden" name="cff_export_acf_data" value="1">';
+    echo '<p><button class="button button-primary">' . esc_html__('Download ACF to CFF SQL', 'cff') . '</button></p>';
+    echo '<p class="description">' . esc_html__('ACF must be active so the exporter can read the existing values.', 'cff') . '</p>';
     echo '</form>';
     echo '</div>';
 
@@ -2023,6 +2039,29 @@ class Plugin {
     exit;
   }
 
+  public function handle_export_acf_data() {
+    if (!current_user_can('manage_options')) return;
+    if (empty($_POST['cff_export_acf_data'])) return;
+    if (!check_admin_referer('cff_export_acf_data','cff_export_acf_nonce')) return;
+
+    if (!function_exists('acf_get_field_groups')) {
+      add_settings_error('cff_tools','acf_export_no_acf',__('ACF is not active or available for export.','cff'),'error');
+      return;
+    }
+
+    $sql = $this->build_acf_data_export_sql();
+    if (!$sql) {
+      add_settings_error('cff_tools','acf_export_empty',__('No eligible ACF values were found for export.','cff'),'error');
+      return;
+    }
+
+    $filename = 'cff-acf-data-' . gmdate('Ymd-His') . '.sql';
+    header('Content-Type: application/sql; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    echo $sql;
+    exit;
+  }
+
   private function export_field_groups($group_id = 0) {
     $args = [
       'post_type'=>'cff_group',
@@ -2053,6 +2092,104 @@ class Plugin {
     return $out;
   }
 
+  private function sanitize_import_post_types($defs) {
+    $out = [];
+    foreach ((array) $defs as $key => $def) {
+      $key = sanitize_key($key);
+      if (!$key || !is_array($def)) continue;
+
+      $singular = sanitize_text_field($def['singular'] ?? ucfirst($key));
+      $plural = sanitize_text_field($def['plural'] ?? ($singular . 's'));
+      $slug = sanitize_title($def['slug'] ?? $key);
+      $public = !empty($def['public']);
+      $has_archive = !empty($def['has_archive']);
+      $show_in_rest = !empty($def['show_in_rest']);
+      $supports = (isset($def['supports']) && is_array($def['supports']))
+        ? array_values(array_map('sanitize_key', $def['supports']))
+        : ['title', 'editor'];
+      $taxonomies = (isset($def['taxonomies']) && is_array($def['taxonomies']))
+        ? array_values(array_filter(array_map('sanitize_key', $def['taxonomies'])))
+        : [];
+
+      $menu_icon_raw = isset($def['menu_icon']) ? trim((string) $def['menu_icon']) : '';
+      $menu_icon = '';
+      if ($menu_icon_raw !== '') {
+        if (strpos($menu_icon_raw, 'dashicons-') === 0) {
+          $menu_icon = preg_replace('/[^a-z0-9\-_]/i', '', $menu_icon_raw);
+        } else {
+          $menu_icon = esc_url_raw($menu_icon_raw);
+        }
+      }
+
+      $out[$key] = [
+        'singular' => $singular,
+        'plural' => $plural,
+        'slug' => $slug,
+        'public' => $public,
+        'has_archive' => $has_archive,
+        'show_in_rest' => $show_in_rest,
+        'supports' => $supports,
+        'taxonomies' => $taxonomies,
+        'menu_icon' => $menu_icon,
+      ];
+
+      if (isset($def['singular_i18n']) && is_array($def['singular_i18n'])) {
+        $out[$key]['singular_i18n'] = array_filter(array_map('sanitize_text_field', $def['singular_i18n']));
+      }
+      if (isset($def['plural_i18n']) && is_array($def['plural_i18n'])) {
+        $out[$key]['plural_i18n'] = array_filter(array_map('sanitize_text_field', $def['plural_i18n']));
+      }
+      if (isset($def['slug_i18n']) && is_array($def['slug_i18n'])) {
+        $out[$key]['slug_i18n'] = array_filter(array_map('sanitize_title', $def['slug_i18n']));
+      }
+    }
+    return $out;
+  }
+
+  private function sanitize_import_taxonomies($defs) {
+    $out = [];
+    foreach ((array) $defs as $key => $def) {
+      $key = sanitize_key($key);
+      if (!$key || !is_array($def)) continue;
+
+      $post_types = (isset($def['post_types']) && is_array($def['post_types']))
+        ? array_values(array_filter(array_map('sanitize_key', $def['post_types'])))
+        : [];
+      if ($key === 'category') {
+        $suffix = $post_types ? implode('_', $post_types) : 'post';
+        $key = sanitize_key('category_' . $suffix);
+      }
+
+      $plural = sanitize_text_field($def['plural'] ?? '');
+      $singular = sanitize_text_field($def['singular'] ?? '');
+      $slug = sanitize_title($def['slug'] ?? $key);
+      $public = !empty($def['public']);
+      $hierarchical = !empty($def['hierarchical']);
+      $show_in_rest = !empty($def['show_in_rest']);
+
+      $out[$key] = [
+        'plural' => $plural,
+        'singular' => $singular,
+        'slug' => $slug,
+        'public' => $public,
+        'hierarchical' => $hierarchical,
+        'show_in_rest' => $show_in_rest,
+        'post_types' => $post_types,
+      ];
+
+      if (isset($def['plural_i18n']) && is_array($def['plural_i18n'])) {
+        $out[$key]['plural_i18n'] = array_filter(array_map('sanitize_text_field', $def['plural_i18n']));
+      }
+      if (isset($def['singular_i18n']) && is_array($def['singular_i18n'])) {
+        $out[$key]['singular_i18n'] = array_filter(array_map('sanitize_text_field', $def['singular_i18n']));
+      }
+      if (isset($def['slug_i18n']) && is_array($def['slug_i18n'])) {
+        $out[$key]['slug_i18n'] = array_filter(array_map('sanitize_title', $def['slug_i18n']));
+      }
+    }
+    return $out;
+  }
+
   private function import_field_groups($groups) {
     foreach ($groups as $g) {
       $title = sanitize_text_field($g['post']['post_title'] ?? 'Imported Group');
@@ -2066,7 +2203,7 @@ class Plugin {
 
       if ($post_id && !is_wp_error($post_id)) {
         $settings = isset($g['settings']) && is_array($g['settings']) ? $g['settings'] : [];
-        update_post_meta($post_id, '_cff_settings', $settings);
+        update_post_meta($post_id, '_cff_settings', $this->sanitize_group_settings($settings));
       }
     }
   }
@@ -2235,6 +2372,64 @@ class Plugin {
     return $count;
   }
 
+  private function build_acf_data_export_sql() {
+    if (!function_exists('acf_get_field_groups')) return '';
+    global $wpdb;
+    $groups = acf_get_field_groups();
+    if (empty($groups)) return '';
+
+    $table = str_replace('`', '', $wpdb->postmeta);
+    $lines = [];
+    $written = [];
+
+    foreach ($groups as $acf_group) {
+      $fields = function_exists('acf_get_fields') ? acf_get_fields($acf_group) : [];
+      $mapped_fields = $this->map_acf_fields($fields);
+      if (empty($mapped_fields)) continue;
+
+      $posts = $this->get_posts_for_acf_group($acf_group);
+      foreach ($posts as $post) {
+        $post_id = intval($post->ID);
+        if (!$post_id) continue;
+
+        foreach ($mapped_fields as $field) {
+          $name = $field['name'] ?? '';
+          if (!$name) continue;
+
+          $meta_key = $this->meta_key($name);
+          if ($this->is_non_empty(get_post_meta($post_id, $meta_key, true))) continue;
+          if (isset($written[$post_id][$meta_key])) continue;
+
+          $raw = get_field($name, $post_id);
+          if ($raw === null || $raw === false || $raw === '') continue;
+
+          $value = $this->acf_value_to_cff($field, $raw);
+          if (!$this->is_non_empty($value)) continue;
+
+          $serialized = maybe_serialize($value);
+          $value_sql = esc_sql($serialized);
+          $meta_key_sql = esc_sql($meta_key);
+
+          $lines[] = "DELETE FROM `{$table}` WHERE `post_id` = {$post_id} AND `meta_key` = '{$meta_key_sql}';";
+          $lines[] = "INSERT INTO `{$table}` (`post_id`, `meta_key`, `meta_value`) VALUES ({$post_id}, '{$meta_key_sql}', '{$value_sql}');";
+
+          $written[$post_id][$meta_key] = true;
+        }
+      }
+    }
+
+    if (empty($lines)) return '';
+
+    $header = [
+      '-- Custom Fields Framework Pro - ACF to CFF export',
+      '-- Generated at ' . gmdate('c'),
+      '-- Run these statements after importing the matching CFF field groups.',
+      "-- Table used: `{$table}`",
+    ];
+
+    return implode("\n", array_merge($header, $lines)) . "\n";
+  }
+
   private function map_acf_fields($acf_fields) {
     $out = [];
     if (!is_array($acf_fields)) return $out;
@@ -2279,6 +2474,65 @@ class Plugin {
       $out[] = $base;
     }
 
+    return $out;
+  }
+
+  private function sanitize_group_settings($settings) {
+    $settings = is_array($settings) ? $settings : [];
+    $fields = isset($settings['fields']) && is_array($settings['fields']) ? $settings['fields'] : [];
+    $location = isset($settings['location']) && is_array($settings['location']) ? $settings['location'] : [];
+    $presentation = isset($settings['presentation']) && is_array($settings['presentation']) ? $settings['presentation'] : [];
+
+    $clean_fields = $this->sanitize_fields($fields);
+
+    $loc_clean = [];
+    foreach ($location as $group) {
+      if (!is_array($group)) continue;
+      $g = [];
+      foreach ($group as $rule) {
+        if (!is_array($rule)) continue;
+        $param = sanitize_key($rule['param'] ?? 'post_type');
+        $op = in_array(($rule['operator'] ?? '=='), ['==', '!='], true) ? $rule['operator'] : '==';
+        $val = sanitize_text_field($rule['value'] ?? '');
+        if (!$val) continue;
+        $g[] = ['param' => $param, 'operator' => $op, 'value' => $val];
+      }
+      if ($g) $loc_clean[] = $g;
+    }
+    if (!$loc_clean) {
+      $loc_clean = [[['param' => 'post_type', 'operator' => '==', 'value' => 'post']]];
+    }
+
+    return [
+      'fields' => $clean_fields,
+      'location' => $loc_clean,
+      'presentation' => $this->sanitize_presentation($presentation),
+    ];
+  }
+
+  private function sanitize_fields($fields) {
+    $out = [];
+    foreach ((array) $fields as $f) {
+      if (!is_array($f)) continue;
+      $type = sanitize_key($f['type'] ?? 'text');
+      $name = sanitize_key($f['name'] ?? '');
+      if (!$name) continue;
+
+      $item = [
+        'label' => sanitize_text_field($f['label'] ?? $name),
+        'name' => $name,
+        'type' => $type,
+      ];
+
+      if ($type === 'repeater' || $type === 'group') {
+        $item['sub_fields'] = $this->sanitize_subfields($f['sub_fields'] ?? []);
+      }
+      if ($type === 'flexible') {
+        $item['layouts'] = $this->sanitize_layouts($f['layouts'] ?? []);
+      }
+
+      $out[] = $item;
+    }
     return $out;
   }
 
@@ -2359,8 +2613,9 @@ class Plugin {
     }
 
     $out = [];
+    $has_rules = !empty($converted_rules);
     foreach ($posts as $p) {
-      if ($this->match_location($p, $converted_rules)) $out[] = $p;
+      if (!$has_rules || $this->match_location($p, $converted_rules)) $out[] = $p;
     }
     return $out;
   }
