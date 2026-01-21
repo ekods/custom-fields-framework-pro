@@ -49,13 +49,22 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     $key = $plugin->meta_key($name);
     $val = get_post_meta($post->ID, $key, true);
 
+    $required = !empty($f['required']);
+    $required_attr = $required ? ' required aria-required="true"' : '';
+    $label_text = esc_html($label);
+    if ($required) {
+      $label_text .= ' <span class="cff-required-indicator" aria-hidden="true">*</span>';
+    }
+    $placeholder = $f['placeholder'] ?? '';
+    $placeholder_attr = $placeholder ? ' placeholder="' . esc_attr($placeholder) . '"' : '';
+
     $is_accordion = ($type === 'repeater');
     $field_classes = 'cff-field cff-field-' . $type . ($is_accordion ? ' postbox' : '');
     echo '<div class="' . esc_attr($field_classes) . '">';
     $type_label = ucfirst(str_replace('_', ' ', $type));
     if ($is_accordion) {
       echo '<div class="postbox-header">';
-      echo '<h2 class="hndle">'.esc_html($label).'</h2>';
+      echo '<h2 class="hndle">'.$label_text.'</h2>';
       echo '<div class="handle-actions hide-if-no-js">';
       echo '<button type="button" class="handlediv" aria-expanded="false">';
       echo '<span class="screen-reader-text">'.esc_html__('Toggle panel', 'cff').'</span>';
@@ -64,34 +73,41 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       echo '</div>';
       echo '</div>';
       echo '<div class="inside cff-input">';
+      echo '<div class="description cff-meta-type">Type <b>'.esc_html($type_label).'</b></div>';
       echo '<div class="description cff-meta-name">'.esc_html($name).'</div>';
-      echo '<div class="description cff-meta-type">'.esc_html($type_label).'</div>';
     } else {
       echo '<div class="cff-label">';
       echo '<div class="cff-label-head">';
-      echo '<label>'.esc_html($label).'</label>';
+      echo '<label>'.$label_text.'</label>';
       echo '</div>';
+      echo '<div class="description cff-meta-type">Type <b>'.esc_html($type_label).'</b></div>';
       echo '<div class="description cff-meta-name">'.esc_html($name).'</div>';
-      echo '<div class="description cff-meta-type">'.esc_html($type_label).'</div>';
       echo '</div>';
       echo '<div class="cff-input">';
     }
 
     if ($type === 'text') {
-      echo '<input class="widefat" type="text" name="cff_values['.esc_attr($name).']" value="'.esc_attr($val).'">';
+      echo '<input class="widefat" type="text" name="cff_values['.esc_attr($name).']" value="'.esc_attr($val).'"'.$placeholder_attr.$required_attr.'>';
     } elseif ($type === 'textarea') {
-      echo '<textarea class="widefat" rows="5" name="cff_values['.esc_attr($name).']">'.esc_textarea($val).'</textarea>';
+      echo '<textarea class="widefat" rows="5" name="cff_values['.esc_attr($name).']"'.$placeholder_attr.$required_attr.'>'.esc_textarea($val).'</textarea>';
     } elseif ($type === 'color') {
       echo '<div class="cff-color">';
       echo '<input class="cff-color-picker" type="color" value="'.esc_attr($val ?: '#ffffff').'">';
-      echo '<input class="widefat cff-color-value" type="text" placeholder="#ffffff" name="cff_values['.esc_attr($name).']" value="'.esc_attr($val).'">';
+      echo '<input class="widefat cff-color-value" type="text" placeholder="#ffffff" name="cff_values['.esc_attr($name).']" value="'.esc_attr($val).'"'.$required_attr.'>';
       echo '</div>';
     } elseif ($type === 'checkbox') {
       $checked = !empty($val) ? 'checked' : '';
       echo '<input type="hidden" name="cff_values['.esc_attr($name).']" value="0">';
-      echo '<label><input type="checkbox" name="cff_values['.esc_attr($name).']" value="1" '.$checked.'> ' . esc_html($label) . '</label>';
+      echo '<label><input type="checkbox" name="cff_values['.esc_attr($name).']" value="1" '.$checked.$required_attr.'> ' . esc_html($label) . '</label>';
     } elseif ($type === 'url') {
-      echo '<input class="widefat" type="url" name="cff_values['.esc_attr($name).']" value="'.esc_attr($val).'">';
+      echo '<input class="widefat" type="url" name="cff_values['.esc_attr($name).']" value="'.esc_attr($val).'"'.$placeholder_attr.$required_attr.'>';
+    } elseif ($type === 'relational') {
+      echo '<input class="widefat" type="text" name="cff_values['.esc_attr($name).']" value="'.esc_attr($val).'"'.$placeholder_attr.$required_attr.'>';
+    } elseif ($type === 'choice') {
+      render_choice_input('cff_values['.esc_attr($name).']', $f['choices'] ?? [], $f['choice_display'] ?? '', $val, $required_attr);
+    } elseif ($type === 'date_picker' || $type === 'datetime_picker') {
+      $name_attr = 'cff_values[' . sanitize_key($name) . ']';
+      render_picker_input($name_attr, $val, $placeholder_attr, $required_attr, $type);
     } elseif ($type === 'link') {
       render_link_field('cff_values[' . $name . ']', $val);
     } elseif ($type === 'wysiwyg') {
@@ -103,7 +119,12 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         'teeny' => false,
         'textarea_rows' => 8,
       ]);
-      echo ob_get_clean();
+      $editor_html = ob_get_clean();
+      if ($required) {
+        $replacement = '$1' . $required_attr . '$2';
+        $editor_html = preg_replace('#(<textarea[^>]*)(>)#', $replacement, $editor_html, 1);
+      }
+      echo $editor_html;
     } elseif ($type === 'image' || $type === 'file') {
       $id = intval($val);
       $url = $id ? wp_get_attachment_url($id) : '';
@@ -181,10 +202,87 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
 
       echo '</div>';
     } else {
-      echo '<input class="widefat" type="text" name="cff_values['.esc_attr($name).']" value="'.esc_attr($val).'">';
+      echo '<input class="widefat" type="text" name="cff_values['.esc_attr($name).']" value="'.esc_attr($val).'"'.$placeholder_attr.$required_attr.'>';
     }
 
     echo '</div></div>';
+  }
+
+  function render_picker_input($name_attr, $value, $placeholder_attr, $required_attr, $type) {
+    $input_type = $type === 'datetime_picker' ? 'datetime-local' : 'date';
+    printf(
+      '<input class="widefat" type="%s" name="%s" value="%s"%s%s>',
+      esc_attr($input_type),
+      esc_attr($name_attr),
+      esc_attr($value),
+      $placeholder_attr,
+      $required_attr
+    );
+  }
+
+  function render_choice_input($name_attr, $choices, $display, $value, $required_attr) {
+    $display = sanitize_key($display ?? '');
+    $allowed = ['select','checkbox','radio','button_group','true_false'];
+    if (!in_array($display, $allowed, true)) $display = 'select';
+
+    if (empty($choices)) {
+      echo '<div class="cff-muted">' . esc_html__('No choices configured', 'cff') . '</div>';
+      return;
+    }
+
+    if ($display === 'select') {
+      echo '<select class="widefat" name="'.esc_attr($name_attr).'"'.$required_attr.'>';
+      foreach ($choices as $choice) {
+        $val = $choice['value'] ?: ($choice['label'] ?? '');
+        $selected = ((string)$value === (string)$val) ? ' selected' : '';
+        echo '<option value="'.esc_attr($val).'"'.$selected.'>'.esc_html($choice['label'] ?: $val).'</option>';
+      }
+      echo '</select>';
+      return;
+    }
+
+    if ($display === 'checkbox') {
+      $selected = is_array($value) ? array_map('strval', $value) : [];
+      echo '<div class="cff-choice-checkboxes">';
+      echo '<input type="hidden" name="'.esc_attr($name_attr).'[]" value="__cff_choice_empty__">';
+      foreach ($choices as $choice) {
+        $val = $choice['value'] ?: ($choice['label'] ?? '');
+        $checked = in_array((string)$val, $selected, true) ? ' checked' : '';
+        echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'[]" value="'.esc_attr($val).'"'.$checked.'> '.esc_html($choice['label'] ?: $val).'</label>';
+      }
+      echo '</div>';
+      return;
+    }
+
+    if ($display === 'radio' || $display === 'button_group') {
+      $selected = (string)$value;
+      $class = $display === 'button_group' ? ' cff-choice-button-group' : ' cff-choice-radios';
+      echo '<div class="cff-choice-buttons'.esc_attr($class).'">';
+      $first = true;
+      foreach ($choices as $choice) {
+        $val = $choice['value'] ?: ($choice['label'] ?? '');
+        $checked = $selected === (string)$val ? ' checked' : '';
+        $input_required = ($required_attr && $first) ? $required_attr : '';
+        $first = false;
+        $input = '<input type="radio" name="'.esc_attr($name_attr).'" value="'.esc_attr($val).'"'.$checked.$input_required.'>';
+        $label = esc_html($choice['label'] ?: $val);
+        if ($display === 'button_group') {
+          echo '<label class="cff-choice-button">'.$input.'<span>'.$label.'</span></label>';
+        } else {
+          echo '<label>'.$input.' '.$label.'</label>';
+        }
+      }
+      echo '</div>';
+      return;
+    }
+
+    // true_false
+    $is_true = !empty($value);
+    echo '<input type="hidden" name="'.esc_attr($name_attr).'" value="0">';
+    echo '<label class="cff-choice-true-toggle">';
+    echo '<input type="checkbox" name="'.esc_attr($name_attr).'" value="1"'.($is_true ? ' checked' : '').$required_attr.'>';
+    echo '<span class="cff-choice-true-label">'.esc_html__('True / False', 'cff').'</span>';
+    echo '</label>';
   }
 
   function render_repeater_row($parent, $subs, $row, $i, $post_id) {
@@ -196,22 +294,32 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       $stype = $s['type'];
       $label = $s['label'] ?? $sname;
       $v = isset($row[$sname]) ? $row[$sname] : '';
+      $placeholder = $s['placeholder'] ?? '';
+      $placeholder_attr = $placeholder ? ' placeholder="' . esc_attr($placeholder) . '"' : '';
       $name_attr = 'cff_values['.$parent.']['.$i.']['.$sname.']';
+      $required = !empty($s['required']);
+      $label_text = esc_html($label);
+      $required_attr = $required ? ' required aria-required="true"' : '';
+      if ($required) $label_text .= ' <span class="cff-required-indicator" aria-hidden="true">*</span>';
       echo '<div class="cff-subfield-input">';
-      echo '<label>'.esc_html($label).'</label>';
+      echo '<label>'.$label_text.'</label>';
       if ($stype === 'textarea') {
-        echo '<textarea class="widefat" rows="3" name="'.esc_attr($name_attr).'">'.esc_textarea($v).'</textarea>';
+        echo '<textarea class="widefat" rows="3" name="'.esc_attr($name_attr).'"'.$placeholder_attr.$required_attr.'>'.esc_textarea($v).'</textarea>';
       } elseif ($stype === 'color') {
         echo '<div class="cff-color">';
         echo '<input class="cff-color-picker" type="color" value="'.esc_attr($v ?: '#ffffff').'">';
-        echo '<input class="widefat cff-color-value" type="text" placeholder="#ffffff" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'">';
+        echo '<input class="widefat cff-color-value" type="text" placeholder="#ffffff" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$required_attr.'>';
         echo '</div>';
       } elseif ($stype === 'checkbox') {
         $checked = !empty($v) ? 'checked' : '';
         echo '<input type="hidden" name="'.esc_attr($name_attr).'" value="0">';
-        echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'" value="1" '.$checked.'> ' . esc_html($label) . '</label>';
+        echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'" value="1" '.$checked.$required_attr.'> ' . esc_html($label) . '</label>';
       } elseif ($stype === 'url') {
-        echo '<input class="widefat" type="url" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'">';
+        echo '<input class="widefat" type="url" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$placeholder_attr.$required_attr.'>';
+      } elseif ($stype === 'choice') {
+        render_choice_input($name_attr, $s['choices'] ?? [], $s['choice_display'] ?? '', $v, $required_attr);
+      } elseif ($stype === 'date_picker' || $stype === 'datetime_picker') {
+        render_picker_input($name_attr, $v, $placeholder_attr, $required_attr, $stype);
       } elseif ($stype === 'link') {
         render_link_field($name_attr, $v);
       } elseif ($stype === 'wysiwyg') {
@@ -220,7 +328,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         echo '<textarea
           id="' . esc_attr($editor_id) . '"
           class="widefat cff-wysiwyg"
-          name="' . esc_attr($name_attr) . '"
+          name="' . esc_attr($name_attr) . '"'.$required_attr.'
           rows="8"
         >' . esc_textarea($v) . '</textarea>';
 
@@ -255,35 +363,45 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         render_group_fields($group_prefix, $gsubs, $gvals, $post_id);
         echo '</div>';
       } else {
-        echo '<input class="widefat" type="text" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'">';
+        echo '<input class="widefat" type="text" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$required_attr.'>';
       }
       echo '</div>';
     }
     echo '</div></div>';
   }
 
-  function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
+function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
     foreach ($subs as $s) {
       $sname = $s['name'];
       $stype = $s['type'];
       $label = $s['label'] ?? $sname;
       $v = isset($vals[$sname]) ? $vals[$sname] : '';
+      $placeholder = $s['placeholder'] ?? '';
+      $placeholder_attr = $placeholder ? ' placeholder="' . esc_attr($placeholder) . '"' : '';
       $name_attr = $parent_prefix . '[' . $sname . ']';
+      $required = !empty($s['required']);
+      $label_text = esc_html($label);
+      $required_attr = $required ? ' required aria-required="true"' : '';
+      if ($required) $label_text .= ' <span class="cff-required-indicator" aria-hidden="true">*</span>';
       echo '<div class="cff-subfield-input">';
-      echo '<label>'.esc_html($label).'</label>';
+      echo '<label>'.$label_text.'</label>';
       if ($stype === 'textarea') {
-        echo '<textarea class="widefat" rows="3" name="'.esc_attr($name_attr).'">'.esc_textarea($v).'</textarea>';
+        echo '<textarea class="widefat" rows="3" name="'.esc_attr($name_attr).'"'.$placeholder_attr.$required_attr.'>'.esc_textarea($v).'</textarea>';
       } elseif ($stype === 'color') {
         echo '<div class="cff-color">';
         echo '<input class="cff-color-picker" type="color" value="'.esc_attr($v ?: '#ffffff').'">';
-        echo '<input class="widefat cff-color-value" type="text" placeholder="#ffffff" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'">';
+        echo '<input class="widefat cff-color-value" type="text" placeholder="#ffffff" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$required_attr.'>';
         echo '</div>';
       } elseif ($stype === 'checkbox') {
         $checked = !empty($v) ? 'checked' : '';
         echo '<input type="hidden" name="'.esc_attr($name_attr).'" value="0">';
-        echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'" value="1" '.$checked.'> ' . esc_html($label) . '</label>';
+        echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'" value="1" '.$checked.$required_attr.'> ' . esc_html($label) . '</label>';
       } elseif ($stype === 'url') {
-        echo '<input class="widefat" type="url" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'">';
+        echo '<input class="widefat" type="url" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$placeholder_attr.$required_attr.'>';
+      } elseif ($stype === 'choice') {
+        render_choice_input($name_attr, $s['choices'] ?? [], $s['choice_display'] ?? '', $v, $required_attr);
+      } elseif ($stype === 'date_picker' || $stype === 'datetime_picker') {
+        render_picker_input($name_attr, $v, $placeholder_attr, $required_attr, $stype);
       } elseif ($stype === 'link') {
         render_link_field($name_attr, $v);
       } elseif ($stype === 'wysiwyg') {
@@ -292,7 +410,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         echo '<textarea
           id="' . esc_attr($editor_id) . '"
           class="widefat cff-wysiwyg"
-          name="' . esc_attr($name_attr) . '"
+          name="' . esc_attr($name_attr) . '"'.$required_attr.'
           rows="8"
         >' . esc_textarea($v) . '</textarea>';
 
@@ -327,7 +445,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         render_group_fields($name_attr, $gsubs, $gvals, $post_id);
         echo '</div>';
       } else {
-        echo '<input class="widefat" type="text" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'">';
+        echo '<input class="widefat" type="text" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$placeholder_attr.$required_attr.'>';
       }
       echo '</div>';
     }
@@ -399,23 +517,33 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         $slabel = $sf['label'] ?? $sname;
         $v = $fields[$sname] ?? '';
         $name_attr = 'cff_values['.$parent.']['.$i.'][fields]['.$sname.']';
+        $placeholder = $sf['placeholder'] ?? '';
+        $placeholder_attr = $placeholder ? ' placeholder="' . esc_attr($placeholder) . '"' : '';
+        $required = !empty($sf['required']);
+        $label_text = esc_html($slabel);
+        $required_attr = $required ? ' required aria-required="true"' : '';
+        if ($required) $label_text .= ' <span class="cff-required-indicator" aria-hidden="true">*</span>';
         echo '<div class="cff-subfield-input">';
-        echo '<label>'.esc_html($slabel).'</label>';
+        echo '<label>'.$label_text.'</label>';
         if ($stype === 'textarea') {
-          echo '<textarea class="widefat" rows="4" name="'.esc_attr($name_attr).'">'.esc_textarea($v).'</textarea>';
+          echo '<textarea class="widefat" rows="4" name="'.esc_attr($name_attr).'"'.$placeholder_attr.$required_attr.'>'.esc_textarea($v).'</textarea>';
         } elseif ($stype === 'color') {
           echo '<div class="cff-color">';
           echo '<input class="cff-color-picker" type="color" value="'.esc_attr($v ?: '#ffffff').'">';
-          echo '<input class="widefat cff-color-value" type="text" placeholder="#ffffff" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'">';
+          echo '<input class="widefat cff-color-value" type="text" placeholder="#ffffff" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$required_attr.'>';
           echo '</div>';
         } elseif ($stype === 'checkbox') {
           $checked = !empty($v) ? 'checked' : '';
           echo '<input type="hidden" name="'.esc_attr($name_attr).'" value="0">';
-          echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'" value="1" '.$checked.'> ' . esc_html($slabel) . '</label>';
+          echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'" value="1" '.$checked.$required_attr.'> ' . esc_html($slabel) . '</label>';
         } elseif ($stype === 'url') {
-          echo '<input class="widefat" type="url" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'">';
-        } elseif ($stype === 'link') {
-          render_link_field($name_attr, $v);
+          echo '<input class="widefat" type="url" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$placeholder_attr.$required_attr.'>';
+        } elseif ($stype === 'choice') {
+          render_choice_input($name_attr, $sf['choices'] ?? [], $sf['choice_display'] ?? '', $v, $required_attr);
+        } elseif ($stype === 'date_picker' || $stype === 'datetime_picker') {
+        render_picker_input($name_attr, $v, $placeholder_attr, $required_attr, $stype);
+      } elseif ($stype === 'link') {
+        render_link_field($name_attr, $v);
         } elseif ($stype === 'wysiwyg') {
           $editor_id = 'cff_wys_flex_' . sanitize_key($parent) . '_' . sanitize_key($layout) . '_' . sanitize_key($sname) . '_' . $post_id . '_' . $i;
 
@@ -423,7 +551,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
             . ' id="' . esc_attr($editor_id) . '"'
             . ' class="widefat cff-wysiwyg"'
             . ' rows="6"'
-            . ' name="' . esc_attr($name_attr) . '"'
+            . ' name="' . esc_attr($name_attr) . '"'.$required_attr.''
             . '>' . esc_textarea($v) . '</textarea>';
 
           echo '<input type="hidden"'
@@ -452,7 +580,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
           render_group_fields($group_prefix, $gsubs, $gvals, $post_id);
           echo '</div>';
         } else {
-          echo '<input class="widefat" type="text" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'">';
+          echo '<input class="widefat" type="text" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$placeholder_attr.$required_attr.'>';
         }
         echo '</div>';
       }
@@ -508,6 +636,8 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         if ($val === '__INDEX__') continue;
 
         if ($k === '__cff_present') continue;
+
+        if ($val === '__cff_choice_empty__') continue;
 
         $out[$k] = deep_sanitize($val);
       }

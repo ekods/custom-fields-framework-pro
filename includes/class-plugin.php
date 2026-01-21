@@ -1232,6 +1232,10 @@ class Plugin {
     ];
     $presentation_json = wp_json_encode($presentation);
 
+    echo '<div id="message" class="notice notice-info inline">';
+    echo '<p>Fields marked with <span class="cff-required-indicator" aria-hidden="true">*</span> are required.</p>';
+    echo '</div>';
+
     echo '<div class="cff-tabs">';
     echo '<div class="cff-tabbar">';
     echo '<button type="button" class="cff-tab active" data-tab="fields">Fields</button>';
@@ -1349,34 +1353,82 @@ class Plugin {
           <button type="button" class="cff-acc-toggle" aria-expanded="true"></button>
           <div class="cff-handle"></div>
         </div>
-        <div class="cff-col">
-          <label>Label</label>
-          <input type="text" class="cff-input cff-label" value="{{label}}">
-        </div>
-        <div class="cff-col">
-          <label>Name</label>
-          <input type="text" class="cff-input cff-name" value="{{name}}">
-        </div>
-        <div class="cff-col">
-          <label>Type</label>
-          <select class="cff-input cff-type">
-            <option value="text">Text</option>
-            <option value="textarea">Textarea</option>
-            <option value="wysiwyg">WYSIWYG</option>
-            <option value="color">Color</option>
-            <option value="url">URL</option>
-            <option value="link">Link</option>
-            <option value="checkbox">Checkbox</option>
-            <option value="image">Image</option>
-            <option value="file">File</option>
-            <option value="group">Group</option>
-            <option value="repeater">Repeater</option>
-            <option value="flexible">Flexible Content</option>
-          </select>
-        </div>
-        <div class="cff-col cff-actions">
-          <button type="button" class="button cff-duplicate">Duplicate</button>
-          <button type="button" class="button cff-remove">Remove</button>
+        <div class="cff-field-structure">
+          <div class="cff-field-head">
+            <div class="cff-col">
+              <label>Label</label>
+              <input type="text" class="cff-input cff-label" value="{{label}}">
+            </div>
+            <div class="cff-col">
+              <label>Name</label>
+              <input type="text" class="cff-input cff-name" value="{{name}}">
+            </div>
+            <div class="cff-col cff-row-type">
+              <div class="cff-row-type-main">
+                <label>Type</label>
+                <select class="cff-input cff-type cff-select2">
+                  <option value="text">Text</option>
+                  <option value="textarea">Textarea</option>
+                  <option value="wysiwyg">WYSIWYG</option>
+                  <option value="color">Color</option>
+                  <option value="url">URL</option>
+                  <option value="link">Link</option>
+                  <option value="choice">Choice</option>
+                  <option value="relational">Relational</option>
+                  <option value="date_picker">Date Picker</option>
+                  <option value="datetime_picker">Date Time Picker</option>
+                  <option value="checkbox">Checkbox</option>
+                  <option value="image">Image</option>
+                  <option value="file">File</option>
+                  <option value="group">Group</option>
+                  <option value="repeater">Repeater</option>
+                  <option value="flexible">Flexible Content</option>
+                </select>
+              </div>
+            </div>
+            <div class="cff-col cff-actions">
+              <button type="button" class="button cff-icon-button cff-duplicate" aria-label="Duplicate field">
+                <span class="dashicons dashicons-admin-page" aria-hidden="true"></span>
+              </button>
+              <button type="button" class="button cff-icon-button cff-remove" aria-label="Remove field">
+                <span class="dashicons dashicons-trash" aria-hidden="true"></span>
+              </button>
+            </div>
+          </div>
+          <div class="cff-field-meta-row">
+            <div class="cff-row-placeholder">
+              <label>Placeholder</label>
+              <input type="text" class="cff-input cff-placeholder" placeholder="Placeholder" value="{{placeholder}}">
+            </div>
+            <div class="cff-row-required">
+              <span class="cff-tools-toggles">
+                <div>
+                  <strong>Required</strong>
+                </div>
+                <label class="cff-switch">
+                  <input type="checkbox" class="cff-required-toggle">
+                  <span class="cff-slider"></span>
+                </label>
+              </span>
+            </div>
+          </div>
+          <div class="cff-field-choice is-hidden">
+            <div class="cff-subhead">
+              <strong>Choices</strong>
+              <button type="button" class="button cff-add-choice">Add Choice</button>
+            </div>
+            <div class="cff-row-choice-display">
+              <label>Display</label>
+              <select class="cff-input cff-choice-display cff-select2">
+                <option value="select">Select</option>
+                <option value="checkbox">Checkbox</option>
+                <option value="radio">Radio Button</option>
+                <option value="button_group">Button Group</option>
+                <option value="true_false">True / False</option>
+              </select>
+            </div>
+            <div class="cff-choices-list"></div>
+          </div>
         </div>
 
         <div class="cff-advanced">
@@ -1405,7 +1457,8 @@ class Plugin {
           </div>
         </div>
       </div>
-    </script>
+    </div>
+  </script>
 
     <script type="text/template" id="tmpl-cff-subfield">
       <div class="cff-subfield" data-si="{{si}}">
@@ -1413,31 +1466,82 @@ class Plugin {
           <button type="button" class="cff-sub-acc-toggle" aria-expanded="true"></button>
           <div class="cff-handle"></div>
         </div>
-        <div class="cff-col">
-          <label>Label</label>
-          <input type="text" class="cff-input cff-slabel" value="{{label}}">
-        </div>
-        <div class="cff-col">
-          <label>Name</label>
-          <input type="text" class="cff-input cff-sname" value="{{name}}">
-        </div>
-        <div class="cff-col">
-          <label>Type</label>
-          <select class="cff-input cff-stype">
-            <option value="text">Text</option>
-            <option value="textarea">Textarea</option>
-            <option value="wysiwyg">WYSIWYG</option>
-            <option value="color">Color</option>
-            <option value="url">URL</option>
-            <option value="link">Link</option>
-            <option value="checkbox">Checkbox</option>
-            <option value="image">Image</option>
-            <option value="file">File</option>
-            <option value="group">Group</option>
-          </select>
+        <div class="cff-subfield-structure">
+          <div class="cff-field-head">
+            <div class="cff-col">
+              <label>Label</label>
+              <input type="text" class="cff-input cff-slabel" value="{{label}}">
+            </div>
+            <div class="cff-col">
+              <label>Name</label>
+              <input type="text" class="cff-input cff-sname" value="{{name}}">
+            </div>
+            <div class="cff-col cff-row-type">
+              <div class="cff-row-type-main">
+                <label>Type</label>
+                <select class="cff-input cff-stype cff-select2">
+                  <option value="text">Text</option>
+                  <option value="textarea">Textarea</option>
+                  <option value="wysiwyg">WYSIWYG</option>
+                  <option value="color">Color</option>
+                  <option value="url">URL</option>
+                  <option value="link">Link</option>
+                  <option value="choice">Choice</option>
+                  <option value="relational">Relational</option>
+                  <option value="date_picker">Date Picker</option>
+                  <option value="datetime_picker">Date Time Picker</option>
+                  <option value="checkbox">Checkbox</option>
+                  <option value="image">Image</option>
+                  <option value="file">File</option>
+                  <option value="group">Group</option>
+                </select>
+              </div>
+            </div>
+            <div class="cff-col cff-actions">
+              <button type="button" class="button cff-icon-button cff-remove-sub" aria-label="Remove sub field">
+                <span class="dashicons dashicons-trash" aria-hidden="true"></span>
+              </button>
+            </div>
+          </div>
+          <div class="cff-field-meta-row">
+            <div class="cff-row-placeholder">
+              <label>Placeholder</label>
+              <input type="text" class="cff-input cff-placeholder" placeholder="Placeholder" value="{{placeholder}}">
+            </div>
+            <div class="cff-row-required">
+              <span class="cff-tools-toggles">
+                <div>
+                  <strong>Required</strong>
+                </div>
+                <label class="cff-switch">
+                  <input type="checkbox" class="cff-required-toggle">
+                  <span class="cff-slider"></span>
+                </label>
+              </span>
+            </div>
+          </div>
+          <div class="cff-field-choice is-hidden">
+            <div class="cff-subhead">
+              <strong>Choices</strong>
+              <button type="button" class="button cff-add-choice">Add Choice</button>
+            </div>
+            <div class="cff-row-choice-display">
+              <label>Display</label>
+              <select class="cff-input cff-choice-display cff-select2">
+                <option value="select">Select</option>
+                <option value="checkbox">Checkbox</option>
+                <option value="radio">Radio Button</option>
+                <option value="button_group">Button Group</option>
+                <option value="true_false">True / False</option>
+              </select>
+            </div>
+            <div class="cff-choices-list"></div>
+          </div>
         </div>
         <div class="cff-col cff-actions">
-          <button type="button" class="button cff-remove-sub">Remove</button>
+          <button type="button" class="button cff-icon-button cff-remove-sub" aria-label="Remove sub field">
+            <span class="dashicons dashicons-trash" aria-hidden="true"></span>
+          </button>
         </div>
         <div class="cff-groupbuilder cff-subgroupbuilder" data-kind="group">
           <div class="cff-subhead">
@@ -1544,6 +1648,8 @@ class Plugin {
         'label' => sanitize_text_field($f['label'] ?? $name),
         'name'  => $name,
         'type'  => $type,
+        'required' => !empty($f['required']),
+        'placeholder' => sanitize_text_field($f['placeholder'] ?? ''),
       ];
 
       if ($type === 'repeater') {
@@ -1554,6 +1660,10 @@ class Plugin {
       }
       if ($type === 'group') {
         $item['sub_fields'] = $this->sanitize_subfields($f['sub_fields'] ?? []);
+      }
+      if ($type === 'choice') {
+        $item['choices'] = $this->sanitize_choices($f['choices'] ?? []);
+        $item['choice_display'] = $this->sanitize_choice_display($f['choice_display'] ?? '');
       }
 
       $clean[] = $item;
@@ -1623,9 +1733,14 @@ class Plugin {
         'label' => sanitize_text_field($s['label'] ?? $name),
         'name'  => $name,
         'type'  => $type,
+        'required' => !empty($s['required']),
       ];
       if ($type === 'group') {
         $item['sub_fields'] = $this->sanitize_subfields($s['sub_fields'] ?? []);
+      }
+      if ($type === 'choice') {
+        $item['choices'] = $this->sanitize_choices($s['choices'] ?? []);
+        $item['choice_display'] = $this->sanitize_choice_display($s['choice_display'] ?? '');
       }
       $out[] = $item;
     }
@@ -2144,6 +2259,24 @@ class Plugin {
       }
     }
     return $out;
+  }
+
+  private function sanitize_choices($choices) {
+    $out = [];
+    if (!is_array($choices)) return $out;
+    foreach ($choices as $c) {
+      $label = sanitize_text_field($c['label'] ?? '');
+      $value = sanitize_text_field($c['value'] ?? '');
+      if ($label === '' && $value === '') continue;
+      $out[] = ['label' => $label, 'value' => $value];
+    }
+    return $out;
+  }
+
+  private function sanitize_choice_display($display) {
+    $allowed = ['select','checkbox','radio','button_group','true_false'];
+    $key = sanitize_key($display ?? '');
+    return in_array($key, $allowed, true) ? $key : 'select';
   }
 
   private function sanitize_import_taxonomies($defs) {

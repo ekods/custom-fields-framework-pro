@@ -108,28 +108,84 @@
             '<button type="button" class="cff-acc-toggle" aria-expanded="true"></button>' +
             '<div class="cff-handle"></div>' +
           '</div>' +
-          '<div class="cff-col"><label>Label</label><input type="text" class="cff-input cff-label" value="{{label}}"></div>' +
-          '<div class="cff-col"><label>Name</label><input type="text" class="cff-input cff-name" value="{{name}}"></div>' +
-          '<div class="cff-col"><label>Type</label>' +
-            '<select class="cff-input cff-type">' +
-              '<option value="text">Text</option>' +
-              '<option value="textarea">Textarea</option>' +
-              '<option value="wysiwyg">WYSIWYG</option>' +
-              '<option value="color">Color</option>' +
-              '<option value="url">URL</option>' +
-              '<option value="link">Link</option>' +
-              '<option value="checkbox">Checkbox</option>' +
-              '<option value="image">Image</option>' +
-              '<option value="file">File</option>' +
-              '<option value="group">Group</option>' +
-              '<option value="repeater">Repeater</option>' +
-              '<option value="flexible">Flexible Content</option>' +
-            '</select>' +
-          '</div>' +
-          '<div class="cff-col cff-actions">' +
-            '<button type="button" class="button cff-duplicate">Duplicate</button> ' +
-            '<button type="button" class="button cff-remove">Remove</button>' +
-          '</div>' +
+          '<div class="cff-field-structure">' +
+            '<div class="cff-field-head">' +
+              '<div class="cff-col">' +
+                '<label>Label</label>' +
+                '<input type="text" class="cff-input cff-label" value="{{label}}">' +
+              '</div>' +
+              '<div class="cff-col">' +
+                '<label>Name</label>' +
+                '<input type="text" class="cff-input cff-name" value="{{name}}">' +
+              '</div>' +
+              '<div class="cff-col cff-row-type">' +
+                '<div class="cff-row-type-main">' +
+                  '<label>Type</label>' +
+                  '<select class="cff-input cff-type cff-select2">' +
+                    '<option value="text">Text</option>' +
+                    '<option value="textarea">Textarea</option>' +
+                    '<option value="wysiwyg">WYSIWYG</option>' +
+                    '<option value="color">Color</option>' +
+                    '<option value="url">URL</option>' +
+                    '<option value="link">Link</option>' +
+                    '<option value="choice">Choice</option>' +
+                    '<option value="relational">Relational</option>' +
+                    '<option value="relational">Relational</option>' +
+                    '<option value="date_picker">Date Picker</option>' +
+                    '<option value="datetime_picker">Date Time Picker</option>' +
+                    '<option value="checkbox">Checkbox</option>' +
+                    '<option value="image">Image</option>' +
+                    '<option value="file">File</option>' +
+                    '<option value="group">Group</option>' +
+                    '<option value="repeater">Repeater</option>' +
+                    '<option value="flexible">Flexible Content</option>' +
+                  '</select>' +
+                '</div>' +
+              '</div>' +
+              '<div class="cff-col cff-actions">' +
+                '<button type="button" class="button cff-icon-button cff-duplicate" aria-label="Duplicate field">' +
+                  '<span class="dashicons dashicons-admin-page" aria-hidden="true"></span>' +
+                '</button>' +
+                '<button type="button" class="button cff-icon-button cff-remove" aria-label="Remove field">' +
+                  '<span class="dashicons dashicons-trash" aria-hidden="true"></span>' +
+                '</button>' +
+              '</div>' +
+            '</div>' +
+              '<div class="cff-field-meta-row">' +
+                '<div class="cff-row-placeholder">' +
+                  '<label>Placeholder</label>' +
+                  '<input type="text" class="cff-input cff-placeholder" placeholder="Placeholder" value="{{placeholder}}">' +
+                '</div>' +
+                '<div class="cff-row-required">' +
+                  '<span class="cff-tools-toggles">' +
+                    '<div>' +
+                      '<strong>Required</strong>' +
+                    '</div>' +
+                    '<label class="cff-switch">' +
+                      '<input type="checkbox" class="cff-required-toggle">' +
+                      '<span class="cff-slider"></span>' +
+                    '</label>' +
+                  '</span>' +
+                '</div>' +
+              '</div>' +
+              '<div class="cff-field-choice is-hidden">' +
+                '<div class="cff-subhead">' +
+                  '<strong>Choices</strong> ' +
+                  '<button type="button" class="button cff-add-choice">Add Choice</button>' +
+                '</div>' +
+                '<div class="cff-row-choice-display">' +
+                  '<label>Display</label>' +
+                  '<select class="cff-input cff-choice-display cff-select2">' +
+                    '<option value="select">Select</option>' +
+                    '<option value="checkbox">Checkbox</option>' +
+                    '<option value="radio">Radio Button</option>' +
+                    '<option value="button_group">Button Group</option>' +
+                    '<option value="true_false">True / False</option>' +
+                  '</select>' +
+                '</div>' +
+                '<div class="cff-choices-list"></div>' +
+              '</div>' +
+            '</div>' +
           '<div class="cff-advanced">' +
             '<div class="cff-subbuilder" data-kind="repeater">' +
               '<div class="cff-subhead"><strong>Sub Fields (Repeater)</strong> ' +
@@ -161,23 +217,78 @@
             '<button type="button" class="cff-sub-acc-toggle" aria-expanded="true"></button>' +
             '<div class="cff-handle"></div>' +
           '</div>' +
-          '<div class="cff-col"><label>Label</label><input type="text" class="cff-input cff-slabel" value="{{label}}"></div>' +
-          '<div class="cff-col"><label>Name</label><input type="text" class="cff-input cff-sname" value="{{name}}"></div>' +
-          '<div class="cff-col"><label>Type</label>' +
-            '<select class="cff-input cff-stype">' +
-              '<option value="text">Text</option>' +
-              '<option value="textarea">Textarea</option>' +
-              '<option value="wysiwyg">WYSIWYG</option>' +
-              '<option value="color">Color</option>' +
-              '<option value="url">URL</option>' +
-              '<option value="link">Link</option>' +
-              '<option value="checkbox">Checkbox</option>' +
-              '<option value="image">Image</option>' +
-              '<option value="file">File</option>' +
-              '<option value="group">Group</option>' +
-            '</select>' +
-          '</div>' +
-          '<div class="cff-col cff-actions"><button type="button" class="button cff-remove-sub">Remove</button></div>' +
+          '<div class="cff-subfield-structure">' +
+            '<div class="cff-field-head">' +
+              '<div class="cff-col">' +
+                '<label>Label</label>' +
+                '<input type="text" class="cff-input cff-slabel" value="{{label}}">' +
+              '</div>' +
+              '<div class="cff-col">' +
+                '<label>Name</label>' +
+                '<input type="text" class="cff-input cff-sname" value="{{name}}">' +
+              '</div>' +
+              '<div class="cff-col cff-row-type">' +
+                '<div class="cff-row-type-main">' +
+                  '<label>Type</label>' +
+                  '<select class="cff-input cff-stype cff-select2">' +
+                    '<option value="text">Text</option>' +
+                    '<option value="textarea">Textarea</option>' +
+                    '<option value="wysiwyg">WYSIWYG</option>' +
+                    '<option value="color">Color</option>' +
+                    '<option value="url">URL</option>' +
+                    '<option value="link">Link</option>' +
+                    '<option value="choice">Choice</option>' +
+                    '<option value="relational">Relational</option>' +
+                    '<option value="date_picker">Date Picker</option>' +
+                    '<option value="datetime_picker">Date Time Picker</option>' +
+                    '<option value="checkbox">Checkbox</option>' +
+                    '<option value="image">Image</option>' +
+                    '<option value="file">File</option>' +
+                    '<option value="group">Group</option>' +
+                  '</select>' +
+                '</div>' +
+              '</div>' +
+              '<div class="cff-col cff-actions">' +
+                '<button type="button" class="button cff-icon-button cff-remove-sub" aria-label="Remove sub field">' +
+                  '<span class="dashicons dashicons-trash" aria-hidden="true"></span>' +
+                '</button>' +
+              '</div>' +
+            '</div>' +
+              '<div class="cff-field-meta-row">' +
+                '<div class="cff-row-placeholder">' +
+                  '<label>Placeholder</label>' +
+                  '<input type="text" class="cff-input cff-placeholder" placeholder="Placeholder" value="{{placeholder}}">' +
+                '</div>' +
+                '<div class="cff-row-required">' +
+                  '<span class="cff-tools-toggles">' +
+                    '<div>' +
+                      '<strong>Required</strong>' +
+                    '</div>' +
+                    '<label class="cff-switch">' +
+                      '<input type="checkbox" class="cff-required-toggle">' +
+                      '<span class="cff-slider"></span>' +
+                    '</label>' +
+                  '</span>' +
+                '</div>' +
+              '</div>' +
+              '<div class="cff-field-choice is-hidden">' +
+                '<div class="cff-subhead">' +
+                  '<strong>Choices</strong> ' +
+                  '<button type="button" class="button cff-add-choice">Add Choice</button>' +
+                '</div>' +
+                '<div class="cff-choices-list"></div>' +
+                '<div class="cff-row-choice-display">' +
+                  '<label>Display</label>' +
+                  '<select class="cff-input cff-choice-display cff-select2">' +
+                    '<option value="select">Select</option>' +
+                    '<option value="checkbox">Checkbox</option>' +
+                    '<option value="radio">Radio Button</option>' +
+                    '<option value="button_group">Button Group</option>' +
+                    '<option value="true_false">True / False</option>' +
+                  '</select>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
           '<div class="cff-groupbuilder cff-subgroupbuilder" data-kind="group">' +
             '<div class="cff-subhead"><strong>Group Fields</strong> ' +
               '<button type="button" class="button cff-add-group-sub">Add Field</button>' +
@@ -186,9 +297,7 @@
           '</div>' +
         '</div>'
       );
-    }
-
-    function fallbackLayoutTpl(){
+    }    function fallbackLayoutTpl(){
       return (
         '<div class="cff-layout" data-li="{{li}}">' +
           '<div class="cff-layout-head">' +
@@ -276,7 +385,8 @@
       var html = CFF.utils.tmpl(tplSub, {
         si: si,
         label: CFF.utils.escapeHtml(s.label || ''),
-        name:  CFF.utils.escapeHtml(s.name  || '')
+        name:  CFF.utils.escapeHtml(s.name  || ''),
+        placeholder: CFF.utils.escapeHtml(s.placeholder || '')
       });
       var $el = $(html);
       var $wrap = $el.find('.cff-handle-wrap');
@@ -293,11 +403,15 @@
       }
       $el.find('.cff-stype').val(s.type || 'text');
       toggleSubGroup($el);
+      $el.find('.cff-placeholder').val(s.placeholder || '');
+      $el.find('.cff-required-toggle').prop('checked', !!s.required);
       if (s.type === 'group' && Array.isArray(s.sub_fields)) {
         var $gf = $el.find('.cff-group-fields');
         s.sub_fields.forEach(function(sf, sfi){ $gf.append(renderSub(sf, sfi)); });
         sortableSubs($gf);
       }
+      renderChoicesPanel($el, s);
+      toggleChoicePanel($el, s.type);
       return $el;
     }
 
@@ -318,6 +432,65 @@
       return $el;
     }
 
+    function renderChoiceRow(choice){
+      var html =
+        '<div class="cff-choice-row">' +
+          '<input type="text" class="cff-input cff-choice-label" placeholder="Label">' +
+          '<input type="text" class="cff-input cff-choice-value" placeholder="Value">' +
+          '<button type="button" class="button-link cff-choice-remove" aria-label="Remove choice">×</button>' +
+        '</div>';
+      var $row = $(html);
+      $row.find('.cff-choice-label').val(choice.label || '');
+      $row.find('.cff-choice-value').val(choice.value || '');
+      return $row;
+    }
+
+    function populateChoiceList($panel, choices){
+      var $list = $panel.find('.cff-choices-list');
+      $list.empty();
+      var items = Array.isArray(choices) && choices.length ? choices : [{}];
+      items.forEach(function(choice){
+        $list.append(renderChoiceRow(choice));
+      });
+    }
+
+    function renderChoicesPanel($element, data){
+      var $panel = $element.find('.cff-field-choice').first();
+      if (!$panel.length) return;
+      populateChoiceList($panel, data.choices || []);
+      $panel.find('.cff-choice-display').val(data.choice_display || 'select');
+    }
+
+    function hasChoiceValues($panel){
+      var filled = 0;
+      $panel.children('.cff-choice-row').each(function(){
+        var label = ($(this).find('.cff-choice-label').val() || '').trim();
+        var value = ($(this).find('.cff-choice-value').val() || '').trim();
+        if (label || value) filled++;
+      });
+      return filled > 0;
+    }
+
+    function toggleChoicePanel($element, type){
+      var $panel = $element.find('.cff-field-choice').first();
+      if (!$panel.length) return;
+      var hasValues = hasChoiceValues($panel);
+      var visible = (type === 'choice') || hasValues;
+      $panel.toggleClass('is-hidden', !visible);
+    }
+
+    function readChoices($panel){
+      var list = [];
+      $panel.children('.cff-choice-row').each(function(){
+        var $row = $(this);
+        var label = $row.find('.cff-choice-label').val() || '';
+        var value = $row.find('.cff-choice-value').val() || '';
+        if (!label && !value) return;
+        list.push({ label: label, value: value });
+      });
+      return list;
+    }
+
     function readFromDOM(){
       var data = [];
       $('#cff-field-list .cff-field-row').each(function(){
@@ -327,6 +500,12 @@
         var type  = $f.find('.cff-type').val() || 'text';
 
         var item = { label: label, name: name, type: type };
+        item.required = $f.find('.cff-required-toggle').is(':checked');
+        item.placeholder = $f.find('.cff-placeholder').val() || '';
+        if (type === 'choice') {
+          item.choices = readChoices($f.find('.cff-choices-list'));
+          item.choice_display = $f.find('.cff-choice-display').val() || 'select';
+        }
 
         if (type === 'repeater') {
           item.sub_fields = readSubfields($f.find('.cff-subfields'));
@@ -393,7 +572,8 @@
         var html = CFF.utils.tmpl(tplField, {
           i: i,
           label: CFF.utils.escapeHtml(f.label || ''),
-          name:  CFF.utils.escapeHtml(f.name  || '')
+          name:  CFF.utils.escapeHtml(f.name  || ''),
+          placeholder: CFF.utils.escapeHtml(f.placeholder || '')
         });
 
         var $el = $(html);
@@ -401,6 +581,10 @@
         $el.find('.cff-type').val(f.type || 'text');
 
         toggleBuilders($el);
+        renderChoicesPanel($el, f);
+        toggleChoicePanel($el, f.type);
+        $el.find('.cff-placeholder').val(f.placeholder || '');
+        $el.find('.cff-required-toggle').prop('checked', !!f.required);
 
         if (f.type === 'repeater' && Array.isArray(f.sub_fields)) {
           var $sf = $el.find('.cff-subfields');
@@ -433,6 +617,8 @@
       $root.find('.cff-subfield').each(function(){
         toggleSubGroup($(this));
       });
+
+      $(document).trigger('cff:refresh', $root);
     }
 
     function readSubfields($container){
@@ -443,8 +629,14 @@
         var item = {
           label: $sub.find('.cff-slabel').val() || '',
           name:  CFF.utils.sanitizeName($sub.find('.cff-sname').val() || ''),
-          type:  stype
+          type:  stype,
+          required: $sub.find('.cff-required-toggle').is(':checked')
         };
+        item.placeholder = $sub.find('.cff-placeholder').val() || '';
+        if (stype === 'choice') {
+          item.choices = readChoices($sub.find('.cff-choices-list'));
+          item.choice_display = $sub.find('.cff-choice-display').val() || 'select';
+        }
         if (stype === 'group') {
           item.sub_fields = readSubfields($sub.find('> .cff-groupbuilder .cff-group-fields'));
         }
@@ -547,9 +739,26 @@
       });
 
 
-      $root.on('input', '.cff-slabel, .cff-sname, .cff-stype', CFF.utils.debounce(function(){
+      $root.on('input', '.cff-slabel, .cff-sname, .cff-stype, .cff-placeholder, .cff-choice-label, .cff-choice-value', CFF.utils.debounce(function(){
         save(readFromDOM());
       }, 150));
+
+      $root.on('click', '.cff-add-choice', function(){
+        var $panel = $(this).closest('.cff-field-choice');
+        if (!$panel.length) return;
+        var $row = renderChoiceRow({});
+        $panel.find('.cff-choices-list').append($row);
+        save(readFromDOM());
+      });
+
+      $root.on('click', '.cff-choice-remove', function(){
+        $(this).closest('.cff-choice-row').remove();
+        save(readFromDOM());
+      });
+
+      $root.on('change', '.cff-choice-display', function(){
+        save(readFromDOM());
+      });
 
       // Layout name sanitize
       $root.on('input', '.cff-lname', function(){
@@ -558,12 +767,16 @@
 
       // Type change
       $root.on('change', '.cff-type', function(){
-        toggleBuilders($(this).closest('.cff-field-row'));
+        var $row = $(this).closest('.cff-field-row');
+        toggleBuilders($row);
+        toggleChoicePanel($row, $(this).val());
         save(readFromDOM());
       });
 
       $root.on('change', '.cff-stype', function(){
-        toggleSubGroup($(this).closest('.cff-subfield'));
+        var $sub = $(this).closest('.cff-subfield');
+        toggleSubGroup($sub);
+        toggleChoicePanel($sub, $(this).val());
         save(readFromDOM());
       });
 
@@ -585,6 +798,7 @@
 
       // Remove field
       $root.on('click', '.cff-remove', function(){
+        if (!window.confirm('Are you sure you want to remove this field?')) return;
         $(this).closest('.cff-field-row').remove();
         save(readFromDOM());
       });
@@ -592,17 +806,22 @@
       // Repeater add/remove sub
       $root.on('click', '.cff-add-sub', function(){
         var $f = $(this).closest('.cff-field-row');
-        $f.find('.cff-subfields').append(renderSub({ label:'', name:'', type:'text' }, Date.now()));
+        var $sub = renderSub({ label:'', name:'', type:'text' }, Date.now());
+        $f.find('.cff-subfields').append($sub);
         save(readFromDOM());
+        $(document).trigger('cff:refresh', $sub);
       });
 
       $root.on('click', '.cff-add-group-sub', function(){
         var $builder = $(this).closest('.cff-groupbuilder');
-        $builder.find('.cff-group-fields').append(renderSub({ label:'', name:'', type:'text' }, Date.now()));
+        var $sub = renderSub({ label:'', name:'', type:'text' }, Date.now());
+        $builder.find('.cff-group-fields').append($sub);
         save(readFromDOM());
+        $(document).trigger('cff:refresh', $sub);
       });
 
       $root.on('click', '.cff-remove-sub', function(){
+        if (!window.confirm('Remove this sub field?')) return;
         $(this).closest('.cff-subfield').remove();
         save(readFromDOM());
       });
@@ -610,11 +829,14 @@
       // Flexible add/remove layout
       $root.on('click', '.cff-add-layout', function(){
         var $f = $(this).closest('.cff-field-row');
-        $f.find('.cff-layouts').append(renderLayout({ label:'', name:'', sub_fields:[] }, Date.now()));
+        var $layout = renderLayout({ label:'', name:'', sub_fields:[] }, Date.now());
+        $f.find('.cff-layouts').append($layout);
         save(readFromDOM());
+        $(document).trigger('cff:refresh', $layout);
       });
 
       $root.on('click', '.cff-remove-layout', function(){
+        if (!window.confirm('Discard this layout?')) return;
         $(this).closest('.cff-layout').remove();
         save(readFromDOM());
       });
@@ -625,8 +847,14 @@
 
       $root.on('click', '.cff-add-layout-field', function(){
         var $layout = $(this).closest('.cff-layout');
-        $layout.find('.cff-layout-fields').append(renderSub({ label:'', name:'', type:'text' }, Date.now()));
+        var $sub = renderSub({ label:'', name:'', type:'text' }, Date.now());
+        $layout.find('.cff-layout-fields').append($sub);
         save(readFromDOM());
+        $(document).trigger('cff:refresh', $sub);
+      });
+
+      $root.on('change', '.cff-required-toggle', function(){
+        commit();
       });
     }
 

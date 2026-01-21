@@ -1,6 +1,6 @@
 .cff-field{display:flex;flex-direction:column;gap:8px;border:1px solid #e5e5e5;background:#fff;border-radius:10px;}
 .cff-field.is-collapsed .cff-label{border-color:#eee;background-color:#fff;}
-.cff-label{background:#d8eef9;border-radius:10px;padding:12px 14px; display: flex; flex-wrap: wrap;gap:20px;row-gap: 5px;}
+.cff-label{background:#d8eef9;padding:12px 14px; display: flex; flex-wrap: wrap;gap:20px;row-gap: 5px;}
 .cff-label-head{display:flex;align-items:center;gap:10px;margin-bottom:6px; flex: 0 0 100%;}
 .cff-label label{font-weight:700}
 .cff-input{margin-top:12px;padding: 10px;}
@@ -8,6 +8,7 @@
 .cff-meta-name{text-transform:none}
 .cff-meta-type{text-transform:capitalize}
 .cff-muted{color:#646970}
+.cff-required-indicator{color:#d63638;margin-left:6px;font-weight:600;font-size:13px;}
 .cff-media{border:1px solid #dcdcde;border-radius:10px;padding:10px;background:#fbfbfc;max-width:720px}
 .cff-media-preview{margin-bottom:8px}
 .cff-media-inline{max-width:520px}
@@ -41,6 +42,9 @@
 
 
 /* === ACF-like repeater rows === */
+.cff-repeater {
+  margin-top: 20px;
+}
 .cff-rep-row{
   border:1px solid #dcdcde;
   border-radius:12px;
@@ -75,3 +79,98 @@
 .cff-rep-row-body{padding:12px}
 .cff-subfield-input{margin-bottom:12px}
 .cff-subfield-input label{font-weight:600;display:block;margin-bottom:6px}
+
+.cff-choice-checkboxes label,
+.cff-choice-radios label {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:6px;
+}
+
+.cff-choice-buttons {
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-bottom:8px;
+}
+
+.cff-choice-button {
+  position:relative;
+  border:1px solid #dcdcde;
+  border-radius:999px;
+  overflow:hidden;
+  cursor:pointer;
+  min-width:90px;
+}
+
+.cff-choice-button input {
+  position:absolute;
+  opacity:0;
+  width:100%;
+  height:100%;
+  inset:0;
+  cursor:pointer;
+}
+
+.cff-choice-button span {
+  display:inline-flex;
+  justify-content:center;
+  align-items:center;
+  padding:6px 14px;
+  color:#2c3338;
+  font-size:14px;
+}
+
+.cff-choice-button input:checked + span {
+  background:#2271b1;
+  color:#fff;
+}
+
+.cff-choice-true-toggle {
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.cff-choice-true-toggle input[type=checkbox] {
+  appearance:none;
+  -webkit-appearance:none;
+  width:48px;
+  height:28px;
+  border-radius:999px;
+  background:#ccd0d4;
+  position:relative;
+  cursor:pointer;
+  border:1px solid #ccd0d4;
+  transition:background .2s ease;
+}
+
+.cff-choice-true-toggle input[type=checkbox]::after {
+  content:"";
+  position:absolute;
+  top:3px;
+  left:3px;
+  width:22px;
+  height:22px;
+  border-radius:50%;
+  background:#fff;
+  transition:transform .2s ease;
+}
+
+.cff-choice-true-toggle input[type=checkbox]:checked {
+  background:#2271b1;
+  border-color:#2271b1;
+}
+
+.cff-choice-true-toggle input[type=checkbox]:checked::after {
+  transform:translateX(20px);
+}
+
+.cff-choice-true-toggle span {
+  font-size:13px;
+  color:#2c3338;
+}
+.cff-choice-true-label {
+  font-weight:600;
+}
