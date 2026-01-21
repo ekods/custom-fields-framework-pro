@@ -1,15 +1,15 @@
 <?php
 /**
  * Plugin Name: Custom Fields Framework Pro
- * Description: ACF-like custom fields with Field Groups, Repeater, Flexible Content, Location rules, and ACF-compatible frontend helpers.
- * Version: 0.13.7
- * Author: Eko Dwi Saputro - CFF
- * Text Domain: cff
+ * Description: Custom fields with Field Groups, Repeater, Flexible Content, Location rules, and CFF-compatible frontend helpers.
+ * Version: 0.13.8
+ * Author: Eko Dwi Saputro
+ * Text Domain: https://theteamtheteam.com
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('CFFP_VERSION', '0.13.7');
+define('CFFP_VERSION', '0.13.8');
 define('CFFP_FILE', __FILE__);
 define('CFFP_DIR', plugin_dir_path(__FILE__));
 define('CFFP_URL', plugin_dir_url(__FILE__));
