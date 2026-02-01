@@ -50,7 +50,7 @@ class CFF_Github_Public_Updater {
     $release = $this->gh("https://api.github.com/repos/{$this->repo}/releases/latest");
     if (!$release || empty($release['tag_name'])) return $transient;
 
-    $tag = ltrim((string)$release['tag_name'], 'v'); // v0.13.4 -> 0.13.4
+    $tag = ltrim((string)$release['tag_name'], 'v');
     if (!version_compare($tag, $current, '>')) return $transient;
 
     // cari browser_download_url dari asset ZIP

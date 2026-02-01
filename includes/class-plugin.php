@@ -70,21 +70,107 @@ class Plugin {
           'add_new_item' => sprintf(__('Add New %s','cff'), $singular),
           'edit_item' => sprintf(__('Edit %s','cff'), $singular),
         ],
-        'public' => $public,
-        'has_archive' => $has_archive,
-        'rewrite' => ['slug'=>$slug],
-        'show_in_rest' => $show_in_rest,
-        'show_ui' => array_key_exists('show_ui',$def) ? (bool)$def['show_ui'] : $public,
-        'query_var' => array_key_exists('query_var',$def) ? (bool)$def['query_var'] : true,
+      'public' => $public,
+      'has_archive' => $has_archive,
+      'rewrite' => !empty($def['block_single']) ? false : ['slug'=>$slug],
+      'publicly_queryable' => $public && empty($def['block_single']),
+      'show_in_rest' => $show_in_rest,
+      'show_ui' => array_key_exists('show_ui',$def) ? (bool)$def['show_ui'] : $public,
+      'query_var' => array_key_exists('query_var',$def)
+        ? (bool)$def['query_var']
+        : (!empty($def['block_single']) ? false : true),
         'show_admin_column' => array_key_exists('show_admin_column',$def) ? (bool)$def['show_admin_column'] : true,
         'supports' => $supports,
         'taxonomies' => (isset($def['taxonomies']) && is_array($def['taxonomies']))
           ? array_map('sanitize_key',$def['taxonomies'])
           : [],
-        'menu_position' => 25,
+        'menu_position' => isset($def['menu_position']) ? max(0, intval($def['menu_position'])) : 25,
         'menu_icon' => $menu_icon ?: 'dashicons-admin-post',
       ]);
+      if (!empty($def['list_thumbnail']) && in_array('thumbnail', $supports, true)) {
+        $this->register_admin_thumbnail_column($key);
+      }
+      if (!empty($def['block_single'])) {
+        $this->register_block_single_views($key);
+      }
     }
+  }
+
+  private function register_admin_thumbnail_column($post_type) {
+    $label = __('Thumbnail', 'cff');
+    add_filter("manage_{$post_type}_posts_columns", function($columns) use ($label) {
+      if (isset($columns['cff_thumbnail'])) {
+        return $columns;
+      }
+      $output = [];
+      foreach ($columns as $slug => $name) {
+        $output[$slug] = $name;
+        if ($slug === 'cb') {
+          $output['cff_thumbnail'] = $label;
+        }
+      }
+      if (!isset($output['cff_thumbnail'])) {
+        $output = array_merge(['cff_thumbnail' => $label], $output);
+      }
+      return $output;
+    });
+
+    add_action('admin_head', function() use ($post_type) {
+      $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+      if (!$screen || $screen->base !== 'edit' || $screen->post_type !== $post_type) {
+        return;
+      }
+      echo '<style>.wp-list-table th.column-cff_thumbnail, .wp-list-table td.column-cff_thumbnail {width:100px;}</style>';
+    });
+
+    add_action("manage_{$post_type}_posts_custom_column", function($column, $post_id) {
+      if ($column !== 'cff_thumbnail') return;
+      $image = get_the_post_thumbnail($post_id, [80, 80], ['style' => 'width:80px;height:auto;display:block;object-fit:cover;']);
+      if ($image) {
+        echo '<div style="width:80px;height:80px;display:flex;align-items:center;justify-content:center;">' . $image . '</div>';
+      } else {
+        echo '<div style="width:80px;height:80px;display:flex;align-items:center;justify-content:center;"><span class="cff-muted">—</span></div>';
+      }
+    }, 10, 2);
+  }
+
+  private function register_block_single_views($post_type) {
+    add_filter("manage_{$post_type}_posts_columns", function($columns) {
+      foreach (array_keys($columns) as $key) {
+        if ($key === 'cb') continue;
+        if (stripos($key, 'view') !== false) {
+          unset($columns[$key]);
+        }
+      }
+      return $columns;
+    }, 15);
+
+    add_action('admin_head', function() use ($post_type) {
+      $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+      if (!$screen || $screen->base !== 'edit' || $screen->post_type !== $post_type) {
+        return;
+      }
+      echo '<style>.wp-list-table th[class*="column-view"], .wp-list-table td[class*="column-view"] {display:none!important;}</style>';
+    });
+  }
+
+  public function remove_post_views_id() {
+    $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+    if (!$screen || $screen->base !== 'edit' || empty($screen->post_type)) return;
+    if (!$this->is_block_single_post_type($screen->post_type)) return;
+    echo '<script>(function(){document.addEventListener("DOMContentLoaded",function(){var el=document.getElementById("post-views");if(el){el.removeAttribute("id");}});})();</script>';
+  }
+
+  private function is_block_single_post_type($post_type) {
+    $def = $this->get_cpt_definition($post_type);
+    return !empty($def['block_single']);
+  }
+
+  private function get_cpt_definition($post_type) {
+    $defs = get_option('cffp_post_types', []);
+    if (!is_array($defs)) return null;
+    if (!isset($defs[$post_type]) || !is_array($defs[$post_type])) return null;
+    return $defs[$post_type];
   }
 
   public function register_dynamic_taxonomies() {
@@ -144,6 +230,7 @@ class Plugin {
     add_action('save_post', [$this, 'save_content_fields'], 10, 2);
 
     add_action('admin_enqueue_scripts', [$this, 'assets']);
+    add_action('admin_head-edit.php', [$this, 'remove_post_views_id']);
     add_action('admin_init', [$this, 'handle_export_tools']);
     add_action('admin_init', [$this, 'handle_export_group']);
     add_action('admin_init', [$this, 'handle_export_acf_data']);
@@ -214,19 +301,28 @@ class Plugin {
     if (isset($_POST['cffp_cpt_nonce']) && wp_verify_nonce($_POST['cffp_cpt_nonce'], 'cffp_cpt_save')) {
       $action = sanitize_key($_POST['cffp_action'] ?? '');
 
-      if (in_array($action, ['add','update'], true)) {
-        $key = sanitize_key($_POST['cpt_key'] ?? '');
-        if ($key) {
-          $menu_icon_raw = isset($_POST['cpt_menu_icon']) ? trim(wp_unslash($_POST['cpt_menu_icon'])) : '';
-          $menu_icon = '';
+    if (in_array($action, ['add','update'], true)) {
+      $key = sanitize_key($_POST['cpt_key'] ?? '');
+      if ($key) {
+        $menu_icon_raw = isset($_POST['cpt_menu_icon']) ? trim(wp_unslash($_POST['cpt_menu_icon'])) : '';
+        $menu_icon = '';
 
-          if ($menu_icon_raw !== '') {
-            if (strpos($menu_icon_raw, 'dashicons-') === 0) {
-              $menu_icon = preg_replace('/[^a-z0-9\-_]/i', '', $menu_icon_raw);
-            } else {
-              $menu_icon = esc_url_raw($menu_icon_raw);
-            }
+        if ($menu_icon_raw !== '') {
+          if (strpos($menu_icon_raw, 'dashicons-') === 0) {
+            $menu_icon = preg_replace('/[^a-z0-9\-_]/i', '', $menu_icon_raw);
+          } else {
+            $menu_icon = esc_url_raw($menu_icon_raw);
           }
+        }
+
+        $supports = isset($_POST['cpt_supports'])
+          ? array_values(array_map('sanitize_key', (array) $_POST['cpt_supports']))
+          : ['title','editor'];
+          $list_thumbnail = !empty($_POST['cpt_list_thumbnail']);
+          if ($list_thumbnail && !in_array('thumbnail', $supports, true)) {
+            $supports[] = 'thumbnail';
+          }
+          $block_single = !empty($_POST['cpt_block_single']);
 
           $defs[$key] = [
             'singular' => sanitize_text_field($_POST['cpt_singular'] ?? ''),
@@ -235,14 +331,15 @@ class Plugin {
             'public'   => !empty($_POST['cpt_public']),
             'has_archive' => !empty($_POST['cpt_archive']),
             'show_in_rest' => !empty($_POST['cpt_rest']),
-            'supports' => isset($_POST['cpt_supports'])
-              ? array_values(array_map('sanitize_key', (array) $_POST['cpt_supports']))
-              : ['title','editor'],
-            'taxonomies' => isset($_POST['cpt_taxonomies'])
-              ? array_values(array_filter(array_map('sanitize_key',(array)$_POST['cpt_taxonomies'])))
-              : [],
-            'menu_icon' => $menu_icon,
-          ];
+            'supports' => $supports,
+            'list_thumbnail' => $list_thumbnail,
+            'block_single' => $block_single,
+          'taxonomies' => isset($_POST['cpt_taxonomies'])
+            ? array_values(array_filter(array_map('sanitize_key',(array)$_POST['cpt_taxonomies'])))
+            : [],
+          'menu_icon' => $menu_icon,
+          'menu_position' => isset($_POST['cpt_menu_position']) ? intval($_POST['cpt_menu_position']) : 25,
+        ];
           if ($this->polylang_active()) {
             $singular_i18n = isset($_POST['cpt_singular_i18n']) && is_array($_POST['cpt_singular_i18n'])
               ? array_map('sanitize_text_field', (array) $_POST['cpt_singular_i18n'])
@@ -300,7 +397,7 @@ class Plugin {
     if (!$defs) {
       echo '<p class="cff-muted">No custom post types yet.</p>';
     } else {
-      echo '<table class="widefat striped"><thead><tr><th>Key</th><th>Label</th><th>Slug</th><th>Icon</th><th>Public</th><th>Actions</th></tr></thead><tbody>';
+      echo '<table class="widefat striped"><thead><tr><th>Key</th><th>Label</th><th>Slug</th><th>Icon</th><th>Thumbnail</th><th>Views</th><th>Public</th><th>Actions</th></tr></thead><tbody>';
 
       foreach ($defs as $key => $def) {
         $label = esc_html(($def['plural'] ?? $key));
@@ -322,6 +419,15 @@ class Plugin {
         echo '<td>'.$label.'</td>';
         echo '<td><code>'.esc_html($def['slug'] ?? $key).'</code></td>';
         echo '<td>'.$icon_html.'</td>';
+        $thumb_icon = !empty($def['list_thumbnail']) ? '<span class="dashicons dashicons-yes"></span>' : '<span class="dashicons dashicons-no-alt"></span>';
+        $archive_icon = !empty($def['has_archive']) ? 'dashicons-yes' : 'dashicons-no-alt';
+        $block_icon = !empty($def['block_single']) ? 'dashicons-yes' : 'dashicons-no-alt';
+        $views_html = '<div style="font-size:12px;line-height:1.4;">'
+          . '<span class="dashicons ' . esc_attr($archive_icon) . '"></span> ' . esc_html__('Archive', 'cff') . '<br>'
+          . '<span class="dashicons ' . esc_attr($block_icon) . '"></span> ' . esc_html__('Block single', 'cff')
+          . '</div>';
+        echo '<td style="text-align:center;">'.$thumb_icon.'</td>';
+        echo '<td>'.$views_html.'</td>';
         echo '<td>'.(!empty($def['public']) ? 'Yes' : 'No').'</td>';
         echo '<td>';
 
@@ -349,10 +455,18 @@ class Plugin {
     $pub = $editing ? !empty($edit_def['public']) : true;
     $arc = $editing ? !empty($edit_def['has_archive']) : true;
     $rst = $editing ? !empty($edit_def['show_in_rest']) : true;
+    $block_single = $editing ? !empty($edit_def['block_single']) : false;
+    $current_key = $editing ? sanitize_key($edit_key) : '';
+    $current_slug = $editing ? sanitize_title($edit_def['slug'] ?? $edit_key) : '';
+    $menu_position_value = $editing ? intval($edit_def['menu_position'] ?? 25) : 25;
 
     $supports_selected = $editing && isset($edit_def['supports']) && is_array($edit_def['supports'])
       ? array_values(array_map('sanitize_key', $edit_def['supports']))
       : ['title','editor'];
+    $list_thumb_selected = $editing ? !empty($edit_def['list_thumbnail']) : false;
+    if ($list_thumb_selected && !in_array('thumbnail', $supports_selected, true)) {
+      $supports_selected[] = 'thumbnail';
+    }
 
     echo '<form method="post" class="cff-cpt-form">';
     wp_nonce_field('cffp_cpt_save','cffp_cpt_nonce');
@@ -360,11 +474,17 @@ class Plugin {
 
     echo '<table class="form-table"><tbody>';
 
-    echo '<tr><th><label>Key</label></th><td><input name="cpt_key" class="regular-text" placeholder="custom_post" required value="'.esc_attr($editing ? $edit_key : '').'" '.($editing?'readonly':'').'></td></tr>';
+    echo '<tr class="cff-cpt-key-row"><th><label>Key</label></th><td>';
+    echo '<input type="hidden" name="cpt_key" value="'.esc_attr($editing ? $edit_key : '').'">';
+    echo $current_key ? '<code>'.esc_html($current_key).'</code>' : '<span class="cff-muted">Generated from Singular label</span>';
+    echo '</td></tr>';
     $langs = $this->polylang_languages();
     echo '<tr><th><label>Singular</label></th><td><input name="cpt_singular" class="regular-text" placeholder="Custom Post" value="'.esc_attr($edit_def['singular'] ?? '').'"></td></tr>';
     echo '<tr><th><label>Plural</label></th><td><input name="cpt_plural" class="regular-text" placeholder="Custom Posts" value="'.esc_attr($edit_def['plural'] ?? '').'"></td></tr>';
-    echo '<tr><th><label>Slug</label></th><td><input name="cpt_slug" class="regular-text" placeholder="custom-post" value="'.esc_attr($edit_def['slug'] ?? '').'"></td></tr>';
+    echo '<tr class="cff-cpt-slug-row"><th><label>Slug</label></th><td>';
+    echo '<input type="hidden" name="cpt_slug" value="'.esc_attr($edit_def['slug'] ?? '').'">';
+    echo $current_slug ? '<code>'.esc_html($current_slug).'</code>' : '<span class="cff-muted">Synced with Singular label</span>';
+    echo '</td></tr>';
     if ($langs) {
       echo '<tr><th><label>Translations</label></th><td>';
       echo '<div class="cff-lang-tabs" data-default="'.esc_attr($langs[0]['slug']).'">';
@@ -386,9 +506,13 @@ class Plugin {
     }
 
     echo '<tr><th><label>Options</label></th><td>';
-    echo '<label><input type="checkbox" name="cpt_public" value="1" '.($pub?'checked':'').'> Public</label> &nbsp; ';
-    echo '<label><input type="checkbox" name="cpt_archive" value="1" '.($arc?'checked':'').'> Has Archive</label> &nbsp; ';
-    echo '<label><input type="checkbox" name="cpt_rest" value="1" '.($rst?'checked':'').'> REST API</label>';
+    echo '<label><input type="checkbox" name="cpt_public" value="1" '.($pub?'checked':'').'> '.esc_html__('Public', 'cff').'</label> &nbsp; ';
+    echo '<label><input type="checkbox" name="cpt_rest" value="1" '.($rst?'checked':'').'> '.esc_html__('REST API', 'cff').'</label>';
+    echo '</td></tr>';
+    echo '<tr><th><label>'.esc_html__('Views', 'cff').'</label></th><td>';
+    echo '<label><input type="checkbox" name="cpt_archive" value="1" '.($arc?'checked':'').'> '.esc_html__('Archive view', 'cff').'</label> &nbsp; ';
+    echo '<label><input type="checkbox" name="cpt_block_single" value="1" '.($block_single?'checked':'').'> '.esc_html__('Block single view', 'cff').'</label>';
+    echo '<p class="description">'.esc_html__('Archive view controls whether the CPT has an archive listing. Block single view prevents individual permalinks from being publicly accessible.', 'cff').'</p>';
     echo '</td></tr>';
 
     // ✅ ini akan selalu muncul value saat edit
@@ -401,11 +525,20 @@ class Plugin {
     </p>';
     echo '</td></tr>';
 
+    echo '<tr><th><label>Menu Position</label></th><td>';
+    echo '<input type="number" min="0" name="cpt_menu_position" class="small-text" value="'.esc_attr($menu_position_value).'">';
+    echo '<p class="description">Control where this CPT appears in the admin menu (same values as <code>register_post_type</code>). Use <code>0</code> to hand over placement to WordPress.</p>';
+    echo '</td></tr>';
+
     echo '<tr><th><label>Supports</label></th><td>';
     foreach ($supports_all as $k => $lab) {
       $checked = in_array($k, $supports_selected, true) ? 'checked' : '';
       echo '<label style="display:inline-block;margin-right:12px"><input type="checkbox" name="cpt_supports[]" value="'.esc_attr($k).'" '.$checked.'> '.esc_html($lab).'</label>';
     }
+    echo '</td></tr>';
+    echo '<tr><th><label>Admin list</label></th><td>';
+    echo '<label><input type="checkbox" name="cpt_list_thumbnail" value="1" '.($list_thumb_selected ? 'checked' : '').'> Show featured image column on the post listing screen.</label>';
+    echo '<p class="description">Requires Featured Image support.</p>';
     echo '</td></tr>';
 
     echo '</tbody></table>';
@@ -665,6 +798,8 @@ class Plugin {
       wp_localize_script('cff-admin', 'CFFP', [
         'ajax' => admin_url('admin-ajax.php'),
         'nonce' => wp_create_nonce('cffp'),
+        'archives' => $this->get_archive_links(),
+        'relational_post_types' => $this->get_relational_post_types(),
       ]);
     }
 
@@ -677,6 +812,8 @@ class Plugin {
 
       wp_enqueue_style('cff-select2', CFFP_URL . 'assets/vendor/select2/select2.min.css', [], '4.1.0-rc.0');
       wp_enqueue_script('cff-select2', CFFP_URL . 'assets/vendor/select2/select2.min.js', ['jquery'], '4.1.0-rc.0', true);
+
+      wp_enqueue_script('cff-select2-init', plugin_dir_url(__FILE__) . '../assets/js/select2-init.js', ['jquery','cff-select2'], $this->asset_ver('assets/js/select2-init.js'), true);
 
       wp_enqueue_script(
         'cff-post',
@@ -702,6 +839,77 @@ class Plugin {
   private function asset_ver($rel_path) {
     $path = CFFP_DIR . ltrim($rel_path, '/');
     return file_exists($path) ? (string) filemtime($path) : CFFP_VERSION;
+  }
+
+  private function get_archive_links() {
+    $types = get_post_types(['public' => true], 'objects');
+    if (empty($types)) return [];
+
+    $links = [];
+    foreach ($types as $slug => $obj) {
+      $url = get_post_type_archive_link($slug);
+      if (!$url) {
+        $rewrite = $obj->rewrite ?? [];
+        if (!empty($rewrite['slug'])) {
+          $path = '/' . trim($rewrite['slug'], '/') . '/';
+          $url = home_url($path);
+        }
+      }
+      if (!$url) continue;
+      $label = $obj->labels->name ?? $obj->label ?? $slug;
+      $links[] = [
+        'label' => sanitize_text_field($label),
+        'slug' => sanitize_key($slug),
+        'url' => esc_url_raw($url),
+      ];
+    }
+
+    return $links;
+  }
+
+  private function get_relational_post_types() {
+    $types = get_post_types([
+      'show_ui' => true,
+    ], 'objects');
+
+    $out = [];
+    $seen = [];
+
+    if (!empty($types)) {
+      foreach ($types as $slug => $obj) {
+        $slug = sanitize_key($slug);
+
+        // skip internal post type plugin
+        if ($slug === 'cff_group') continue;
+
+        $label = $obj->labels->singular_name ?? $obj->label ?? $slug;
+        $out[] = [
+          'value' => $slug,
+          'label' => sanitize_text_field($label),
+        ];
+        $seen[$slug] = true;
+      }
+    }
+
+    // fallback dari option (biar aman)
+    $defs = get_option('cffp_post_types', []);
+    if (is_array($defs)) {
+      foreach ($defs as $slug => $def) {
+        $slug = sanitize_key($slug);
+        if (!$slug || isset($seen[$slug])) continue;
+
+        if ($slug === 'cff_group') continue;
+
+        $label = sanitize_text_field($def['singular'] ?? $slug);
+        $out[] = [
+          'value' => $slug,
+          'label' => $label,
+        ];
+        $seen[$slug] = true;
+      }
+    }
+
+    return $out;
   }
 
   public function register_term_meta_fields() {
@@ -1400,10 +1608,10 @@ class Plugin {
               <label>Placeholder</label>
               <input type="text" class="cff-input cff-placeholder" placeholder="Placeholder" value="{{placeholder}}">
             </div>
-            <div class="cff-row-required">
-              <span class="cff-tools-toggles">
-                <div>
-                  <strong>Required</strong>
+          <div class="cff-row-required">
+            <span class="cff-tools-toggles">
+              <div>
+                <strong>Required</strong>
                 </div>
                 <label class="cff-switch">
                   <input type="checkbox" class="cff-required-toggle">
@@ -1428,6 +1636,47 @@ class Plugin {
               </select>
             </div>
             <div class="cff-choices-list"></div>
+          </div>
+          <div class="cff-field-relational is-hidden">
+            <div class="cff-subhead">
+              <strong>Relational Settings</strong>
+            </div>
+            <div class="cff-row-relational-type">
+              <label>Relation Type</label>
+              <select class="cff-input cff-relational-type cff-select2">
+                <option value="post">Post Only</option>
+                <option value="page">Page Only</option>
+                <option value="post_and_page">Post & Page</option>
+                <option value="post_type">Custom Post Type</option>
+                <option value="taxonomy">Taxonomy</option>
+                <option value="user">User</option>
+              </select>
+            </div>
+            <div class="cff-row-relational-subtype" style="display:none;">
+              <label>Select Type</label>
+              <select class="cff-input cff-relational-subtype cff-select2"></select>
+            </div>
+            <div class="cff-row-relational-display">
+              <label>Display</label>
+              <select class="cff-input cff-relational-display cff-select2">
+                <option value="select">Select</option>
+                <option value="checkbox">Checkbox</option>
+                <option value="radio">Radio Button</option>
+              </select>
+            </div>
+            <div class="cff-row-relational-multiple">
+              <span class="cff-tools-toggles">
+                <div><strong>Multiple</strong></div>
+                <label class="cff-switch">
+                  <input type="checkbox" class="cff-relational-multiple-toggle">
+                  <span class="cff-slider"></span>
+                </label>
+              </span>
+            </div>
+            <div class="cff-row-relational-archives">
+              <strong>Archive Links</strong>
+              <div class="cff-relational-archive-list"></div>
+            </div>
           </div>
         </div>
 
@@ -1537,11 +1786,47 @@ class Plugin {
             </div>
             <div class="cff-choices-list"></div>
           </div>
-        </div>
-        <div class="cff-col cff-actions">
-          <button type="button" class="button cff-icon-button cff-remove-sub" aria-label="Remove sub field">
-            <span class="dashicons dashicons-trash" aria-hidden="true"></span>
-          </button>
+          <div class="cff-field-relational is-hidden">
+            <div class="cff-subhead">
+              <strong>Relational Settings</strong>
+            </div>
+            <div class="cff-row-relational-type">
+              <label>Relation Type</label>
+              <select class="cff-input cff-relational-type cff-select2">
+                <option value="post">Post Only</option>
+                <option value="page">Page Only</option>
+                <option value="post_and_page">Post & Page</option>
+                <option value="post_type">Custom Post Type</option>
+                <option value="taxonomy">Taxonomy</option>
+                <option value="user">User</option>
+              </select>
+            </div>
+            <div class="cff-row-relational-subtype" style="display:none;">
+              <label>Select Type</label>
+              <select class="cff-input cff-relational-subtype cff-select2"></select>
+            </div>
+            <div class="cff-row-relational-display">
+              <label>Display</label>
+              <select class="cff-input cff-relational-display cff-select2">
+                <option value="select">Select</option>
+                <option value="checkbox">Checkbox</option>
+                <option value="radio">Radio Button</option>
+              </select>
+            </div>
+            <div class="cff-row-relational-multiple">
+              <span class="cff-tools-toggles">
+                <div><strong>Multiple</strong></div>
+                <label class="cff-switch">
+                  <input type="checkbox" class="cff-relational-multiple-toggle">
+                  <span class="cff-slider"></span>
+                </label>
+              </span>
+            </div>
+            <div class="cff-row-relational-archives">
+              <strong>Archive Links</strong>
+              <div class="cff-relational-archive-list"></div>
+            </div>
+          </div>
         </div>
         <div class="cff-groupbuilder cff-subgroupbuilder" data-kind="group">
           <div class="cff-subhead">
@@ -1639,17 +1924,19 @@ class Plugin {
 
     // sanitize fields
     $clean = [];
+    $seen = [];
     foreach ($fields as $f) {
       $type = isset($f['type']) ? sanitize_key($f['type']) : 'text';
       $name = isset($f['name']) ? sanitize_key($f['name']) : '';
-      if (!$name) continue;
+      if (!$name || isset($seen[$name])) continue;
+      $seen[$name] = true;
 
       $item = [
-        'label' => sanitize_text_field($f['label'] ?? $name),
+        'label' => $this->sanitize_string_value($f['label'] ?? $name),
         'name'  => $name,
         'type'  => $type,
         'required' => !empty($f['required']),
-        'placeholder' => sanitize_text_field($f['placeholder'] ?? ''),
+        'placeholder' => $this->sanitize_string_value($f['placeholder'] ?? ''),
       ];
 
       if ($type === 'repeater') {
@@ -1664,6 +1951,12 @@ class Plugin {
       if ($type === 'choice') {
         $item['choices'] = $this->sanitize_choices($f['choices'] ?? []);
         $item['choice_display'] = $this->sanitize_choice_display($f['choice_display'] ?? '');
+      }
+      if ($type === 'relational') {
+        $item['relational_type'] = $this->sanitize_relational_type($f['relational_type'] ?? 'post');
+        $item['relational_subtype'] = $this->sanitize_string_value($f['relational_subtype'] ?? '');
+        $item['relational_display'] = $this->sanitize_relational_display($f['relational_display'] ?? 'select');
+        $item['relational_multiple'] = !empty($f['relational_multiple']);
       }
 
       $clean[] = $item;
@@ -1722,19 +2015,36 @@ class Plugin {
     ];
   }
 
+  private function sanitize_string_value($value) {
+    if (is_array($value) || is_object($value)) {
+      return '';
+    }
+    return sanitize_text_field($value ?? '');
+  }
+
   private function sanitize_subfields($subs) {
     $out = [];
     if (!is_array($subs)) return $out;
+    $seen = [];
     foreach ($subs as $s) {
       $name = sanitize_key($s['name'] ?? '');
       if (!$name) continue;
+      if (isset($seen[$name])) continue;
+      $seen[$name] = true;
       $type = sanitize_key($s['type'] ?? 'text');
       $item = [
-        'label' => sanitize_text_field($s['label'] ?? $name),
+        'label' => $this->sanitize_string_value($s['label'] ?? $name),
         'name'  => $name,
         'type'  => $type,
         'required' => !empty($s['required']),
+        'placeholder' => $this->sanitize_string_value($s['placeholder'] ?? ''),
       ];
+      if ($type === 'relational') {
+        $item['relational_type'] = $this->sanitize_relational_type($s['relational_type'] ?? 'post');
+        $item['relational_subtype'] = $this->sanitize_string_value($s['relational_subtype'] ?? '');
+        $item['relational_display'] = $this->sanitize_relational_display($s['relational_display'] ?? 'select');
+        $item['relational_multiple'] = !empty($s['relational_multiple']);
+      }
       if ($type === 'group') {
         $item['sub_fields'] = $this->sanitize_subfields($s['sub_fields'] ?? []);
       }
@@ -1754,7 +2064,7 @@ class Plugin {
       $lname = sanitize_key($l['name'] ?? '');
       if (!$lname) continue;
       $out[] = [
-        'label' => sanitize_text_field($l['label'] ?? $lname),
+        'label' => $this->sanitize_string_value($l['label'] ?? $lname),
         'name'  => $lname,
         'sub_fields' => $this->sanitize_subfields($l['sub_fields'] ?? []),
       ];
@@ -1953,11 +2263,11 @@ class Plugin {
       $pt = get_post_type($p->ID);
       $pt_obj = $pt ? get_post_type_object($pt) : null;
       $pt_label = $pt_obj && !empty($pt_obj->labels->singular_name) ? $pt_obj->labels->singular_name : $pt;
-      $date = get_the_date('', $p->ID);
-      $label = trim($pt_label . ' - (' . $date . ') - ' . $p->post_title);
+      $label = trim($pt_label . ' - ' . $p->post_title);
       $out[] = [
         'id' => $p->ID,
         'text' => $label,
+        'title' => $p->post_title,
         'meta' => '',
         'url' => get_permalink($p->ID),
       ];
@@ -1986,9 +2296,12 @@ class Plugin {
 
   public function ajax_get_post_types() {
     check_ajax_referer('cffp', 'nonce');
-    $pts = get_post_types(['public'=>true], 'objects');
+
+    $pts = get_post_types(['show_ui' => true], 'objects');
+
     $out = [];
     foreach ($pts as $pt) {
+      if ($pt->name === 'cff_group') continue;
       $out[] = ['id'=>$pt->name, 'text'=>$pt->labels->singular_name, 'meta'=>$pt->name];
     }
     wp_send_json_success($out);
@@ -2110,7 +2423,7 @@ class Plugin {
     if (!$group || $group->post_type !== 'cff_group') return;
 
     $payload = [
-      'version' => '0.13.0',
+      'version' => defined('CFFP_VERSION') ? CFFP_VERSION : '0.0.0',
       'exported_at' => gmdate('c'),
       'post_types' => [],
       'taxonomies' => [],
@@ -2139,7 +2452,7 @@ class Plugin {
     $group_ids = $has_group_filter ? array_filter(array_map('absint', (array) $_REQUEST['cff_export_groups'])) : [];
 
     $payload = [
-      'version' => '0.13.0',
+      'version' => defined('CFFP_VERSION') ? CFFP_VERSION : '0.0.0',
       'exported_at' => gmdate('c'),
       'post_types' => $include_post_types ? get_option('cffp_post_types', []) : [],
       'taxonomies' => $include_taxonomies ? get_option('cffp_taxonomies', []) : [],
@@ -2244,6 +2557,8 @@ class Plugin {
         'has_archive' => $has_archive,
         'show_in_rest' => $show_in_rest,
         'supports' => $supports,
+        'list_thumbnail' => !empty($def['list_thumbnail']),
+        'block_single' => !empty($def['block_single']),
         'taxonomies' => $taxonomies,
         'menu_icon' => $menu_icon,
       ];
@@ -2275,6 +2590,18 @@ class Plugin {
 
   private function sanitize_choice_display($display) {
     $allowed = ['select','checkbox','radio','button_group','true_false'];
+    $key = sanitize_key($display ?? '');
+    return in_array($key, $allowed, true) ? $key : 'select';
+  }
+
+  private function sanitize_relational_type($type) {
+    $allowed = ['post','page','post_and_page','post_type','taxonomy','user'];
+    $key = sanitize_key($type ?? '');
+    return in_array($key, $allowed, true) ? $key : 'post';
+  }
+
+  private function sanitize_relational_display($display) {
+    $allowed = ['select','checkbox','radio'];
     $key = sanitize_key($display ?? '');
     return in_array($key, $allowed, true) ? $key : 'select';
   }

@@ -169,91 +169,103 @@ jQuery(function($){
   /* -------------------------
    * Link picker (internal/custom)
    * ------------------------- */
-  function initLinkPickers($scope){
-    $scope = $scope && $scope.length ? $scope : $(document);
-    $scope.find('.cff-link-picker').each(function(){
-      var $wrap = $(this);
-      var $modeInputs = $wrap.find('input[type=radio][name$="[mode]"]');
-      var $internal = $wrap.find('.cff-link-internal');
-      var $custom = $wrap.find('.cff-link-custom');
-      var $select = $wrap.find('.cff-link-select');
-      var $internalId = $wrap.find('.cff-link-internal-id');
-      var $url = $wrap.find('input[name$="[url]"]');
-      var $title = $wrap.find('input[name$="[title]"]');
+   function initLinkPickers($scope){
+     $scope = $scope && $scope.length ? $scope : $(document);
 
-      function applyMode(mode){
-        var isInternal = (mode === 'internal');
-        $wrap.toggleClass('is-mode-internal', isInternal);
-        $wrap.toggleClass('is-mode-custom', !isInternal);
-        $internal.toggle(isInternal);
-        $custom.toggle(!isInternal);
-      }
+     $scope.find('.cff-link-picker').each(function(){
+       var $wrap = $(this);
 
-      var mode = $modeInputs.filter(':checked').val() || $wrap.data('mode') || 'custom';
-      $modeInputs.filter('[value="' + mode + '"]').prop('checked', true);
-      applyMode(mode);
+       var $modeInputs = $wrap.find('input[type=radio][name$="[mode]"]');
+       var $internal   = $wrap.find('.cff-link-internal');
+       var $custom     = $wrap.find('.cff-link-custom');
+       var $select     = $wrap.find('.cff-link-select');
+       var $internalId = $wrap.find('.cff-link-internal-id');
+       var $url        = $wrap.find('input[name$="[url]"]');
 
-      if ($select.length && $.fn.select2 && !$select.data('select2')) {
-        $select.select2({
-          width: '100%',
-          placeholder: $select.data('placeholder') || 'Search…',
-          allowClear: true,
-          ajax: {
-            delay: 250,
-            transport: function(params, success, failure){
-              var term = params.data.term || '';
-              var postType = $select.data('post-type') || 'any';
-              $.post(CFFP.ajax, {
-                action: 'cff_search_posts',
-                nonce: CFFP.nonce,
-                q: term,
-                post_type: postType
-              }, function(res){
-                if (res && res.success) {
-                  success({ results: res.data });
-                } else {
-                  success({ results: [] });
-                }
-              }, 'json').fail(failure);
-            },
-            processResults: function(data){ return data; }
-          },
-          templateResult: function(item){
-            if (!item.id) return item.text;
-            var meta = item.meta ? ' — ' + item.meta : '';
-            return item.text + meta;
-          },
-          templateSelection: function(item){
-            return item.text || item.id || '';
-          },
-          escapeMarkup: function(m){ return m; }
-        });
-      }
+       // 🔒 TITLE INPUTS — berdiri sendiri
+       var $internalTitle = $wrap.find('.cff-title-internal');
+       var $customTitle   = $wrap.find('.cff-title-custom');
 
-      $select.off('.cffLink');
-      $select.on('select2:select.cffLink', function(e){
-        var data = e.params && e.params.data ? e.params.data : {};
-        $internalId.val(data.id || '');
-        if (data.url) $url.val(data.url);
-        if (data.text) $title.val(data.text);
-        $modeInputs.filter('[value="internal"]').prop('checked', true);
-        applyMode('internal');
-      });
-      $select.on('select2:clear.cffLink', function(){
-        $internalId.val('');
-      });
+       function applyMode(mode){
+         var isInternal = (mode === 'internal');
 
-      $modeInputs.off('.cffLink');
-      $modeInputs.on('change.cffLink', function(){
-        var m = $modeInputs.filter(':checked').val() || 'custom';
-        applyMode(m);
-        if (m === 'custom') {
-          $internalId.val('');
-          if ($select.data('select2')) $select.val(null).trigger('change');
-        }
-      });
-    });
-  }
+         $wrap.toggleClass('is-mode-internal', isInternal);
+         $wrap.toggleClass('is-mode-custom', !isInternal);
+
+         $internal.toggle(isInternal);
+         $custom.toggle(!isInternal);
+
+         // disable title yang tidak aktif
+         if ($internalTitle.length) $internalTitle.prop('disabled', !isInternal);
+         if ($customTitle.length)   $customTitle.prop('disabled', isInternal);
+
+         // custom mode: kosongkan internal_id & select
+         if (!isInternal) {
+           $internalId.val('');
+           if ($select.data('select2')) {
+             $select.val(null).trigger('change');
+           }
+         }
+       }
+
+       // init mode
+       var mode = $modeInputs.filter(':checked').val() || $wrap.data('mode') || 'custom';
+       $modeInputs.filter('[value="' + mode + '"]').prop('checked', true);
+       applyMode(mode);
+
+       // init select2 (TANPA title logic)
+       if ($select.length && $.fn.select2 && !$select.data('select2')) {
+         $select.select2({
+           width: '100%',
+           placeholder: $select.data('placeholder') || 'Search…',
+           allowClear: true,
+           ajax: {
+             delay: 250,
+             transport: function(params, success, failure){
+               var term = params.data && params.data.term ? params.data.term : '';
+               var postType = $select.data('post-type') || 'any';
+
+               $.post(CFFP.ajax, {
+                 action: 'cff_search_posts',
+                 nonce: CFFP.nonce,
+                 q: term,
+                 post_type: postType
+               }, function(res){
+                 success(res && res.success ? { results: res.data } : { results: [] });
+               }, 'json').fail(failure);
+             },
+             processResults: function(data){ return data; }
+           },
+           templateResult: function(item){ return item.text || ''; },
+           templateSelection: function(item){ return item.text || ''; },
+           escapeMarkup: function(m){ return m; }
+         });
+       }
+
+       // select2 events — TANPA TITLE
+       $select.off('.cffLink');
+       $select.on('select2:select.cffLink', function(e){
+         var data = e.params && e.params.data ? e.params.data : {};
+         $internalId.val(data.id || '');
+         if (data.url) $url.val(data.url);
+
+         // auto pindah ke internal mode
+         $modeInputs.filter('[value="internal"]').prop('checked', true);
+         applyMode('internal');
+       });
+
+       $select.on('select2:clear.cffLink', function(){
+         $internalId.val('');
+       });
+
+       // ganti mode manual
+       $modeInputs.off('.cffLink');
+       $modeInputs.on('change.cffLink', function(){
+         var m = $modeInputs.filter(':checked').val() || 'custom';
+         applyMode(m);
+       });
+     });
+   }
 
   /* -------------------------
    * Field accordion

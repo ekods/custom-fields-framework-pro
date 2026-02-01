@@ -102,7 +102,12 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     } elseif ($type === 'url') {
       echo '<input class="widefat" type="url" name="cff_values['.esc_attr($name).']" value="'.esc_attr($val).'"'.$placeholder_attr.$required_attr.'>';
     } elseif ($type === 'relational') {
-      echo '<input class="widefat" type="text" name="cff_values['.esc_attr($name).']" value="'.esc_attr($val).'"'.$placeholder_attr.$required_attr.'>';
+      $rel_type = $f['relational_type'] ?? 'post';
+      $rel_subtype = $f['relational_subtype'] ?? '';
+      $rel_display = $f['relational_display'] ?? 'select';
+      $rel_multiple = !empty($f['relational_multiple']);
+
+      render_relational_input('cff_values['.esc_attr($name).']', $rel_type, $rel_subtype, $rel_display, $val, $rel_multiple, $required_attr);
     } elseif ($type === 'choice') {
       render_choice_input('cff_values['.esc_attr($name).']', $f['choices'] ?? [], $f['choice_display'] ?? '', $val, $required_attr);
     } elseif ($type === 'date_picker' || $type === 'datetime_picker') {
@@ -355,6 +360,16 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         echo '<div class="cff-media-preview">' . cff_media_preview_html($stype, $id) . '</div>';
         echo '<p><button type="button" class="button cff-media-select">Select</button> <button type="button" class="button cff-media-clear">Clear</button></p>';
         echo '</div>';
+      } elseif ($stype === 'relational') {
+        render_relational_input(
+          $name_attr,
+          $s['relational_type'] ?? 'post',
+          $s['relational_subtype'] ?? '',
+          $s['relational_display'] ?? 'select',
+          $v,
+          !empty($s['relational_multiple']),
+          $required_attr
+        );
       } elseif ($stype === 'group') {
         $gsubs = isset($s['sub_fields']) ? $s['sub_fields'] : [];
         $gvals = is_array($v) ? $v : [];
@@ -444,6 +459,16 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
         echo '<div class="cff-group cff-group-nested">';
         render_group_fields($name_attr, $gsubs, $gvals, $post_id);
         echo '</div>';
+      } elseif ($stype === 'relational') {
+        render_relational_input(
+          $name_attr,
+          $s['relational_type'] ?? 'post',
+          $s['relational_subtype'] ?? '',
+          $s['relational_display'] ?? 'select',
+          $v,
+          !empty($s['relational_multiple']),
+          $required_attr
+        );
       } else {
         echo '<input class="widefat" type="text" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$placeholder_attr.$required_attr.'>';
       }
@@ -451,12 +476,30 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
     }
   }
 
+  function cff_normalize_link_scalar($value) {
+    if (is_scalar($value)) {
+      return (string) $value;
+    }
+    return '';
+  }
+
   function render_link_field($name_attr, $value) {
     $link = is_array($value) ? $value : [];
-    $url = $link['url'] ?? '';
-    $title = $link['title'] ?? '';
-    $target = $link['target'] ?? '';
-    $internal_id = isset($link['internal_id']) ? intval($link['internal_id']) : 0;
+
+    $url    = cff_normalize_link_scalar($link['url'] ?? '');
+    $target = cff_normalize_link_scalar($link['target'] ?? '');
+
+    $post_type_filter = sanitize_key($link['post_type_filter'] ?? '');
+    if (!$post_type_filter) $post_type_filter = 'any';
+
+    $internal_id = isset($link['internal_id']) ? absint($link['internal_id']) : 0;
+    $title       = isset($link['title']) ? sanitize_text_field($link['title']) : '';
+
+    // fallback title dari post
+    if (!$title && $internal_id) {
+      $title = get_the_title($internal_id);
+    }
+
     $mode = sanitize_key($link['mode'] ?? '');
     if (!$mode) $mode = $internal_id ? 'internal' : 'custom';
 
@@ -477,18 +520,49 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
     echo '<label><input type="radio" name="' . esc_attr($name_attr) . '[mode]" value="custom" ' . checked($mode, 'custom', false) . '> Custom</label>';
     echo '</div>';
 
+    // INTERNAL
     echo '<div class="cff-link-internal">';
-    echo '<select class="cff-link-select" data-post-type="any" data-placeholder="Search content…">';
-    if ($internal_id) {
-      echo '<option value="' . esc_attr($internal_id) . '" selected>' . esc_html($title ?: ('#' . $internal_id)) . '</option>';
+
+    echo '<div class="cff-link-post-type" style="margin-bottom: 10px;">';
+    echo '<label>' . esc_html__('Filter by post type', 'cff') . '</label>';
+    echo '<select class="cff-input cff-link-post-type-select" name="' . esc_attr($name_attr) . '[post_type_filter]">';
+    echo '<option value="any"' . selected($post_type_filter, 'any', false) . '>All post types</option>';
+
+    $post_types = get_post_types(['public' => true], 'objects');
+    foreach ($post_types as $pt_slug => $pt_obj) {
+      $pt_label = $pt_obj->labels->singular_name ?? $pt_obj->label ?? $pt_slug;
+      echo '<option value="' . esc_attr($pt_slug) . '"' . selected($post_type_filter, $pt_slug, false) . '>' . esc_html($pt_label) . '</option>';
     }
     echo '</select>';
-    echo '<input type="hidden" class="cff-link-internal-id" name="' . esc_attr($name_attr) . '[internal_id]" value="' . esc_attr($internal_id) . '">';
     echo '</div>';
 
+    echo '<select class="cff-link-select" data-post-type="' . esc_attr($post_type_filter) . '" data-placeholder="Search content…">';
+    if ($internal_id) {
+      $select_label = get_the_title($internal_id);
+      if (!$select_label) $select_label = '#' . $internal_id;
+
+      echo '<option value="' . esc_attr($internal_id) . '" selected>' . esc_html($select_label) . '</option>';
+    }
+    echo '</select>';
+
+    echo '<input type="hidden" class="cff-link-internal-id" name="' . esc_attr($name_attr) . '[internal_id]" value="' . esc_attr($internal_id) . '">';
+
+    // NOTE: class input dibedakan
+    echo '<input class="widefat cff-link-title-input cff-title-internal" type="text" placeholder="Title" name="' . esc_attr($name_attr) . '[title]" value="' . esc_attr($title) . '" style="margin-top: 10px;">';
+
+    echo '</div>';
+
+    // CUSTOM
     echo '<div class="cff-link-custom">';
-    echo '<input class="widefat" type="url" placeholder="URL" name="' . esc_attr($name_attr) . '[url]" value="' . esc_attr($url) . '" style="margin-bottom: 10px;">';
-    echo '<input class="widefat" type="text" placeholder="Title" name="' . esc_attr($name_attr) . '[title]" value="' . esc_attr($title) . '">';
+    echo '<div class="cff-link-url">';
+    echo '<input class="widefat cff-url-custom" type="url" placeholder="URL" name="' . esc_attr($name_attr) . '[url]" value="' . esc_attr($url) . '">';
+    echo '</div>';
+
+    // wrapper class dibedakan, input class dibedakan
+    echo '<div class="cff-link-title-wrap">';
+    echo '<input class="widefat cff-link-title-input cff-title-custom" type="text" placeholder="Title" name="' . esc_attr($name_attr) . '[title]" value="' . esc_attr($title) . '" style="margin-top: 10px;">';
+    echo '</div>';
+
     echo '</div>';
 
     echo '<div class="cff-link-target">';
@@ -662,6 +736,207 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
       }
     }
     return $base;
+  }
+
+  function cff_resolve_relational_subtype($rel_type, $rel_subtype) {
+    if ($rel_type === 'post_type') {
+      $resolved = cff_normalize_post_type_slug($rel_subtype);
+      if ($resolved) return $resolved;
+      return 'post';
+    }
+    if ($rel_type === 'taxonomy' && $rel_subtype) {
+      return sanitize_key($rel_subtype);
+    }
+    if ($rel_type === 'taxonomy') {
+      return 'category';
+    }
+    return sanitize_key($rel_subtype ?? '');
+  }
+
+  function cff_normalize_post_type_slug($slug) {
+    $slug = sanitize_key($slug ?? '');
+    if (!$slug) return '';
+    $pt = get_post_type_object($slug);
+    if ($pt) return $pt->name;
+
+    $types = get_post_types(['public' => true], 'objects');
+    foreach ($types as $name => $obj) {
+      if (isset($obj->rewrite['slug']) && sanitize_key($obj->rewrite['slug']) === $slug) {
+        return $name;
+      }
+      $label = $obj->labels->singular_name ?? $obj->labels->name ?? '';
+      if ($label && sanitize_key($label) === $slug) {
+        return $name;
+      }
+    }
+    return '';
+  }
+
+  function render_relational_input($name_attr, $rel_type, $rel_subtype, $rel_display, $value, $rel_multiple, $required_attr) {
+    $rel_subtype = cff_resolve_relational_subtype($rel_type, $rel_subtype);
+    $options = cff_get_relational_items($rel_type, $rel_subtype);
+
+    if (empty($options)) {
+      echo '<div class="cff-muted">' . esc_html__('No items available', 'cff') . '</div>';
+      return;
+    }
+
+    $selected = $rel_multiple ? (is_array($value) ? array_map('strval', $value) : []) : (string)$value;
+
+    if ($rel_display === 'select') {
+      $name_suffix = $rel_multiple ? '[]' : '';
+      $rel_subtype = cff_resolve_relational_subtype($rel_type, $rel_subtype);
+      echo '<select class="widefat cff-relational-select cff-select2" name="'.esc_attr($name_attr).$name_suffix.'"' . ($rel_multiple ? ' multiple' : '') . $required_attr
+        . ' data-placeholder="' . esc_attr__('Select...', 'cff') . '"'
+        . ' data-relational-type="'.esc_attr($rel_type).'"'
+        . ' data-relational-subtype="'.esc_attr($rel_subtype).'"'
+        . ' data-relational-display="'.esc_attr($rel_display).'"'
+        . ' data-relational-multiple="'.($rel_multiple ? '1':'0').'"'
+        . '>';
+      if (!$rel_multiple) echo '<option value="">' . esc_html__('Select...', 'cff') . '</option>';
+      foreach ($options as $id => $title) {
+        $is_selected = $rel_multiple ? in_array((string)$id, $selected, true) : ((string)$selected === (string)$id);
+        $selected_attr = $is_selected ? ' selected' : '';
+        echo '<option value="'.esc_attr($id).'"'.$selected_attr.'>'.esc_html($title).'</option>';
+      }
+      echo '</select>';
+      return;
+    }
+
+    if ($rel_display === 'checkbox' && $rel_multiple) {
+      echo '<div class="cff-relational-checkboxes">';
+      echo '<input type="hidden" name="'.esc_attr($name_attr).'[]" value="__cff_rel_empty__">';
+      foreach ($options as $id => $title) {
+        $checked = in_array((string)$id, $selected, true) ? ' checked' : '';
+        echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'[]" value="'.esc_attr($id).'"'.$checked.'> '.esc_html($title).'</label>';
+      }
+      echo '</div>';
+      return;
+    }
+
+    if ($rel_display === 'radio' && !$rel_multiple) {
+      echo '<div class="cff-relational-radios">';
+      foreach ($options as $id => $title) {
+        $checked = (string)$selected === (string)$id ? ' checked' : '';
+        echo '<label><input type="radio" name="'.esc_attr($name_attr).'" value="'.esc_attr($id).'"'.$checked.$required_attr.'> '.esc_html($title).'</label>';
+      }
+      echo '</div>';
+      return;
+    }
+
+    // Fallback to select
+    $rel_subtype = cff_resolve_relational_subtype($rel_type, $rel_subtype);
+    echo '<select class="widefat cff-relational-select cff-select2" name="'.esc_attr($name_attr).'"'.$required_attr
+      . ' data-placeholder="' . esc_attr__('Select...', 'cff') . '"'
+      . ' data-relational-type="'.esc_attr($rel_type).'"'
+      . ' data-relational-subtype="'.esc_attr($rel_subtype).'"'
+      . ' data-relational-display="'.esc_attr($rel_display).'"'
+      . ' data-relational-multiple="'.($rel_multiple ? '1':'0').'"'
+      . '>';
+    echo '<option value="">' . esc_html__('Select...', 'cff') . '</option>';
+    foreach ($options as $id => $title) {
+      $selected_attr = (string)$selected === (string)$id ? ' selected' : '';
+      echo '<option value="'.esc_attr($id).'"'.$selected_attr.'>'.esc_html($title).'</option>';
+    }
+    echo '</select>';
+  }
+
+  function cff_get_relational_items($type, $subtype = '') {
+    $items = [];
+
+    if ($type === 'post') {
+      // Get posts only
+      $args = [
+        'post_type' => 'post',
+        'post_status' => 'publish',
+        'posts_per_page' => 200,
+        'orderby' => 'title',
+        'order' => 'ASC',
+        'suppress_filters' => false
+      ];
+      $posts = get_posts($args);
+      if (!empty($posts)) {
+        foreach ($posts as $p) {
+          $items[$p->ID] = !empty($p->post_title) ? $p->post_title : '(no title)';
+        }
+      }
+    } elseif ($type === 'page') {
+      // Get pages only
+      $args = [
+        'post_type' => 'page',
+        'post_status' => 'publish',
+        'posts_per_page' => 200,
+        'orderby' => 'title',
+        'order' => 'ASC',
+        'suppress_filters' => false
+      ];
+      $posts = get_posts($args);
+      if (!empty($posts)) {
+        foreach ($posts as $p) {
+          $items[$p->ID] = !empty($p->post_title) ? $p->post_title : '(no title)';
+        }
+      }
+    } elseif ($type === 'post_and_page') {
+      // Get posts and pages
+      $post_types = ['post', 'page'];
+      $args = [
+        'post_type' => $post_types,
+        'post_status' => 'publish',
+        'posts_per_page' => 200,
+        'orderby' => 'title',
+        'order' => 'ASC',
+        'suppress_filters' => false
+      ];
+      $posts = get_posts($args);
+      if (!empty($posts)) {
+        foreach ($posts as $p) {
+          $items[$p->ID] = !empty($p->post_title) ? $p->post_title : '(no title)';
+        }
+      }
+    } elseif ($type === 'post_type' && $post_type = cff_normalize_post_type_slug($subtype)) {
+      // Get items from specific custom post type
+      $args = [
+        'post_type' => $post_type,
+        'post_status' => 'publish',
+        'posts_per_page' => 200,
+        'orderby' => 'title',
+        'order' => 'ASC',
+        'suppress_filters' => false
+      ];
+      $posts = get_posts($args);
+      if (!empty($posts)) {
+        foreach ($posts as $p) {
+          $items[$p->ID] = !empty($p->post_title) ? $p->post_title : '(no title)';
+        }
+      }
+    } elseif ($type === 'taxonomy' && !empty($subtype)) {
+      // Get terms from specific taxonomy
+      $terms = get_terms([
+        'taxonomy' => sanitize_key($subtype),
+        'hide_empty' => false,
+        'number' => 200,
+        'orderby' => 'name',
+      ]);
+      if (!is_wp_error($terms) && !empty($terms)) {
+        foreach ($terms as $term) {
+          $items[$term->term_id] = $term->name;
+        }
+      }
+    } elseif ($type === 'user') {
+      // Get users
+      $users = get_users([
+        'orderby' => 'display_name',
+        'order' => 'ASC',
+        'number' => 200,
+      ]);
+      if (!empty($users)) {
+        foreach ($users as $user) {
+          $items[$user->ID] = $user->display_name;
+        }
+      }
+    }
+
+    return $items;
   }
 
 }
