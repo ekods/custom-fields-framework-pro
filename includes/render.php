@@ -100,7 +100,19 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       echo '<input type="hidden" name="cff_values['.esc_attr($name).']" value="0">';
       echo '<label><input type="checkbox" name="cff_values['.esc_attr($name).']" value="1" '.$checked.$required_attr.'> ' . esc_html($label) . '</label>';
     } elseif ($type === 'url') {
-      echo '<input class="widefat" type="url" name="cff_values['.esc_attr($name).']" value="'.esc_attr($val).'"'.$placeholder_attr.$required_attr.'>';
+      $target_meta_key = $key . '_target';
+      $target_value = get_post_meta($post->ID, $target_meta_key, true);
+      if ($target_value !== '_blank' && ($f['target'] ?? '') === '_blank') {
+        $target_value = '_blank';
+      }
+      render_url_input_with_target(
+        'cff_values[' . $name . ']',
+        'cff_values[' . $name . '_target]',
+        $val,
+        $target_value,
+        $placeholder_attr,
+        $required_attr
+      );
     } elseif ($type === 'relational') {
       $rel_type = $f['relational_type'] ?? 'post';
       $rel_subtype = $f['relational_subtype'] ?? '';
@@ -225,6 +237,15 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     );
   }
 
+  function render_url_input_with_target($name_attr, $target_attr, $value, $target_value, $placeholder_attr, $required_attr) {
+    echo '<input class="widefat" type="url" name="'.esc_attr($name_attr).'" value="'.esc_attr($value).'"'.$placeholder_attr.$required_attr.'>';
+    echo '<div class="cff-row-url-target">';
+    echo '<input type="hidden" name="'.esc_attr($target_attr).'" value="">';
+    echo '<br>';
+    echo '<label><input type="checkbox" name="'.esc_attr($target_attr).'" value="_blank"' . checked($target_value, '_blank', false) . '> Open in new tab</label>';
+    echo '</div>';
+  }
+
   function render_choice_input($name_attr, $choices, $display, $value, $required_attr) {
     $display = sanitize_key($display ?? '');
     $allowed = ['select','checkbox','radio','button_group','true_false'];
@@ -319,9 +340,12 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         $checked = !empty($v) ? 'checked' : '';
         echo '<input type="hidden" name="'.esc_attr($name_attr).'" value="0">';
         echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'" value="1" '.$checked.$required_attr.'> ' . esc_html($label) . '</label>';
-      } elseif ($stype === 'url') {
-        echo '<input class="widefat" type="url" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$placeholder_attr.$required_attr.'>';
-      } elseif ($stype === 'choice') {
+    } elseif ($stype === 'url') {
+      $target_key = $sname . '_target';
+      $target_name_attr = 'cff_values['.$parent.']['.$i.']['.$target_key.']';
+      $target_value = isset($row[$target_key]) ? $row[$target_key] : '';
+      render_url_input_with_target($name_attr, $target_name_attr, $v, $target_value, $placeholder_attr, $required_attr);
+    } elseif ($stype === 'choice') {
         render_choice_input($name_attr, $s['choices'] ?? [], $s['choice_display'] ?? '', $v, $required_attr);
       } elseif ($stype === 'date_picker' || $stype === 'datetime_picker') {
         render_picker_input($name_attr, $v, $placeholder_attr, $required_attr, $stype);
@@ -412,7 +436,10 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
         echo '<input type="hidden" name="'.esc_attr($name_attr).'" value="0">';
         echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'" value="1" '.$checked.$required_attr.'> ' . esc_html($label) . '</label>';
       } elseif ($stype === 'url') {
-        echo '<input class="widefat" type="url" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$placeholder_attr.$required_attr.'>';
+        $target_key = $sname . '_target';
+        $target_name_attr = $parent_prefix . '[' . $sname . '_target]';
+        $target_value = isset($vals[$target_key]) ? $vals[$target_key] : '';
+        render_url_input_with_target($name_attr, $target_name_attr, $v, $target_value, $placeholder_attr, $required_attr);
       } elseif ($stype === 'choice') {
         render_choice_input($name_attr, $s['choices'] ?? [], $s['choice_display'] ?? '', $v, $required_attr);
       } elseif ($stype === 'date_picker' || $stype === 'datetime_picker') {
@@ -567,6 +594,7 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
 
     echo '<div class="cff-link-target">';
     echo '<input type="hidden" name="' . esc_attr($name_attr) . '[target]" value="">';
+    echo '<br>';
     echo '<label><input type="checkbox" name="' . esc_attr($name_attr) . '[target]" value="_blank" ' . checked($target, '_blank', false) . '> Open in new tab</label>';
     echo '</div>';
 
@@ -611,7 +639,10 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
           echo '<input type="hidden" name="'.esc_attr($name_attr).'" value="0">';
           echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'" value="1" '.$checked.$required_attr.'> ' . esc_html($slabel) . '</label>';
         } elseif ($stype === 'url') {
-          echo '<input class="widefat" type="url" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$placeholder_attr.$required_attr.'>';
+          $target_key = $sname . '_target';
+          $target_name_attr = 'cff_values['.$parent.']['.$i.'][fields]['.$sname.'_target]';
+          $target_value = isset($fields[$target_key]) ? $fields[$target_key] : '';
+          render_url_input_with_target($name_attr, $target_name_attr, $v, $target_value, $placeholder_attr, $required_attr);
         } elseif ($stype === 'choice') {
           render_choice_input($name_attr, $sf['choices'] ?? [], $sf['choice_display'] ?? '', $v, $required_attr);
         } elseif ($stype === 'date_picker' || $stype === 'datetime_picker') {

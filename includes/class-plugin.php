@@ -1608,10 +1608,10 @@ class Plugin {
               <label>Placeholder</label>
               <input type="text" class="cff-input cff-placeholder" placeholder="Placeholder" value="{{placeholder}}">
             </div>
-          <div class="cff-row-required">
-            <span class="cff-tools-toggles">
-              <div>
-                <strong>Required</strong>
+            <div class="cff-row-required">
+              <span class="cff-tools-toggles">
+                <div>
+                  <strong>Required</strong>
                 </div>
                 <label class="cff-switch">
                   <input type="checkbox" class="cff-required-toggle">
