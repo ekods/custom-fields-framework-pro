@@ -86,8 +86,9 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       echo '<div class="cff-input">';
     }
 
-    if ($type === 'text') {
-      echo '<input class="widefat" type="text" name="cff_values['.esc_attr($name).']" value="'.esc_attr($val).'"'.$placeholder_attr.$required_attr.'>';
+    if ($type === 'text' || $type === 'number') {
+      $input_type = $type === 'number' ? 'number' : 'text';
+      echo '<input class="widefat" type="'.esc_attr($input_type).'" name="cff_values['.esc_attr($name).']" value="'.esc_attr($val).'"'.$placeholder_attr.$required_attr.'>';
     } elseif ($type === 'textarea') {
       echo '<textarea class="widefat" rows="5" name="cff_values['.esc_attr($name).']"'.$placeholder_attr.$required_attr.'>'.esc_textarea($val).'</textarea>';
     } elseif ($type === 'color') {
@@ -180,6 +181,8 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       echo '</script>';
 
       echo '</div>';
+
+      do_action('cff_after_repeater_render', $plugin, $post, $f);
     } elseif ($type === 'group') {
       $vals = is_array($val) ? $val : [];
       $subs = isset($f['sub_fields']) ? $f['sub_fields'] : [];

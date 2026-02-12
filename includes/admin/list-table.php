@@ -1,11 +1,11 @@
 <?php
+require_once __DIR__ . '/../helpers/field-group-columns.php';
+
 // admin list table untuk CPT cff_group
 add_filter('manage_edit-cff_group_columns', function($cols){
-  // reset biar urutannya mirip ACF
   return [
     'cb'          => $cols['cb'],
     'title'       => __('Title', 'cff'),
-    'cff_desc'    => __('Description', 'cff'),
     'cff_key'     => __('Key', 'cff'),
     'cff_location'=> __('Location', 'cff'),
     'cff_fields'  => __('Fields', 'cff'),
@@ -14,11 +14,6 @@ add_filter('manage_edit-cff_group_columns', function($cols){
 
 add_action('manage_cff_group_posts_custom_column', function($col, $post_id){
   switch ($col) {
-    case 'cff_desc':
-      $desc = get_post_meta($post_id, 'cff_group_description', true);
-      echo esc_html($desc ?: '—');
-      break;
-
     case 'cff_key':
       $key = get_post_meta($post_id, 'cff_group_key', true);
       if (!$key) $key = 'group_' . $post_id;
@@ -26,22 +21,11 @@ add_action('manage_cff_group_posts_custom_column', function($col, $post_id){
       break;
 
     case 'cff_location':
-      $loc = get_post_meta($post_id, 'cff_location_rules', true);
-      if (is_string($loc)) {
-        $tmp = json_decode($loc, true);
-        if (json_last_error() === JSON_ERROR_NONE) $loc = $tmp;
-      }
-      echo esc_html(cffp_location_summary($loc));
+      echo \CFF\cffp_field_group_location_summary($post_id);
       break;
 
     case 'cff_fields':
-      $fields = get_post_meta($post_id, 'cff_fields', true);
-      if (is_string($fields)) {
-        $tmp = json_decode($fields, true);
-        if (json_last_error() === JSON_ERROR_NONE) $fields = $tmp;
-      }
-      $count = is_array($fields) ? count($fields) : 0;
-      echo '<strong>' . (int)$count . '</strong>';
+      echo \CFF\cffp_field_group_fields_count($post_id);
       break;
   }
 }, 10, 2);

@@ -6,6 +6,7 @@ require_once __DIR__ . '/class-activation.php';
 require_once __DIR__ . '/class-deactivation.php';
 require_once __DIR__ . '/class-plugin.php';
 require_once __DIR__ . '/helpers/acf-compat.php';
+require_once __DIR__ . '/helpers/field-group-columns.php';
 
 
 add_action('admin_init', function(){
@@ -14,7 +15,6 @@ add_action('admin_init', function(){
     return [
       'cb'           => $cols['cb'] ?? 'cb',
       'title'        => __('Title', 'cff'),
-      'cff_desc'     => __('Description', 'cff'),
       'cff_key'      => __('Key', 'cff'),
       'cff_location' => __('Location', 'cff'),
       'cff_fields'   => __('Fields', 'cff'),
@@ -24,11 +24,6 @@ add_action('admin_init', function(){
   // columns content (FIX: closure, jadi nggak kena masalah namespace)
   add_action('manage_cff_group_posts_custom_column', function($col, $post_id){
     switch ($col) {
-      case 'cff_desc':
-        $desc = get_post_meta($post_id, 'cff_group_description', true);
-        echo esc_html($desc ?: '—');
-        break;
-
       case 'cff_key':
         $key = get_post_meta($post_id, 'cff_group_key', true);
         if (!$key) $key = 'group_' . $post_id;
@@ -36,21 +31,11 @@ add_action('admin_init', function(){
         break;
 
       case 'cff_location':
-        $loc = get_post_meta($post_id, 'cff_location_rules', true);
-        if (is_string($loc)) {
-          $tmp = json_decode($loc, true);
-          if (json_last_error() === JSON_ERROR_NONE) $loc = $tmp;
-        }
-        echo esc_html(cffp_location_summary($loc));
+        echo cffp_field_group_location_summary($post_id);
         break;
 
       case 'cff_fields':
-        $fields = get_post_meta($post_id, 'cff_fields', true);
-        if (is_string($fields)) {
-          $tmp = json_decode($fields, true);
-          if (json_last_error() === JSON_ERROR_NONE) $fields = $tmp;
-        }
-        echo '<strong>' . (int)(is_array($fields) ? count($fields) : 0) . '</strong>';
+        echo cffp_field_group_fields_count($post_id);
         break;
     }
   }, 10, 2);
@@ -70,11 +55,6 @@ function cffp_cff_group_columns($cols){
 
 function cffp_cff_group_column_content($col, $post_id){
   switch ($col) {
-    case 'cff_desc':
-      $desc = get_post_meta($post_id, 'cff_group_description', true);
-      echo esc_html($desc ?: '—');
-      break;
-
     case 'cff_key':
       $key = get_post_meta($post_id, 'cff_group_key', true);
       if (!$key) $key = 'group_' . $post_id;
@@ -82,48 +62,13 @@ function cffp_cff_group_column_content($col, $post_id){
       break;
 
     case 'cff_location':
-      $loc = get_post_meta($post_id, 'cff_location_rules', true);
-      if (is_string($loc)) {
-        $tmp = json_decode($loc, true);
-        if (json_last_error() === JSON_ERROR_NONE) $loc = $tmp;
-      }
-      echo esc_html(cffp_location_summary($loc));
+      echo cffp_field_group_location_summary($post_id);
       break;
 
     case 'cff_fields':
-      $fields = get_post_meta($post_id, 'cff_fields', true);
-      if (is_string($fields)) {
-        $tmp = json_decode($fields, true);
-        if (json_last_error() === JSON_ERROR_NONE) $fields = $tmp;
-      }
-      $count = is_array($fields) ? count($fields) : 0;
-      echo '<strong>' . (int)$count . '</strong>';
+      echo cffp_field_group_fields_count($post_id);
       break;
   }
-}
-
-function cffp_location_summary($loc){
-  if (empty($loc)) return '—';
-
-  $types = [];
-  if (is_array($loc)) {
-    foreach ($loc as $group) {
-      foreach ((array)$group as $rule) {
-        if (($rule['param'] ?? '') === 'post_type' && !empty($rule['value'])) {
-          $types[] = $rule['value'];
-        }
-      }
-    }
-  }
-  $types = array_values(array_unique(array_filter($types)));
-  if (!$types) return __('Various', 'cff');
-
-  $labels = [];
-  foreach ($types as $pt) {
-    $obj = get_post_type_object($pt);
-    $labels[] = $obj && !empty($obj->labels->name) ? $obj->labels->name : ucfirst($pt);
-  }
-  return count($labels) === 1 ? $labels[0] : __('Various', 'cff');
 }
 
 function cffp_cff_group_sortable_columns($cols){

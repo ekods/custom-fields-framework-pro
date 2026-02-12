@@ -84,6 +84,7 @@
     var tplField, tplSub, tplLayout;
     var placeholderTypes = {
       text: true,
+      number: true,
       textarea: true,
       url: true,
       link: true
@@ -128,12 +129,13 @@
                 '<div class="cff-row-type-main">' +
                   '<label>Type</label>' +
                   '<select class="cff-input cff-type cff-select2">' +
-                    '<option value="text">Text</option>' +
-                    '<option value="textarea">Textarea</option>' +
-                    '<option value="wysiwyg">WYSIWYG</option>' +
-                    '<option value="color">Color</option>' +
-                    '<option value="url">URL</option>' +
-                    '<option value="link">Link</option>' +
+                  '<option value="text">Text</option>' +
+                  '<option value="number">Number</option>' +
+                  '<option value="textarea">Textarea</option>' +
+                  '<option value="wysiwyg">WYSIWYG</option>' +
+                  '<option value="color">Color</option>' +
+                  '<option value="url">URL</option>' +
+                  '<option value="link">Link</option>' +
                     '<option value="choice">Choice</option>' +
                     '<option value="relational">Relational</option>' +
                     '<option value="relational">Relational</option>' +
@@ -237,8 +239,9 @@
                 '<div class="cff-row-type-main">' +
                   '<label>Type</label>' +
                   '<select class="cff-input cff-stype cff-select2">' +
-                    '<option value="text">Text</option>' +
-                    '<option value="textarea">Textarea</option>' +
+                  '<option value="text">Text</option>' +
+                  '<option value="number">Number</option>' +
+                  '<option value="textarea">Textarea</option>' +
                     '<option value="wysiwyg">WYSIWYG</option>' +
                     '<option value="color">Color</option>' +
                     '<option value="url">URL</option>' +
@@ -772,6 +775,8 @@
     }
 
 
+    var fieldViewMode = 'builder';
+
     function commit(){
       save(readFromDOM());
       $input.trigger('change'); // bantu WP detect dirty
@@ -782,25 +787,93 @@
     }
 
 
+    function setFieldViewMode(mode){
+      fieldViewMode = (mode === 'reorder') ? 'reorder' : 'builder';
+      $root.find('.cff-field-builder-root').attr('data-view-mode', fieldViewMode);
+      $root.find('#cff-field-view-mode').val(fieldViewMode);
+    }
+
+    function refreshReorderList(){
+      var $reorderList = $root.find('#cff-field-reorder-list');
+      var $list = $('#cff-field-list');
+      if (!$list.length || !$reorderList.length) return;
+      $reorderList.empty();
+      $list.find('.cff-field-row').each(function(){
+        var $row = $(this);
+        var key = $row.attr('data-field-key') || $row.data('field-key') || '';
+        var label = $row.find('.cff-label').val() || $row.find('.cff-name').val() || '';
+        if (!label) label = 'Field ' + (key || '');
+        var item = '<li class="cff-field-reorder-item" data-field-key="' + key + '">' +
+          '<span class="dashicons dashicons-menu cff-field-reorder-handle" aria-hidden="true"></span>' +
+          '<span class="cff-field-reorder-label">' + CFF.utils.escapeHtml(label) + '</span>' +
+        '</li>';
+        $reorderList.append(item);
+      });
+    }
+
+    function applyReorderFromReorderList(){
+      var $list = $('#cff-field-list');
+      var $reorderList = $root.find('#cff-field-reorder-list');
+      if (!$list.length || !$reorderList.length) return;
+      var order = [];
+      $reorderList.find('.cff-field-reorder-item').each(function(){
+        var key = $(this).attr('data-field-key');
+        if (key) order.push(key);
+      });
+      if (!order.length) return;
+      order.forEach(function(key){
+        var $row = $list.find('.cff-field-row[data-field-key="' + key + '"]').first();
+        if ($row.length) $row.appendTo($list);
+      });
+      save(readFromDOM());
+      refreshReorderList();
+    }
+
     function render(){
       var data = load();
       $root.empty();
 
+      var builderHead = '<div class="cff-builder-head">' +
+        '<strong>Fields</strong>' +
+        '<button type="button" class="button button-primary" id="cff-add-field">Add Field</button>' +
+      '</div>';
+      var builderHeadRow = '<div class="cff-builder-head-row">' +
+        '<div class="cff-head-spacer"></div>' +
+        '<div class="cff-head">Label</div>' +
+        '<div class="cff-head">Name</div>' +
+        '<div class="cff-head">Type</div>' +
+        '<div class="cff-head">Actions</div>' +
+      '</div>';
+      var viewControl = '<div class="cff-field-view-controls">' +
+        '<label for="cff-field-view-mode">Type</label>' +
+        '<select id="cff-field-view-mode">' +
+          '<option value="builder">Builder</option>' +
+          '<option value="reorder">Reorder</option>' +
+        '</select>' +
+      '</div>';
+
+      var $builderRoot = $('<div class="cff-field-builder-root" data-view-mode="' + fieldViewMode + '"></div>');
+      $builderRoot.append(builderHead);
+      $builderRoot.append(viewControl);
+
+      var $builderView = $('<div class="cff-field-builder-view"></div>');
+      $builderView.append(builderHeadRow);
+
       $root.append(
-        '<div class="cff-builder-head">' +
-          '<strong>Fields</strong>' +
-          '<button type="button" class="button button-primary" id="cff-add-field">Add Field</button>' +
-        '</div>' +
-        '<div class="cff-builder-head-row">' +
-          '<div class="cff-head-spacer"></div>' +
-          '<div class="cff-head">Label</div>' +
-          '<div class="cff-head">Name</div>' +
-          '<div class="cff-head">Type</div>' +
-          '<div class="cff-head">Actions</div>' +
-        '</div>'
+        $builderRoot
       );
 
       var $list = $('<div id="cff-field-list"></div>');
+      $builderView.append($list);
+      $builderRoot.append($builderView);
+
+      var $reorderView = $(
+        '<div class="cff-field-reorder-view">' +
+          '<p class="cff-field-reorder-description">Drag the fields below to update their order inside the builder.</p>' +
+          '<ul id="cff-field-reorder-list" class="cff-field-reorder-list"></ul>' +
+        '</div>'
+      );
+      $builderRoot.append($reorderView);
 
       data.forEach(function(f, i){
         var html = CFF.utils.tmpl(tplField, {
@@ -822,6 +895,9 @@
         togglePlaceholderRow($el, f.type || 'text');
         $el.find('.cff-placeholder').val(f.placeholder || '');
         $el.find('.cff-required-toggle').prop('checked', !!f.required);
+        var fieldKey = f._key || 'cff-field-' + i + '-' + Math.random().toString(36).slice(2);
+        $el.attr('data-field-key', fieldKey);
+        $el.data('field-key', fieldKey);
 
         if (f.type === 'repeater' && Array.isArray(f.sub_fields)) {
           var $sf = $el.find('> .cff-advanced > .cff-subbuilder > .cff-subfields').first();
@@ -844,12 +920,20 @@
         $list.append($el);
       });
 
-      $root.append($list);
+      refreshReorderList();
 
       $('#cff-field-list').sortable({
         handle: '.cff-handle',
-        update: function(){ save(readFromDOM()); }
+        update: function(){ save(readFromDOM()); refreshReorderList(); }
       });
+
+      var $reorderList = $builderRoot.find('#cff-field-reorder-list');
+      $reorderList.sortable({
+        handle: '.cff-field-reorder-handle',
+        update: function(){ applyReorderFromReorderList(); }
+      });
+
+      setFieldViewMode(fieldViewMode);
 
       $root.find('.cff-subfield').each(function(){
         toggleSubGroup($(this));
@@ -1068,6 +1152,10 @@
         });
         togglePlaceholderRow($row, $(this).val());
         save(readFromDOM());
+      });
+
+      $root.on('change', '#cff-field-view-mode', function(){
+        setFieldViewMode($(this).val());
       });
 
       $root.on('change', '.cff-stype', function(){
@@ -1853,9 +1941,11 @@
       var $taxSelect = $root.find('#cff-reorder-taxonomy');
       var $postList = $root.find('.cff-reorder-list[data-kind="post"]');
       var $termList = $root.find('.cff-reorder-list[data-kind="term"]');
+      var $groupList = $root.find('.cff-reorder-list[data-kind="group"]');
 
       $postList.sortable({ handle: '.cff-reorder-handle' });
       $termList.sortable({ handle: '.cff-reorder-handle' });
+      $groupList.sortable({ handle: '.cff-reorder-handle' });
 
       $root.on('click', '#cff-reorder-load-posts', function(){
         loadPosts($postSelect.val(), $postList);
@@ -1872,6 +1962,18 @@
       $root.on('click', '#cff-reorder-save-terms', function(){
         saveTerms($taxSelect.val(), $termList);
       });
+
+      $root.on('click', '#cff-reorder-load-groups', function(){
+        loadGroups($groupList);
+      });
+
+      $root.on('click', '#cff-reorder-save-groups', function(){
+        saveGroups($groupList);
+      });
+
+      if ($groupList.length) {
+        loadGroups($groupList);
+      }
     }
 
     function renderList($list, items){
@@ -1881,13 +1983,23 @@
         return;
       }
       items.forEach(function(it){
-        var meta = it.status ? ('<span class="cff-reorder-meta">' + esc(it.status) + '</span>') : '';
-        if (it.count !== undefined) meta = '<span class="cff-reorder-meta">(' + esc(String(it.count)) + ')</span>';
+        var metaParts = [];
+        if (it.order !== undefined) {
+          metaParts.push('<span class="cff-reorder-meta">Order ' + esc(String(it.order)) + '</span>');
+        }
+        if (it.status) {
+          metaParts.push('<span class="cff-reorder-meta">' + esc(it.status) + '</span>');
+        }
+        if (it.count !== undefined) {
+          metaParts.push('<span class="cff-reorder-meta">(' + esc(String(it.count)) + ')</span>');
+        }
+        var meta = metaParts.join(' ');
+        var metaHtml = meta ? ' ' + meta : '';
         $list.append(
           '<li class="cff-reorder-item" data-id="' + escAttr(String(it.id)) + '">' +
             '<span class="cff-reorder-handle">≡</span>' +
             '<span class="cff-reorder-title">' + esc(it.title || '') + '</span>' +
-            meta +
+            metaHtml +
           '</li>'
         );
       });
@@ -1931,6 +2043,27 @@
         order.push($(this).data('id'));
       });
       $.post(CFFP.ajax, { action:'cff_reorder_save_terms', nonce:CFFP.nonce, taxonomy:taxonomy, order:order }, function(res){
+        if (!res || !res.success) {
+          alert('Failed to save order.');
+        } else {
+          alert('Order saved.');
+        }
+      });
+    }
+
+    function loadGroups($list){
+      $list.html('<li class="cff-reorder-empty">Loading…</li>');
+      $.post(CFFP.ajax, { action:'cff_reorder_get_groups', nonce:CFFP.nonce }, function(res){
+        renderList($list, res && res.success ? res.data : []);
+      });
+    }
+
+    function saveGroups($list){
+      var order = [];
+      $list.find('.cff-reorder-item').each(function(){
+        order.push($(this).data('id'));
+      });
+      $.post(CFFP.ajax, { action:'cff_reorder_save_groups', nonce:CFFP.nonce, order:order }, function(res){
         if (!res || !res.success) {
           alert('Failed to save order.');
         } else {

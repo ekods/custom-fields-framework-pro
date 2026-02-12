@@ -250,6 +250,8 @@ class Plugin {
     add_action('wp_ajax_cff_reorder_save_posts', [$this, 'ajax_reorder_save_posts']);
     add_action('wp_ajax_cff_reorder_get_terms', [$this, 'ajax_reorder_get_terms']);
     add_action('wp_ajax_cff_reorder_save_terms', [$this, 'ajax_reorder_save_terms']);
+    add_action('wp_ajax_cff_reorder_get_groups', [$this, 'ajax_reorder_get_groups']);
+    add_action('wp_ajax_cff_reorder_save_groups', [$this, 'ajax_reorder_save_groups']);
   }
 
   public function admin_menu() {
@@ -778,6 +780,18 @@ class Plugin {
     echo '<p><button type="button" class="button button-primary" id="cff-reorder-save-terms">Save Order</button></p>';
     echo '</div>';
 
+    echo '<hr>';
+
+    echo '<div class="cff-reorder-section">';
+    echo '<h2>Field Groups</h2>';
+    echo '<p class="description" style="margin-bottom:8px;">' . esc_html__('Drag field groups to adjust the order they appear in the editor and frontend.', 'cff') . '</p>';
+    echo '<div class="cff-reorder-controls">';
+    echo '<button type="button" class="button" id="cff-reorder-load-groups">Load Field Groups</button>';
+    echo '</div>';
+    echo '<ul class="cff-reorder-list" data-kind="group"></ul>';
+    echo '<p><button type="button" class="button button-primary" id="cff-reorder-save-groups">Save Order</button></p>';
+    echo '</div>';
+
     echo '</div></div>';
   }
 
@@ -1166,6 +1180,67 @@ class Plugin {
     if (!in_array($tax, $enabled, true)) {
       $enabled[] = $tax;
       update_option('cffp_reorder_taxonomies', $enabled);
+    }
+
+    wp_send_json_success(['count' => count($order)]);
+  }
+
+  public function ajax_reorder_get_groups() {
+    check_ajax_referer('cffp', 'nonce');
+    if (!current_user_can('manage_options')) wp_send_json_error(['message'=>'Forbidden'], 403);
+
+    $groups = get_posts([
+      'post_type' => 'cff_group',
+      'post_status' => 'any',
+      'numberposts' => -1,
+      'orderby' => 'title',
+      'order' => 'ASC',
+      'no_found_rows' => true,
+    ]);
+
+    if (is_wp_error($groups)) wp_send_json_error(['message' => 'Failed to load field groups'], 500);
+
+    usort($groups, function($a, $b){
+      $sa = get_post_meta($a->ID, '_cff_settings', true);
+      $sb = get_post_meta($b->ID, '_cff_settings', true);
+      $oa = intval($sa['presentation']['order'] ?? 0);
+      $ob = intval($sb['presentation']['order'] ?? 0);
+      if ($oa === $ob) return strcasecmp($a->post_title ?? '', $b->post_title ?? '');
+      return ($oa < $ob) ? -1 : 1;
+    });
+
+    $out = [];
+    foreach ($groups as $g) {
+      $settings = get_post_meta($g->ID, '_cff_settings', true);
+      $presentation = is_array($settings['presentation'] ?? []) ? $settings['presentation'] : [];
+      $out[] = [
+        'id' => $g->ID,
+        'title' => $g->post_title ? $g->post_title : '(no title)',
+        'status' => $g->post_status,
+        'order' => intval($presentation['order'] ?? 0),
+      ];
+    }
+
+    wp_send_json_success($out);
+  }
+
+  public function ajax_reorder_save_groups() {
+    check_ajax_referer('cffp', 'nonce');
+    if (!current_user_can('manage_options')) wp_send_json_error(['message'=>'Forbidden'], 403);
+
+    $order = isset($_POST['order']) && is_array($_POST['order']) ? array_map('absint', $_POST['order']) : [];
+    if (!$order) wp_send_json_error(['message'=>'Invalid payload'], 400);
+
+    foreach ($order as $i => $id) {
+      if (!$id) continue;
+      $group = get_post($id);
+      if (!$group || $group->post_type !== 'cff_group') continue;
+      $settings = get_post_meta($id, '_cff_settings', true);
+      if (!is_array($settings)) $settings = [];
+      $presentation = isset($settings['presentation']) && is_array($settings['presentation']) ? $settings['presentation'] : [];
+      $presentation['order'] = $i;
+      $settings['presentation'] = $this->sanitize_presentation($presentation);
+      update_post_meta($id, '_cff_settings', $settings);
     }
 
     wp_send_json_success(['count' => count($order)]);
@@ -1576,6 +1651,7 @@ class Plugin {
                 <label>Type</label>
                 <select class="cff-input cff-type cff-select2">
                   <option value="text">Text</option>
+                  <option value="number">Number</option>
                   <option value="textarea">Textarea</option>
                   <option value="wysiwyg">WYSIWYG</option>
                   <option value="color">Color</option>
@@ -1730,6 +1806,7 @@ class Plugin {
                 <label>Type</label>
                 <select class="cff-input cff-stype cff-select2">
                   <option value="text">Text</option>
+                  <option value="number">Number</option>
                   <option value="textarea">Textarea</option>
                   <option value="wysiwyg">WYSIWYG</option>
                   <option value="color">Color</option>
