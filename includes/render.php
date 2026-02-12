@@ -60,7 +60,12 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
 
     $is_accordion = ($type === 'repeater');
     $field_classes = 'cff-field cff-field-' . $type . ($is_accordion ? ' postbox' : '');
-    echo '<div class="' . esc_attr($field_classes) . '">';
+    $field_key = $name ? sanitize_key($name) : sanitize_key($label);
+    if (!$field_key) {
+      $field_key = 'cff-field-' . wp_rand(1000, 9999);
+    }
+    $field_attr_name = esc_attr($field_key);
+    echo '<div class="' . esc_attr($field_classes) . '" data-field-name="' . esc_attr($field_attr_name) . '">';
     $type_label = ucfirst(str_replace('_', ' ', $type));
     if ($is_accordion) {
       echo '<div class="postbox-header">';
@@ -703,6 +708,30 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
     if (!isset($_POST['cff_content_nonce']) || !wp_verify_nonce($_POST['cff_content_nonce'], 'cff_content_save')) return;
     if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
     if (!current_user_can('edit_post', $post_id)) return;
+
+    if (isset($_POST['cff_group_field_order']) && is_array($_POST['cff_group_field_order'])) {
+      foreach ((array) $_POST['cff_group_field_order'] as $group_id => $raw_order) {
+        $group_id = absint($group_id);
+        if (!$group_id) continue;
+
+        $items = [];
+        $raw_order = wp_unslash($raw_order);
+        if (is_array($raw_order)) {
+          $items = array_map('sanitize_key', $raw_order);
+        } elseif (is_string($raw_order)) {
+          $items = array_map('sanitize_key', explode(',', $raw_order));
+        }
+        $items = array_values(array_filter(array_unique($items)));
+
+        $meta_key = '_cff_group_field_order_' . $group_id;
+        if ($items) {
+          update_post_meta($post_id, $meta_key, $items);
+        } else {
+          delete_post_meta($post_id, $meta_key);
+        }
+      }
+    }
+
     if (!isset($_POST['cff_values']) || !is_array($_POST['cff_values'])) return;
 
     $vals = $_POST['cff_values'];

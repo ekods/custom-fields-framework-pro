@@ -19,7 +19,7 @@
 .cff-flex-add{display:flex;gap:10px;align-items:center;margin-top:10px}
 .cff-pill{display:inline-block;padding:2px 8px;border:1px solid #ddd;border-radius:999px;background:#fff;font-size:12px;color:#444;margin-left:8px}
 .cff-metabox,
-#cff-field-list{display: flex;flex-direction: column; gap: 40px;}
+#cff-field-list{display: flex;flex-direction: column; gap: 20px;}
 .cff-field.postbox{display:block}
 .cff-field.postbox .postbox-header{background:#f6f7f7;border-bottom:1px solid #dcdcde}
 .cff-field.postbox .postbox-header,

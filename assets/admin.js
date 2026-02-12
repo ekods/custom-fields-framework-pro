@@ -1930,6 +1930,157 @@
 })();
 
   /* -------------------------
+   * Metabox Reorder
+   * ------------------------- */
+  CFF.metaboxReorder = (function(){
+    var MAX_RETRIES = 3;
+
+    function init(){
+      $('.cff-metabox').each(function(){
+        var $meta = $(this);
+        if ($meta.data('cffMetaboxInit')) return;
+        var $select = $meta.find('.cff-field-view-mode--metabox');
+        var $reorder = $meta.find('.cff-metabox-reorder');
+        var $list = $reorder.find('.cff-metabox-reorder-list');
+        if (!$select.length || !$reorder.length || !$list.length) return;
+
+        $meta.data('cffMetaboxInit', true);
+        console.log('[CFF.metaboxReorder] init metabox', $meta[0]);
+        buildList($list, $meta, 0);
+        toggleReorder($meta, $select.val());
+
+        $select.on('change', function(){
+          var mode = $(this).val();
+          if (mode === 'reorder') {
+            buildList($list, $meta, 0);
+          }
+          toggleReorder($meta, mode);
+        });
+
+        $list.sortable({
+          handle: '.cff-metabox-reorder-handle',
+          placeholder: 'cff-metabox-reorder-placeholder',
+          update: function(){
+            applyOrder($meta, $list);
+          }
+        });
+      });
+    }
+
+    function getFields($meta){
+      var $fields = $meta.find('.cff-metabox-fields > .cff-field[data-field-name]');
+      if (!$fields.length) {
+        $fields = $meta.find('.cff-field[data-field-name]');
+      }
+      return $fields;
+    }
+
+    function buildList($list, $meta, attempt){
+      console.log('[CFF.metaboxReorder] buildList, meta', $meta[0], 'attempt', attempt);
+      var $fields = getFields($meta);
+      if (!$fields.length) {
+        if (attempt < MAX_RETRIES) {
+          setTimeout(function(){
+            buildList($list, $meta, attempt + 1);
+          }, 150);
+        } else {
+          $list.html('<li class="cff-metabox-reorder-empty">' + esc('No fields could be detected') + '</li>');
+        }
+        return;
+      }
+
+      $list.empty();
+      $fields.each(function(){
+        var $field = $(this);
+        var name = $field.attr('data-field-name') || '';
+        var labelCandidates = [
+          $.trim($field.find('.cff-label-head label').first().text()),
+          $.trim($field.find('.cff-field-head label').first().text()),
+          $.trim($field.find('.hndle').first().text()),
+          $.trim(name)
+        ];
+        var label = '';
+        labelCandidates.some(function(candidate){
+          if (candidate) {
+            label = candidate;
+            return true;
+          }
+          return false;
+        });
+        if ($field.hasClass('cff-field-repeater') && label.indexOf('(Repeater)') === -1) {
+          label += ' (Repeater)';
+        }
+        var item =
+          '<li class="cff-metabox-reorder-item" data-field-name="' + escAttr(name) + '">' +
+            '<span class="dashicons dashicons-menu cff-metabox-reorder-handle" aria-hidden="true"></span>' +
+            '<span class="cff-metabox-reorder-label">' + esc(label) + '</span>' +
+          '</li>';
+        $list.append(item);
+      });
+      syncOrderInput($meta, $list);
+    }
+
+    function applyOrder($meta, $list){
+      var order = [];
+      $list.children('.cff-metabox-reorder-item').each(function(){
+        order.push($(this).attr('data-field-name'));
+      });
+      if (!order.length) return;
+      var $fieldsWrapper = $meta.find('.cff-metabox-fields').first();
+      order.forEach(function(name){
+        var $field = $meta.find('.cff-field[data-field-name="' + name + '"]').first();
+        if ($field.length) {
+          if ($fieldsWrapper.length) {
+            $field.appendTo($fieldsWrapper);
+          } else {
+            $field.appendTo($meta);
+          }
+        }
+      });
+      buildList($list, $meta, 0);
+    }
+
+    function syncOrderInput($meta, $list){
+      var $input = $meta.find('.cff-metabox-order-input').first();
+      if (!$input.length) return;
+      var order = [];
+      $list.children('.cff-metabox-reorder-item').each(function(){
+        var name = $(this).attr('data-field-name') || '';
+        if (name) order.push(name);
+      });
+      $input.val(order.join(','));
+    }
+
+    function toggleReorder($meta, mode){
+      var show = (mode === 'reorder');
+      $meta.toggleClass('is-reorder', show);
+      $meta.find('.cff-metabox-reorder').attr('aria-hidden', !show);
+      if (show) {
+        buildList($meta.find('.cff-metabox-reorder-list').first(), $meta, 0);
+      }
+    }
+
+    function esc(str){
+      return String(str||'').replace(/[&<>"']/g, function(m){
+        return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]);
+      });
+    }
+
+    function escAttr(str){
+      return esc(str).replace(/"/g,'&quot;');
+    }
+
+    return { init:init };
+  })();
+
+  $(document).on('ready cff:refresh', function(){
+    CFF.metaboxReorder.init();
+  });
+  $(window).on('load', function(){
+    CFF.metaboxReorder.init();
+  });
+
+  /* -------------------------
    * Reorder (Posts/Terms)
    * ------------------------- */
   CFF.reorder = (function(){

@@ -2,42 +2,64 @@
 namespace CFF;
 if (!defined('ABSPATH')) exit;
 
+
 function cffp_field_group_fields_count($post_id) {
   $settings = get_post_meta($post_id, '_cff_settings', true);
   $fields = isset($settings['fields']) && is_array($settings['fields']) ? $settings['fields'] : [];
-  return '<strong>' . intval(count((array)$fields)) . '</strong>';
+
+  if (!$fields) {
+    $legacy = get_post_meta($post_id, 'cff_fields_json', true);
+    if (is_string($legacy)) {
+      $decoded = json_decode($legacy, true);
+      if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+        $fields = $decoded;
+      }
+    }
+  }
+
+  return '<strong>' . intval(count($fields)) . '</strong>';
 }
 
 function cffp_field_group_location_summary($post_id) {
   $settings = get_post_meta($post_id, '_cff_settings', true);
-  $location = isset($settings['location']) && is_array($settings['location'])
-    ? $settings['location']
-    : [];
+  $location = isset($settings['location']) && is_array($settings['location']) ? $settings['location'] : [];
 
   if (!$location) {
     $raw = get_post_meta($post_id, 'cff_location_rules', true);
     if (is_string($raw)) {
       $tmp = json_decode($raw, true);
-      if (json_last_error() === JSON_ERROR_NONE) $raw = $tmp;
+      if (json_last_error() === JSON_ERROR_NONE) {
+        $raw = $tmp;
+      }
     }
-    if (is_array($raw)) $location = $raw;
+    if (is_array($raw)) {
+      $location = $raw;
+    }
   }
 
-  $items = [];
+  $labels = [];
   foreach ($location as $group) {
+    $group_items = [];
     foreach ((array)$group as $rule) {
       $item = cffp_format_location_descriptor($rule);
-      if ($item && !in_array($item, $items, true)) {
-        $items[] = $item;
+      if ($item) {
+        $group_items[] = $item;
+      }
+    }
+    if ($group_items) {
+      foreach ($group_items as $item_label) {
+        if (!in_array($item_label, $labels, true)) {
+          $labels[] = $item_label;
+        }
       }
     }
   }
 
-  if (!$items) return '—';
+  if (!$labels) return '—';
 
   $html = '<ul class="cffp-location-summary">';
-  foreach ($items as $item) {
-    $html .= '<li>' . esc_html($item) . '</li>';
+  foreach ($labels as $label) {
+    $html .= '<li>' . esc_html($label) . '</li>';
   }
   $html .= '</ul>';
   return $html;

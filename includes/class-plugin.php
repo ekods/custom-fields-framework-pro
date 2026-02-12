@@ -262,6 +262,7 @@ class Plugin {
     add_submenu_page('cff', __('Taxonomies','cff'), __('Taxonomies','cff'), $cap, 'cff-taxonomies', [$this,'page_taxonomies']);
     add_submenu_page('cff', __('Reorder','cff'), __('Reorder','cff'), $cap, 'cff-reorder', [$this,'page_reorder']);
     add_submenu_page('cff', __('Tools','cff'), __('Tools','cff'), $cap, 'cff-tools', [$this,'page_tools']);
+    add_submenu_page('cff', __('Documentation','cff'), __('Documentation','cff'), $cap, 'cff-docs', [$this,'page_docs']);
   }
 
   public function page_dashboard() {
@@ -284,6 +285,91 @@ class Plugin {
       echo '</tr>';
     }
     echo '</tbody></table>';
+    echo '</div>';
+  }
+
+  public function page_docs() {
+    if (!current_user_can('manage_options')) return;
+
+    $frontend_debug_snippet = <<<'PHP'
+$post_id = get_the_ID();
+$order_candidates = ['gallery_1','huge_image','gallery_2_grid','gallery_2','detail_2','gallery_3_1','gallery_3_2','gallery_3_3'];
+
+if (function_exists('\CFF\cff_get_ordered_field_names')) {
+  echo '<pre>';
+  print_r(\CFF\cff_get_ordered_field_names($post_id, $order_candidates));
+  echo '</pre>';
+}
+PHP;
+
+    $frontend_render_snippet = <<<'PHP'
+$post_id = get_the_ID();
+$order_candidates = ['gallery_1','huge_image','gallery_2_grid','gallery_2','detail_2','gallery_3_1','gallery_3_2','gallery_3_3'];
+$ordered = function_exists('\CFF\cff_get_ordered_field_names')
+  ? \CFF\cff_get_ordered_field_names($post_id, $order_candidates)
+  : [];
+
+foreach ($ordered as $field_name) {
+  echo '<div class="section section-' . esc_attr($field_name) . '">';
+  // render section for $field_name
+  echo '</div>';
+}
+PHP;
+
+    $meta_debug_snippet = <<<'PHP'
+$post_id = get_the_ID();
+$groups = get_posts([
+  'post_type' => 'cff_group',
+  'post_status' => 'publish',
+  'posts_per_page' => -1,
+  'no_found_rows' => true,
+]);
+
+echo '<pre>';
+foreach ($groups as $group) {
+  $meta = get_post_meta($post_id, '_cff_group_field_order_' . (int)$group->ID, true);
+  echo 'Group ' . $group->ID . ' (' . $group->post_title . ")\n";
+  print_r($meta);
+  echo "\n";
+}
+echo '</pre>';
+PHP;
+
+    echo '<div class="wrap cff-admin">';
+    echo '<h1>' . esc_html__('CFF Reorder Documentation', 'cff') . '</h1>';
+    echo '<p class="description">' . esc_html__('This page explains how to debug and render Field Group reorder data on the frontend.', 'cff') . '</p>';
+
+    echo '<div class="postbox" style="max-width:980px;margin-top:16px;"><div class="inside">';
+    echo '<h2 style="margin-top:8px;">' . esc_html__('1. Save reorder in the editor', 'cff') . '</h2>';
+    echo '<ol style="line-height:1.8;">';
+    echo '<li>' . esc_html__('Open a post/page/custom post that has CFF Field Group metaboxes.', 'cff') . '</li>';
+    echo '<li>' . esc_html__('Switch Type to "Reorder".', 'cff') . '</li>';
+    echo '<li>' . esc_html__('Drag fields into the desired order.', 'cff') . '</li>';
+    echo '<li>' . esc_html__('Click Update/Publish so order is stored in post meta.', 'cff') . '</li>';
+    echo '</ol>';
+    echo '<p><strong>' . esc_html__('Stored meta format:', 'cff') . '</strong> <code>_cff_group_field_order_{group_id}</code></p>';
+    echo '</div></div>';
+
+    echo '<div class="postbox" style="max-width:980px;"><div class="inside">';
+    echo '<h2 style="margin-top:8px;">' . esc_html__('2. Frontend debug (ordered field names)', 'cff') . '</h2>';
+    echo '<p>' . esc_html__('Use this snippet in your template to inspect the final ordered field names.', 'cff') . '</p>';
+    echo '<pre style="white-space:pre-wrap;background:#f6f7f7;padding:12px;border:1px solid #dcdcde;">' . esc_html($frontend_debug_snippet) . '</pre>';
+    echo '</div></div>';
+
+    echo '<div class="postbox" style="max-width:980px;"><div class="inside">';
+    echo '<h2 style="margin-top:8px;">' . esc_html__('3. Debug raw meta per Field Group', 'cff') . '</h2>';
+    echo '<p>' . esc_html__('If the ordered names are empty, inspect raw reorder meta for each group.', 'cff') . '</p>';
+    echo '<pre style="white-space:pre-wrap;background:#f6f7f7;padding:12px;border:1px solid #dcdcde;">' . esc_html($meta_debug_snippet) . '</pre>';
+    echo '</div></div>';
+
+    echo '<div class="postbox" style="max-width:980px;"><div class="inside">';
+    echo '<h2 style="margin-top:8px;">' . esc_html__('4. Render sections by reorder', 'cff') . '</h2>';
+    echo '<p>' . esc_html__('Use ordered names to drive your section render sequence.', 'cff') . '</p>';
+    echo '<pre style="white-space:pre-wrap;background:#f6f7f7;padding:12px;border:1px solid #dcdcde;">' . esc_html($frontend_render_snippet) . '</pre>';
+    echo '<p><strong>' . esc_html__('Tip:', 'cff') . '</strong> ' . esc_html__('Keep section mapping (field_name => template section) in one place to avoid order bugs.', 'cff') . '</p>';
+    echo '</div></div>';
+
+    echo '<p style="margin-top:16px;">' . esc_html__('Open this page directly:', 'cff') . ' <code>admin.php?page=cff-docs</code></p>';
     echo '</div>';
   }
 
@@ -818,6 +904,7 @@ class Plugin {
     }
 
     if ($is_post_edit) {
+      wp_enqueue_style('cff-admin', CFFP_URL . 'assets/admin.css', [], $this->asset_ver('assets/admin.css'));
       wp_enqueue_style('cff-post', CFFP_URL . 'assets/post.css', [], $this->asset_ver('assets/post.css'));
 
       wp_enqueue_media();
@@ -828,6 +915,14 @@ class Plugin {
       wp_enqueue_script('cff-select2', CFFP_URL . 'assets/vendor/select2/select2.min.js', ['jquery'], '4.1.0-rc.0', true);
 
       wp_enqueue_script('cff-select2-init', plugin_dir_url(__FILE__) . '../assets/js/select2-init.js', ['jquery','cff-select2'], $this->asset_ver('assets/js/select2-init.js'), true);
+
+      wp_enqueue_script('cff-admin', CFFP_URL . 'assets/admin.js', ['jquery','jquery-ui-sortable'], $this->asset_ver('assets/admin.js'), true);
+      wp_localize_script('cff-admin', 'CFFP', [
+        'ajax' => admin_url('admin-ajax.php'),
+        'nonce' => wp_create_nonce('cffp'),
+        'archives' => $this->get_archive_links(),
+        'relational_post_types' => $this->get_relational_post_types(),
+      ]);
 
       wp_enqueue_script(
         'cff-post',
@@ -2228,9 +2323,31 @@ class Plugin {
         function($post) use ($g) {
           $settings = get_post_meta($g->ID, '_cff_settings', true);
           $fields = isset($settings['fields']) ? $settings['fields'] : [];
+          $fields = $this->get_ordered_group_fields_for_post($post->ID, $g->ID, $fields);
+          $field_order = [];
+          foreach ($fields as $field_item) {
+            $field_name = sanitize_key($field_item['name'] ?? '');
+            if ($field_name) {
+              $field_order[] = $field_name;
+            }
+          }
           wp_nonce_field('cff_content_save', 'cff_content_nonce');
           echo '<div class="cff-metabox">';
+          echo '<div class="cff-field-view-controls cff-metabox-view">';
+          echo '<label>' . esc_html__('Type', 'cff') . '</label>';
+          echo '<select class="cff-field-view-mode cff-field-view-mode--metabox">';
+          echo '<option value="builder">' . esc_html__('Builder', 'cff') . '</option>';
+          echo '<option value="reorder">' . esc_html__('Reorder', 'cff') . '</option>';
+          echo '</select>';
+          echo '</div>';
+          echo '<div class="cff-metabox-reorder" aria-hidden="true">';
+          echo '<p class="cff-metabox-reorder-label">' . esc_html__('Drag the fields below to update their order.', 'cff') . '</p>';
+          echo '<ul class="cff-metabox-reorder-list"></ul>';
+          echo '<input type="hidden" class="cff-metabox-order-input" name="cff_group_field_order[' . intval($g->ID) . ']" value="' . esc_attr(implode(',', $field_order)) . '">';
+          echo '</div>';
+          echo '<div class="cff-metabox-fields">';
           foreach ($fields as $f) $this->render_field($post, $f);
+          echo '</div>';
           echo '</div>';
         },
         $post_type,
@@ -2245,6 +2362,40 @@ class Plugin {
         });
       }
     }
+  }
+
+  private function get_ordered_group_fields_for_post($post_id, $group_id, $fields) {
+    if (!is_array($fields) || !$fields) return [];
+
+    $meta_key = '_cff_group_field_order_' . intval($group_id);
+    $saved = get_post_meta($post_id, $meta_key, true);
+    if (is_string($saved)) {
+      $saved = array_filter(array_map('sanitize_key', explode(',', $saved)));
+    }
+    if (!is_array($saved) || !$saved) {
+      return $fields;
+    }
+
+    $rank = [];
+    foreach ($saved as $idx => $name) {
+      if (!isset($rank[$name])) {
+        $rank[$name] = $idx;
+      }
+    }
+
+    usort($fields, function($a, $b) use ($rank) {
+      $name_a = sanitize_key($a['name'] ?? '');
+      $name_b = sanitize_key($b['name'] ?? '');
+      $has_a = array_key_exists($name_a, $rank);
+      $has_b = array_key_exists($name_b, $rank);
+
+      if ($has_a && $has_b) return $rank[$name_a] <=> $rank[$name_b];
+      if ($has_a) return -1;
+      if ($has_b) return 1;
+      return 0;
+    });
+
+    return $fields;
   }
 
   private function get_groups_for_context($post) {
