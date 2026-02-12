@@ -263,6 +263,23 @@ class Plugin {
     add_submenu_page('cff', __('Reorder','cff'), __('Reorder','cff'), $cap, 'cff-reorder', [$this,'page_reorder']);
     add_submenu_page('cff', __('Tools','cff'), __('Tools','cff'), $cap, 'cff-tools', [$this,'page_tools']);
     add_submenu_page('cff', __('Documentation','cff'), __('Documentation','cff'), $cap, 'cff-docs', [$this,'page_docs']);
+
+    $post_types = get_post_types(['show_ui' => true, '_builtin' => false], 'objects');
+    foreach ($post_types as $post_type => $obj) {
+      if ($post_type === 'cff_group') continue;
+      $submenu_slug = 'cff-reorder-' . $post_type;
+      add_submenu_page(
+        'edit.php?post_type=' . $post_type,
+        __('Reorder', 'cff'),
+        __('Reorder', 'cff'),
+        $cap,
+        $submenu_slug,
+        function() use ($post_type, $obj) {
+          $label = $obj->labels->name ?? ucfirst($post_type);
+          $this->page_reorder_post_type($post_type, $label);
+        }
+      );
+    }
   }
 
   public function page_dashboard() {
@@ -879,6 +896,37 @@ PHP;
     echo '</div>';
 
     echo '</div></div>';
+  }
+
+  public function page_reorder_post_type($post_type, $label = '') {
+    if (!current_user_can('manage_options')) return;
+
+    $post_type = sanitize_key($post_type);
+    if (!$post_type) return;
+    $obj = get_post_type_object($post_type);
+    if (!$obj || empty($obj->show_ui)) return;
+
+    if (!$label) {
+      $label = $obj->labels->name ?? ucfirst($post_type);
+    }
+
+    echo '<div class="wrap cff-admin"><h1>' . esc_html__('Reorder', 'cff') . ' - ' . esc_html($label) . '</h1>';
+    echo '<div id="cff-reorder">';
+    echo '<div class="cff-reorder-section">';
+    echo '<h2>' . esc_html($label) . '</h2>';
+    echo '<div class="cff-reorder-controls">';
+    echo '<label for="cff-reorder-post-type">' . esc_html__('Post Type', 'cff') . '</label> ';
+    echo '<select id="cff-reorder-post-type">';
+    echo '<option value="' . esc_attr($post_type) . '" selected>' . esc_html($label) . '</option>';
+    echo '</select> ';
+    echo '<button type="button" class="button" id="cff-reorder-load-posts">' . esc_html__('Load', 'cff') . '</button>';
+    echo '</div>';
+    echo '<ul class="cff-reorder-list" data-kind="post"></ul>';
+    echo '<p><button type="button" class="button button-primary" id="cff-reorder-save-posts">' . esc_html__('Save Order', 'cff') . '</button></p>';
+    echo '</div>';
+    echo '</div>';
+    echo '<script>document.addEventListener("DOMContentLoaded",function(){var btn=document.getElementById("cff-reorder-load-posts");if(btn){btn.click();}});</script>';
+    echo '</div>';
   }
 
   public function assets($hook) {
