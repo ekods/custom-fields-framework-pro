@@ -252,6 +252,11 @@ class Plugin {
     add_action('wp_ajax_cff_reorder_save_terms', [$this, 'ajax_reorder_save_terms']);
     add_action('wp_ajax_cff_reorder_get_groups', [$this, 'ajax_reorder_get_groups']);
     add_action('wp_ajax_cff_reorder_save_groups', [$this, 'ajax_reorder_save_groups']);
+    add_action('admin_post_cff_duplicate_post', [$this, 'admin_post_duplicate_post']);
+    add_filter('post_row_actions', [$this, 'filter_duplicate_row_action'], 10, 2);
+    add_filter('page_row_actions', [$this, 'filter_duplicate_row_action'], 10, 2);
+    add_filter('single_template', [$this, 'filter_slug_based_single_template']);
+    add_filter('archive_template', [$this, 'filter_slug_based_archive_template']);
   }
 
   public function admin_menu() {
@@ -423,22 +428,27 @@ PHP;
         $supports = isset($_POST['cpt_supports'])
           ? array_values(array_map('sanitize_key', (array) $_POST['cpt_supports']))
           : ['title','editor'];
-          $list_thumbnail = !empty($_POST['cpt_list_thumbnail']);
-          if ($list_thumbnail && !in_array('thumbnail', $supports, true)) {
-            $supports[] = 'thumbnail';
-          }
-          $block_single = !empty($_POST['cpt_block_single']);
+        $list_thumbnail = !empty($_POST['cpt_list_thumbnail']);
+        if ($list_thumbnail && !in_array('thumbnail', $supports, true)) {
+          $supports[] = 'thumbnail';
+        }
+        $block_single = !empty($_POST['cpt_block_single']);
+        $duplicate_status = sanitize_key($_POST['cpt_duplicate_status'] ?? 'active');
+        if (!in_array($duplicate_status, ['active','inactive'], true)) {
+          $duplicate_status = 'active';
+        }
 
           $defs[$key] = [
             'singular' => sanitize_text_field($_POST['cpt_singular'] ?? ''),
-            'plural'   => sanitize_text_field($_POST['cpt_plural'] ?? ''),
-            'slug'     => sanitize_title($_POST['cpt_slug'] ?? $key),
+          'plural'   => sanitize_text_field($_POST['cpt_plural'] ?? ''),
+          'slug'     => sanitize_title($_POST['cpt_slug'] ?? ($_POST['cpt_plural'] ?? $key)),
             'public'   => !empty($_POST['cpt_public']),
             'has_archive' => !empty($_POST['cpt_archive']),
             'show_in_rest' => !empty($_POST['cpt_rest']),
-            'supports' => $supports,
-            'list_thumbnail' => $list_thumbnail,
-            'block_single' => $block_single,
+          'supports' => $supports,
+          'list_thumbnail' => $list_thumbnail,
+          'block_single' => $block_single,
+          'duplicate_status' => $duplicate_status,
           'taxonomies' => isset($_POST['cpt_taxonomies'])
             ? array_values(array_filter(array_map('sanitize_key',(array)$_POST['cpt_taxonomies'])))
             : [],
@@ -470,6 +480,36 @@ PHP;
         }
       }
 
+      if ($action === 'duplicate') {
+        $key = sanitize_key($_POST['cpt_key'] ?? '');
+        if ($key && isset($defs[$key])) {
+          $new_key = $key . '_copy';
+          $i = 2;
+          while (isset($defs[$new_key])) {
+            $new_key = $key . '_copy' . $i;
+            $i++;
+          }
+          $new_def = $defs[$key];
+          $new_def['plural'] = ($new_def['plural'] ?? '') ? $new_def['plural'] . ' Copy' : 'Copy';
+          $new_def['singular'] = ($new_def['singular'] ?? '') ? $new_def['singular'] . ' Copy' : 'Copy';
+          $slug_candidate = sanitize_title($new_def['slug'] ?? $new_key);
+          if (!$slug_candidate) {
+            $slug_candidate = $new_key;
+          }
+          $new_def['slug'] = $slug_candidate;
+          $status = $defs[$key]['duplicate_status'] ?? 'active';
+          if (!in_array($status, ['active','inactive'], true)) {
+            $status = 'active';
+          }
+          $new_def['public'] = ($status === 'active');
+          $defs[$new_key] = $new_def;
+          update_option('cffp_post_types', $defs);
+          $url = admin_url('admin.php?page=cff-post-types&duplicated=1');
+          echo '<div class="notice notice-success"><p>'.esc_html__('Custom Post Type duplicated.','cff').'</p></div>';
+          echo '<script>window.location = ' . wp_json_encode($url) . ';</script>';
+          exit;
+        }
+      }
       if ($action === 'delete') {
         $key = sanitize_key($_POST['cpt_key'] ?? '');
         if ($key && isset($defs[$key])) {
@@ -484,6 +524,7 @@ PHP;
       }
     }
 
+    settings_errors('cffp_post_types');
     // =========================
     // UI LIST
     // =========================
@@ -502,7 +543,7 @@ PHP;
     if (!$defs) {
       echo '<p class="cff-muted">No custom post types yet.</p>';
     } else {
-      echo '<table class="widefat striped"><thead><tr><th>Key</th><th>Label</th><th>Slug</th><th>Icon</th><th>Thumbnail</th><th>Views</th><th>Public</th><th>Actions</th></tr></thead><tbody>';
+      echo '<table class="widefat striped"><thead><tr><th>Key</th><th>Label</th><th>Slug</th><th>Template Files</th><th>Icon</th><th>Thumbnail</th><th>Views</th><th>Public</th><th>Actions</th></tr></thead><tbody>';
 
       foreach ($defs as $key => $def) {
         $label = esc_html(($def['plural'] ?? $key));
@@ -522,29 +563,49 @@ PHP;
         echo '<tr>';
         echo '<td><code>'.esc_html($key).'</code></td>';
         echo '<td>'.$label.'</td>';
-        echo '<td><code>'.esc_html($def['slug'] ?? $key).'</code></td>';
+        $slug_value = $def['slug'] ?? $key;
+        $template_slug = sanitize_title($slug_value ?: $key);
+        $archive_tpl = 'archive-' . ($template_slug ?: 'post-type') . '.php';
+        $single_tpl = 'single-' . ($template_slug ?: 'post-type') . '.php';
+        echo '<td><code>'.esc_html($slug_value).'</code></td>';
+        $has_archive_view = !empty($def['has_archive']);
+        $block_single = !empty($def['block_single']);
+        $tpl_parts = [];
+        if ($has_archive_view) {
+          $tpl_parts[] = '<code>' . esc_html($archive_tpl) . '</code>';
+        }
+        if (!$block_single) {
+          $tpl_parts[] = '<code>' . esc_html($single_tpl) . '</code>';
+        }
+        $tpl_cell = $tpl_parts ? implode('<br>', $tpl_parts) : '<span class="cff-muted">—</span>';
+        echo '<td>' . $tpl_cell . '</td>';
         echo '<td>'.$icon_html.'</td>';
         $thumb_icon = !empty($def['list_thumbnail']) ? '<span class="dashicons dashicons-yes"></span>' : '<span class="dashicons dashicons-no-alt"></span>';
         $archive_icon = !empty($def['has_archive']) ? 'dashicons-yes' : 'dashicons-no-alt';
         $block_icon = !empty($def['block_single']) ? 'dashicons-yes' : 'dashicons-no-alt';
         $views_html = '<div style="font-size:12px;line-height:1.4;">'
           . '<span class="dashicons ' . esc_attr($archive_icon) . '"></span> ' . esc_html__('Archive', 'cff') . '<br>'
-          . '<span class="dashicons ' . esc_attr($block_icon) . '"></span> ' . esc_html__('Block single', 'cff')
+          . '<span class="dashicons ' . esc_attr($block_icon) . '"></span> ' . esc_html__('No single', 'cff')
           . '</div>';
         echo '<td style="text-align:center;">'.$thumb_icon.'</td>';
         echo '<td>'.$views_html.'</td>';
         echo '<td>'.(!empty($def['public']) ? 'Yes' : 'No').'</td>';
         echo '<td>';
-
-        echo '<a class="button button-small" href="'.esc_url($edit_url).'">Edit</a> ';
-
-        echo '<form method="post" style="display:inline">';
+        echo '<div class="cff-cpt-actions" role="group" aria-label="'.esc_attr__('Post type actions','cff').'">';
+        echo '<a class="cff-cpt-action cff-cpt-action-link" href="'.esc_url($edit_url).'" title="'.esc_attr__('Edit','cff').' '.esc_attr($label).'">';
+        echo '<span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="screen-reader-text">'.esc_html__('Edit','cff').'</span>';
+        echo '</a>';
+        echo '<form method="post" class="cff-cpt-action-form">';
         wp_nonce_field('cffp_cpt_save','cffp_cpt_nonce');
-        echo '<input type="hidden" name="cffp_action" value="delete">';
         echo '<input type="hidden" name="cpt_key" value="'.esc_attr($key).'">';
-        echo '<button class="button button-link-delete button-small" type="submit" onclick="return confirm(\'Delete CPT?\')">Delete</button>';
+        echo '<button class="cff-cpt-action" name="cffp_action" value="duplicate" title="'.esc_attr__('Duplicate','cff').' '.esc_attr($label).'">';
+        echo '<span class="dashicons dashicons-admin-page" aria-hidden="true"></span><span class="screen-reader-text">'.esc_html__('Duplicate','cff').'</span>';
+        echo '</button>';
+        echo '<button class="cff-cpt-action cff-cpt-action-destructive" name="cffp_action" value="delete" onclick="return confirm('.wp_json_encode(__('Delete CPT?','cff')).')" title="'.esc_attr__('Delete','cff').' '.esc_attr($label).'">';
+        echo '<span class="dashicons dashicons-trash" aria-hidden="true"></span><span class="screen-reader-text">'.esc_html__('Delete','cff').'</span>';
+        echo '</button>';
         echo '</form>';
-
+        echo '</div>';
         echo '</td>';
         echo '</tr>';
       }
@@ -561,6 +622,7 @@ PHP;
     $arc = $editing ? !empty($edit_def['has_archive']) : true;
     $rst = $editing ? !empty($edit_def['show_in_rest']) : true;
     $block_single = $editing ? !empty($edit_def['block_single']) : false;
+    $dup_status = $editing ? ($edit_def['duplicate_status'] ?? 'active') : 'active';
     $current_key = $editing ? sanitize_key($edit_key) : '';
     $current_slug = $editing ? sanitize_title($edit_def['slug'] ?? $edit_key) : '';
     $menu_position_value = $editing ? intval($edit_def['menu_position'] ?? 25) : 25;
@@ -587,8 +649,8 @@ PHP;
     echo '<tr><th><label>Singular</label></th><td><input name="cpt_singular" class="regular-text" placeholder="Custom Post" value="'.esc_attr($edit_def['singular'] ?? '').'"></td></tr>';
     echo '<tr><th><label>Plural</label></th><td><input name="cpt_plural" class="regular-text" placeholder="Custom Posts" value="'.esc_attr($edit_def['plural'] ?? '').'"></td></tr>';
     echo '<tr class="cff-cpt-slug-row"><th><label>Slug</label></th><td>';
-    echo '<input type="hidden" name="cpt_slug" value="'.esc_attr($edit_def['slug'] ?? '').'">';
-    echo $current_slug ? '<code>'.esc_html($current_slug).'</code>' : '<span class="cff-muted">Synced with Singular label</span>';
+    echo '<input type="text" name="cpt_slug" class="regular-text" placeholder="custom-post" value="'.esc_attr($current_slug).'">';
+    echo '<p class="description">Enter the URL slug for this CPT (auto-generated from the plural label if left blank).</p>';
     echo '</td></tr>';
     if ($langs) {
       echo '<tr><th><label>Translations</label></th><td>';
@@ -616,8 +678,14 @@ PHP;
     echo '</td></tr>';
     echo '<tr><th><label>'.esc_html__('Views', 'cff').'</label></th><td>';
     echo '<label><input type="checkbox" name="cpt_archive" value="1" '.($arc?'checked':'').'> '.esc_html__('Archive view', 'cff').'</label> &nbsp; ';
-    echo '<label><input type="checkbox" name="cpt_block_single" value="1" '.($block_single?'checked':'').'> '.esc_html__('Block single view', 'cff').'</label>';
-    echo '<p class="description">'.esc_html__('Archive view controls whether the CPT has an archive listing. Block single view prevents individual permalinks from being publicly accessible.', 'cff').'</p>';
+    echo '<label><input type="checkbox" name="cpt_block_single" value="1" '.($block_single?'checked':'').'> '.esc_html__('No single view', 'cff').'</label>';
+    echo '<p class="description">'.esc_html__('Archive view controls whether the CPT has an archive listing. No single view prevents individual permalinks from being publicly accessible.', 'cff').'</p>';
+    echo '</td></tr>';
+
+    echo '<tr><th><label>'.esc_html__('Duplicate status', 'cff').'</label></th><td>';
+    echo '<label style="margin-right:12px;"><input type="radio" name="cpt_duplicate_status" value="active" '.($dup_status === 'active' ? 'checked' : '').'> '.esc_html__('Active', 'cff').'</label>';
+    echo '<label style="margin-right:12px;"><input type="radio" name="cpt_duplicate_status" value="inactive" '.($dup_status === 'inactive' ? 'checked' : '').'> '.esc_html__('Non-active', 'cff').'</label>';
+    echo '<p class="description">'.esc_html__('Choose the default publish status when duplicating this CPT.', 'cff').'</p>';
     echo '</td></tr>';
 
     // ✅ ini akan selalu muncul value saat edit
@@ -1800,6 +1868,7 @@ PHP;
                   <option value="color">Color</option>
                   <option value="url">URL</option>
                   <option value="link">Link</option>
+                  <option value="embed">Embed</option>
                   <option value="choice">Choice</option>
                   <option value="relational">Relational</option>
                   <option value="date_picker">Date Picker</option>
@@ -1807,8 +1876,8 @@ PHP;
                   <option value="checkbox">Checkbox</option>
                   <option value="image">Image</option>
                   <option value="file">File</option>
-                  <option value="group">Group</option>
                   <option value="repeater">Repeater</option>
+                  <option value="group">Group</option>
                   <option value="flexible">Flexible Content</option>
                 </select>
               </div>
@@ -1826,6 +1895,15 @@ PHP;
             <div class="cff-row-placeholder">
               <label>Placeholder</label>
               <input type="text" class="cff-input cff-placeholder" placeholder="Placeholder" value="{{placeholder}}">
+            </div>
+            <div class="cff-row-repeater-options">
+              <label>Repeater Layout</label>
+              <select class="cff-input cff-repeater-layout cff-select2">
+                <option value="default">Default (stacked rows)</option>
+                <option value="simple">Simple (remove-only header)</option>
+                <option value="grid">Grid (multi-column)</option>
+              </select>
+              <p class="description">Choose how each repeater row is presented while editing.</p>
             </div>
             <div class="cff-row-required">
               <span class="cff-tools-toggles">
@@ -1955,6 +2033,7 @@ PHP;
                   <option value="color">Color</option>
                   <option value="url">URL</option>
                   <option value="link">Link</option>
+                  <option value="embed">Embed</option>
                   <option value="choice">Choice</option>
                   <option value="relational">Relational</option>
                   <option value="date_picker">Date Picker</option>
@@ -1962,6 +2041,7 @@ PHP;
                   <option value="checkbox">Checkbox</option>
                   <option value="image">Image</option>
                   <option value="file">File</option>
+                  <option value="repeater">Repeater</option>
                   <option value="group">Group</option>
                 </select>
               </div>
@@ -1976,6 +2056,15 @@ PHP;
             <div class="cff-row-placeholder">
               <label>Placeholder</label>
               <input type="text" class="cff-input cff-placeholder" placeholder="Placeholder" value="{{placeholder}}">
+            </div>
+            <div class="cff-row-repeater-options">
+              <label>Repeater Layout</label>
+              <select class="cff-input cff-repeater-layout cff-select2">
+                <option value="default">Default (stacked rows)</option>
+                <option value="simple">Simple (remove-only header)</option>
+                <option value="grid">Grid (multi-column)</option>
+              </select>
+              <p class="description">Choose how each repeater row is presented while editing.</p>
             </div>
             <div class="cff-row-required">
               <span class="cff-tools-toggles">
@@ -2048,6 +2137,14 @@ PHP;
             </div>
           </div>
         </div>
+        <div class="cff-subbuilder cff-subrepeater" data-kind="repeater">
+          <div class="cff-subhead">
+            <strong>Sub Fields (Repeater)</strong>
+            <button type="button" class="button cff-add-sub">Add Sub Field</button>
+          </div>
+          <div class="cff-subfields"></div>
+        </div>
+
         <div class="cff-groupbuilder cff-subgroupbuilder" data-kind="group">
           <div class="cff-subhead">
             <strong>Group Fields</strong>
@@ -2161,6 +2258,7 @@ PHP;
 
       if ($type === 'repeater') {
         $item['sub_fields'] = $this->sanitize_subfields($f['sub_fields'] ?? []);
+        $item['repeater_layout'] = $this->sanitize_repeater_layout($f['repeater_layout'] ?? 'default');
       }
       if ($type === 'flexible') {
         $item['layouts'] = $this->sanitize_layouts($f['layouts'] ?? []);
@@ -2242,6 +2340,15 @@ PHP;
     return sanitize_text_field($value ?? '');
   }
 
+  private function sanitize_repeater_layout($value) {
+    $allowed = ['default','simple','grid'];
+    $layout = sanitize_key($value ?? '');
+    if (!in_array($layout, $allowed, true)) {
+      return 'default';
+    }
+    return $layout;
+  }
+
   private function sanitize_subfields($subs) {
     $out = [];
     if (!is_array($subs)) return $out;
@@ -2265,8 +2372,11 @@ PHP;
         $item['relational_display'] = $this->sanitize_relational_display($s['relational_display'] ?? 'select');
         $item['relational_multiple'] = !empty($s['relational_multiple']);
       }
-      if ($type === 'group') {
+      if ($type === 'group' || $type === 'repeater') {
         $item['sub_fields'] = $this->sanitize_subfields($s['sub_fields'] ?? []);
+        if ($type === 'repeater') {
+          $item['repeater_layout'] = $this->sanitize_repeater_layout($s['repeater_layout'] ?? 'default');
+        }
       }
       if ($type === 'choice') {
         $item['choices'] = $this->sanitize_choices($s['choices'] ?? []);
@@ -2460,6 +2570,21 @@ PHP;
       if ($this->match_location($post, $location)) $out[] = $g;
     }
     return $out;
+  }
+
+  public function get_field_definitions_for_post($post) {
+    $definitions = [];
+    $groups = $this->get_groups_for_context($post);
+    foreach ($groups as $g) {
+      $settings = get_post_meta($g->ID, '_cff_settings', true);
+      $fields = isset($settings['fields']) && is_array($settings['fields']) ? $settings['fields'] : [];
+      foreach ($fields as $field) {
+        $name = sanitize_key($field['name'] ?? '');
+        if (!$name) continue;
+        $definitions[$name] = $field;
+      }
+    }
+    return $definitions;
   }
 
   private function match_location($post, $groups) {
@@ -3452,5 +3577,108 @@ PHP;
   private function is_non_empty($v) {
     if (is_array($v)) return !empty($v);
     return $v !== null && $v !== false && $v !== '';
+  }
+
+  public function filter_duplicate_row_action($actions, $post) {
+    if (!current_user_can('edit_post', $post->ID)) return $actions;
+    $url = wp_nonce_url(
+      add_query_arg([
+        'action' => 'cff_duplicate_post',
+        'post' => $post->ID,
+      ], admin_url('admin-post.php')),
+      'cff-duplicate-post_' . $post->ID
+    );
+    $actions['cff_duplicate'] = '<a href="'.esc_url($url).'">' . esc_html__('Duplicate', 'cff') . '</a>';
+    return $actions;
+  }
+
+  public function admin_post_duplicate_post() {
+    $post_id = isset($_REQUEST['post']) ? absint($_REQUEST['post']) : 0;
+    if (!$post_id) wp_die(__('Invalid post ID.', 'cff'));
+    check_admin_referer('cff-duplicate-post_' . $post_id);
+    if (!current_user_can('edit_post', $post_id)) wp_die(__('You do not have permission to duplicate this post.', 'cff'));
+    $post = get_post($post_id);
+    if (!$post) wp_die(__('Post not found.', 'cff'));
+
+    $new_post = [
+      'post_content' => $post->post_content,
+      'post_excerpt' => $post->post_excerpt,
+      'post_status' => 'draft',
+      'post_title' => $post->post_title ? $post->post_title . ' (Copy)' : __('Draft Copy', 'cff'),
+      'post_type' => $post->post_type,
+      'post_author' => get_current_user_id(),
+      'post_name' => '',
+      'post_parent' => $post->post_parent,
+      'comment_status' => $post->comment_status,
+      'ping_status' => $post->ping_status,
+      'menu_order' => $post->menu_order,
+      'post_password' => '',
+    ];
+    $new_post_id = wp_insert_post($new_post);
+    if (!$new_post_id) wp_die(__('Unable to duplicate post.', 'cff'));
+
+    $meta = get_post_meta($post_id);
+    foreach ($meta as $key => $values) {
+      if ($key === '_edit_lock') continue;
+      foreach ((array)$values as $value) {
+        add_post_meta($new_post_id, $key, maybe_unserialize($value));
+      }
+    }
+
+    $taxonomies = get_object_taxonomies($post->post_type);
+    foreach ($taxonomies as $taxonomy) {
+      $terms = wp_get_object_terms($post_id, $taxonomy, ['fields' => 'ids']);
+      if (!is_wp_error($terms)) {
+        wp_set_object_terms($new_post_id, $terms, $taxonomy);
+      }
+    }
+
+    $redirect = wp_get_referer() ?: admin_url('edit.php?post_type=' . $post->post_type);
+    $redirect = add_query_arg(['duplicated' => $new_post_id], $redirect);
+    wp_safe_redirect($redirect);
+    exit;
+  }
+
+  public function filter_slug_based_single_template($template) {
+    if (!is_singular()) return $template;
+    global $post;
+    if (!$post) return $template;
+    $definition = $this->get_post_type_definition($post->post_type);
+    if (!$definition) return $template;
+    if (!empty($definition['block_single'])) return $template;
+    $slug = $this->get_post_type_slug_from_definition($definition);
+    if (!$slug || $slug === $post->post_type) return $template;
+    $file = 'single-' . sanitize_file_name($slug) . '.php';
+    $located = locate_template($file);
+    if ($located) return $located;
+    return $template;
+  }
+
+  public function filter_slug_based_archive_template($template) {
+    if (!is_post_type_archive()) return $template;
+    $post_type = get_query_var('post_type');
+    if (!$post_type) return $template;
+    $definition = $this->get_post_type_definition($post_type);
+    if (!$definition) return $template;
+    $slug = $this->get_post_type_slug_from_definition($definition);
+    if (!$slug || $slug === $post_type) return $template;
+    $file = 'archive-' . sanitize_file_name($slug) . '.php';
+    $located = locate_template($file);
+    if ($located) return $located;
+    return $template;
+  }
+
+  private function get_post_type_definition($post_type) {
+    $defs = get_option('cffp_post_types', []);
+    if (!is_array($defs) || empty($defs[$post_type])) return [];
+    return (array) $defs[$post_type];
+  }
+
+  private function get_post_type_slug_from_definition($definition) {
+    $slug = trim($definition['slug'] ?? '');
+    if ($slug === '') {
+      $slug = trim($definition['plural'] ?? '');
+    }
+    return sanitize_title($slug ?: '');
   }
 }

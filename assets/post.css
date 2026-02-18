@@ -1,10 +1,95 @@
-.cff-field{display:flex;flex-direction:column;gap:8px;border:1px solid #e5e5e5;background:#fff;border-radius:10px;}
+* {
+    box-sizing: border-box;
+}
+
+.cff-field{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  border:1px solid #dfe6ef;
+  background:#fff;
+  border-radius:14px;
+  padding:16px 18px;
+  box-shadow:0 12px 28px rgba(15,23,42,.06);
+  transition:border-color .2s ease,box-shadow .2s ease;
+  box-sizing: border-box;
+}
+.cff-field:hover{
+  border-color:#cfd8e6;
+  box-shadow:0 14px 32px rgba(15,23,42,.1);
+}
+.cff-field.postbox{
+  display:block;
+  padding:0;
+  box-shadow:none;
+  border-color:#e5e5e5;
+}
 .cff-field.is-collapsed .cff-label{border-color:#eee;background-color:#fff;}
-.cff-label{background:#d8eef9;padding:12px 14px; display: flex; flex-wrap: wrap;gap:20px;row-gap: 5px;}
-.cff-label-head{display:flex;align-items:center;gap:10px;margin-bottom:6px; flex: 0 0 100%;}
-.cff-label label{font-weight:700}
-.cff-input{margin-top:12px;padding: 10px;}
-.cff-label .description{margin-top:2px;color:#56606a;font-size:12px}
+.cff-label{
+  background:linear-gradient(135deg,#f4f7fb,#eef4ff);
+  padding:14px 16px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  row-gap:6px;
+  align-items:flex-start;
+  border-radius:12px;
+  border:1px solid #dfe7f4;
+  box-sizing: border-box;
+}
+.cff-label-head{
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+  flex:1;
+  min-width:0;
+}
+.cff-label label{
+  font-weight:700;
+  margin:0;
+  font-size:15px;
+}
+.cff-input{
+  margin:0;
+  padding:0;
+}
+.cff-field:not(.postbox) .cff-input{
+  margin-top:0;
+  padding-top:14px;
+  border-top:1px solid #eef1f6;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.cff-label .description{
+  margin:0;
+  color:#56606a;
+  font-size:12px;
+}
+.cff-embed-input textarea{
+  min-height:120px;
+  font-family:inherit;
+  font-size:14px;
+  line-height:1.5;
+}
+.cff-embed-preview{
+  margin-top:12px;
+  padding:12px;
+  border:1px dashed #dfe7f4;
+  border-radius:10px;
+  background:#f7f9fc;
+}
+.cff-embed-preview-inner iframe,
+.cff-embed-preview-inner video{
+  width:100%;
+  max-width:100%;
+  border:0;
+}
+.cff-embed-hint{
+  margin:6px 0 0;
+  font-size:12px;
+  color:#56606a;
+}
 .cff-meta-name{text-transform:none}
 .cff-meta-type{text-transform:capitalize}
 .cff-muted{color:#646970}
@@ -20,13 +105,80 @@
 .cff-pill{display:inline-block;padding:2px 8px;border:1px solid #ddd;border-radius:999px;background:#fff;font-size:12px;color:#444;margin-left:8px}
 .cff-metabox,
 #cff-field-list{display: flex;flex-direction: column; gap: 20px;}
-.cff-field.postbox{display:block}
-.cff-field.postbox .postbox-header{background:#f6f7f7;border-bottom:1px solid #dcdcde}
-.cff-field.postbox .postbox-header,
-.cff-field.postbox .handlediv,
-.cff-field.postbox .hndle{cursor:pointer}
-.cff-field.postbox .inside{padding:12px 14px}
+.cff-field.postbox{
+  display:block;
+  padding:0;
+  border:none;
+  box-shadow:none;
+}
+.cff-field.postbox .postbox-header{
+  background:#fff;
+  border:1px solid #dfe6ef;
+  border-bottom:none;
+  border-radius:14px 14px 0 0;
+  padding: 6px 10px 6px 0;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  box-shadow:0 6px 16px rgba(15,23,42,.08);
+  background: linear-gradient(135deg, #f4f7fb, #eef4ff);
+}
+.cff-field.postbox .postbox-header .hndle{
+  margin:0;
+  font-weight:600;
+  font-size:16px;
+}
+.cff-field.postbox .postbox-header .handle-actions{
+  margin-left:auto;
+}
+.cff-field.postbox .postbox-header .handlediv{
+  border:1px solid #dfe6ef;
+  border-radius:10px;
+  background:#fff;
+  padding:6px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.cff-field.postbox .inside{
+  padding:18px;
+  border:1px solid #dfe6ef;
+  border-radius:0 0 12px 12px;
+  background:#fff;
+  margin: 0 !important;
+}
 .cff-field.postbox.closed .inside{display:none}
+
+.cff-field-wysiwyg.postbox .postbox-header,
+.cff-field-group.postbox .postbox-header{
+  background:linear-gradient(120deg,#edf4ff,#fefefe);
+  border-color:#dfe6ef;
+  box-shadow:0 12px 30px rgba(15,23,42,.08);
+  cursor:pointer;
+}
+.cff-field-wysiwyg.postbox .toggle-indicator,
+.cff-field-group.postbox .toggle-indicator{
+  width:18px;
+  height:18px;
+  border-radius:50%;
+  border:1px solid #cfd8e6;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+.cff-field-wysiwyg.postbox .toggle-indicator::before,
+.cff-field-group.postbox .toggle-indicator::before{
+  font-family:dashicons;
+  content:"\f140";
+  font-size:12px;
+  color:#2271b1;
+  transform:rotate(0deg);
+  transition:transform .2s ease;
+}
+.cff-field-wysiwyg.postbox.closed .toggle-indicator::before,
+.cff-field-group.postbox.closed .toggle-indicator::before{
+  transform:rotate(-90deg);
+}
 .cff-link{display:grid;grid-template-columns:1fr;gap:8px;max-width:720px}
 .cff-link .widefat{margin:0}
 .cff-link-target{display:flex;align-items:center;gap:8px}
@@ -63,6 +215,45 @@
   background:#f6f7f7;
   border-bottom:1px solid #dcdcde;
 }
+
+.cff-rep-rows:has(.cff-rep-row-grid){
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.cff-subfield-input:has(.cff-rep-row-head-simple){
+  margin-top: 40px;
+}
+.cff-rep-row:has(.cff-rep-row-head-simple){
+  border: 0;
+  margin: 0;
+  position: relative;
+}
+.cff-repeater:has(.cff-rep-row-head-simple){
+  margin: 0;
+}
+.cff-rep-row-head-simple{
+  justify-content: flex-end;
+  background-color: transparent;
+  border: 0;
+  position: absolute;
+  right: 0;
+  cursor: grab;
+}
+.cff-rep-row-head-simple .cff-rep-left {
+  display:none;
+}
+
+.cff-rep-row-head-simple .cff-subfield-input {
+  border: 0;
+  margin: 0;
+}
+.cff-rep-row-simple .cff-rep-row-body {
+  padding: 0;
+}
+
+
 .cff-rep-row-head .cff-rep-left{display:flex;align-items:center;gap:10px}
 .cff-rep-drag{
   width:28px;height:28px;border:1px solid #dcdcde;border-radius:8px;
@@ -80,6 +271,11 @@
 .cff-rep-row.is-collapsed .cff-rep-row-body{display:none}
 
 .cff-rep-row-body{padding:12px}
+.cff-rep-row-grid .cff-rep-row-body{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:12px;
+}
 .cff-subfield-input{margin-bottom:12px}
 .cff-subfield-input label{font-weight:600;display:block;margin-bottom:6px}
 

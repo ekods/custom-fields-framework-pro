@@ -87,7 +87,8 @@
       number: true,
       textarea: true,
       url: true,
-      link: true
+      link: true,
+      embed: true
     };
 
     function init(){
@@ -136,16 +137,17 @@
                   '<option value="color">Color</option>' +
                   '<option value="url">URL</option>' +
                   '<option value="link">Link</option>' +
+                  '<option value="embed">Embed</option>' +
                     '<option value="choice">Choice</option>' +
                     '<option value="relational">Relational</option>' +
                     '<option value="relational">Relational</option>' +
                     '<option value="date_picker">Date Picker</option>' +
                     '<option value="datetime_picker">Date Time Picker</option>' +
                     '<option value="checkbox">Checkbox</option>' +
-                    '<option value="image">Image</option>' +
-                    '<option value="file">File</option>' +
-                    '<option value="group">Group</option>' +
-                    '<option value="repeater">Repeater</option>' +
+                  '<option value="image">Image</option>' +
+                  '<option value="file">File</option>' +
+                  '<option value="repeater">Repeater</option>' +
+                  '<option value="group">Group</option>' +
                     '<option value="flexible">Flexible Content</option>' +
                   '</select>' +
                 '</div>' +
@@ -160,10 +162,46 @@
               '</div>' +
             '</div>' +
               '<div class="cff-field-meta-row">' +
-                '<div class="cff-row-placeholder">' +
-                  '<label>Placeholder</label>' +
-                  '<input type="text" class="cff-input cff-placeholder" placeholder="Placeholder" value="{{placeholder}}">' +
-                '</div>' +
+          '<div class="cff-row-placeholder">' +
+            '<label>Placeholder</label>' +
+            '<input type="text" class="cff-input cff-placeholder" placeholder="Placeholder" value="{{placeholder}}">' +
+          '</div>' +
+          '<div class="cff-row-repeater-options">' +
+            '<label>Repeater Layout</label>' +
+            '<select class="cff-input cff-repeater-layout cff-select2">' +
+                    '<option value="default">Default (stacked rows)</option>' +
+              '<option value="simple">Simple (Remove-only header)</option>' +
+              '<option value="grid">Grid (multi-column body)</option>' +
+            '</select>' +
+            '<p class="description">Change how each repeater row is rendered in the editor.</p>' +
+          '</div>' +
+        '<div class="cff-row-repeater-options">' +
+          '<label>Repeater Layout</label>' +
+          '<select class="cff-input cff-repeater-layout cff-select2">' +
+                '<option value="default">Default (stacked rows)</option>' +
+            '<option value="simple">Simple (Remove-only header)</option>' +
+            '<option value="grid">Grid (multi-column body)</option>' +
+          '</select>' +
+          '<p class="description">Change how each repeater row is rendered in the editor.</p>' +
+        '</div>' +
+          '<div class="cff-row-repeater-options">' +
+            '<label>Repeater Layout</label>' +
+            '<select class="cff-input cff-repeater-layout cff-select2">' +
+                  '<option value="default">Default (stacked rows)</option>' +
+              '<option value="simple">Simple (Remove-only header)</option>' +
+              '<option value="grid">Grid (multi-column body)</option>' +
+            '</select>' +
+            '<p class="description">Change how each repeater row is rendered in the editor.</p>' +
+          '</div>' +
+              '<div class="cff-row-repeater-options">' +
+                '<label>Repeater Layout</label>' +
+                '<select class="cff-input cff-repeater-layout cff-select2">' +
+                  '<option value="default">Default (stacked rows)</option>' +
+                  '<option value="simple">Simple (Remove-only header)</option>' +
+                  '<option value="grid">Grid (multi-column body)</option>' +
+                '</select>' +
+                '<p class="description">Change how each repeater row is rendered in the editor.</p>' +
+              '</div>' +
                 '<div class="cff-row-required">' +
                   '<span class="cff-tools-toggles">' +
                     '<div>' +
@@ -244,8 +282,9 @@
                   '<option value="textarea">Textarea</option>' +
                     '<option value="wysiwyg">WYSIWYG</option>' +
                     '<option value="color">Color</option>' +
-                    '<option value="url">URL</option>' +
-                    '<option value="link">Link</option>' +
+                  '<option value="url">URL</option>' +
+                  '<option value="link">Link</option>' +
+                  '<option value="embed">Embed</option>' +
                     '<option value="choice">Choice</option>' +
                     '<option value="relational">Relational</option>' +
                     '<option value="date_picker">Date Picker</option>' +
@@ -253,6 +292,7 @@
                     '<option value="checkbox">Checkbox</option>' +
                     '<option value="image">Image</option>' +
                     '<option value="file">File</option>' +
+                    '<option value="repeater">Repeater</option>' +
                     '<option value="group">Group</option>' +
                   '</select>' +
                 '</div>' +
@@ -377,6 +417,7 @@
       $field.find('> .cff-advanced > .cff-subbuilder').toggle(t === 'repeater');
       $field.find('> .cff-advanced > .cff-groupbuilder').toggle(t === 'group');
       $field.find('> .cff-advanced > .cff-flexbuilder').toggle(t === 'flexible');
+      toggleRepeaterOptions($field, t);
     }
 
     function togglePlaceholderRow($element, type){
@@ -385,6 +426,17 @@
       if (!$row.length) return;
       var allowed = placeholderTypes[String(type || '').trim()];
       $row.toggle(!!allowed);
+    }
+
+    function toggleRepeaterOptions($element, type){
+      if (!$element || !$element.length) return;
+      var $row = $element.find('.cff-row-repeater-options').first();
+      if (!$row.length) return;
+      var selected = String(type || '').trim();
+      if (!selected) {
+        selected = ($element.find('.cff-type').val() || $element.find('.cff-stype').val() || '').trim();
+      }
+      $row.toggle(selected === 'repeater');
     }
 
     function toggleSubGroup($sub){
@@ -417,6 +469,18 @@
       if (t === 'group') {
         sortableSubs($builder.find('> .cff-group-fields').first());
         $(document).trigger('cff:refresh', $builder);
+      }
+    }
+
+    function toggleSubRepeater($sub){
+      var t = $sub.find('.cff-stype').val();
+      var $builder = $sub.find('> .cff-subbuilder').first();
+      if (!$builder.length) return;
+      var isRepeater = (t === 'repeater');
+      $sub.toggleClass('is-repeater', isRepeater);
+      $builder.toggle(isRepeater);
+      if (isRepeater) {
+        sortableSubs($builder.find('> .cff-subfields').first());
       }
     }
 
@@ -461,6 +525,7 @@
       }
       $el.find('.cff-stype').val(s.type || 'text');
       toggleSubGroup($el);
+      toggleSubRepeater($el);
       togglePlaceholderRow($el, s.type || 'text');
       renderRelationalPanel($el, {
         relational_type: s.relational_type,
@@ -476,8 +541,18 @@
         s.sub_fields.forEach(function(sf, sfi){ $gf.append(renderSub(sf, sfi)); });
         sortableSubs($gf);
       }
+      if (s.type === 'repeater' && Array.isArray(s.sub_fields)) {
+        var $sr = $el.find('> .cff-subbuilder > .cff-subfields').first();
+        if ($sr.length) {
+          s.sub_fields.forEach(function(sf, sfi){ $sr.append(renderSub(sf, sfi)); });
+          sortableSubs($sr);
+        }
+      }
       renderChoicesPanel($el, s);
       toggleChoicePanel($el, s.type);
+      var subLayoutValue = s.repeater_layout || 'default';
+      $el.find('.cff-repeater-layout').val(subLayoutValue);
+      toggleRepeaterOptions($el, s.type || 'text');
       $(document).trigger('cff:refresh', $el);
       return $el;
     }
@@ -744,6 +819,7 @@
           item.sub_fields = readSubfields(
             $f.find('> .cff-advanced > .cff-subbuilder > .cff-subfields').first()
           );
+          item.repeater_layout = $f.find('.cff-repeater-layout').val() || 'default';
         }
 
         if (type === 'group') {
@@ -893,6 +969,9 @@
         renderRelationalPanel($el, f);
         toggleRelationalPanel($el, f.type);
         togglePlaceholderRow($el, f.type || 'text');
+        var layoutValue = f.repeater_layout || 'default';
+        $el.find('.cff-repeater-layout').val(layoutValue);
+        toggleRepeaterOptions($el, f.type || 'text');
         $el.find('.cff-placeholder').val(f.placeholder || '');
         $el.find('.cff-required-toggle').prop('checked', !!f.required);
         var fieldKey = f._key || 'cff-field-' + i + '-' + Math.random().toString(36).slice(2);
@@ -936,7 +1015,9 @@
       setFieldViewMode(fieldViewMode);
 
       $root.find('.cff-subfield').each(function(){
-        toggleSubGroup($(this));
+        var $sub = $(this);
+        toggleSubGroup($sub);
+        toggleSubRepeater($sub);
       });
 
       $(document).trigger('cff:refresh', $root);
@@ -996,6 +1077,12 @@
           item.sub_fields = readSubfields(
             $sub.find('> .cff-groupbuilder > .cff-group-fields').first()
           );
+        }
+        if (stype === 'repeater') {
+          item.sub_fields = readSubfields(
+            $sub.find('> .cff-subbuilder > .cff-subfields').first()
+          );
+          item.repeater_layout = $sub.find('.cff-repeater-layout').val() || 'default';
         }
 
         subs.push(item);
@@ -1133,6 +1220,10 @@
         save(readFromDOM());
       });
 
+      $root.on('change', '.cff-repeater-layout', function(){
+        save(readFromDOM());
+      });
+
       // Layout name sanitize
       $root.on('input', '.cff-lname', function(){
         $(this).val(CFF.utils.sanitizeName($(this).val()));
@@ -1161,6 +1252,7 @@
       $root.on('change', '.cff-stype', function(){
         var $sub = $(this).closest('.cff-subfield');
         toggleSubGroup($sub);
+        toggleSubRepeater($sub);
         toggleChoicePanel($sub, $(this).val());
         togglePlaceholderRow($sub, $(this).val());
         renderRelationalPanel($sub, {
@@ -1170,6 +1262,7 @@
           relational_multiple: $sub.find('.cff-relational-multiple-toggle').is(':checked'),
         });
         toggleRelationalPanel($sub, $(this).val());
+        toggleRepeaterOptions($sub, $(this).val());
         save(readFromDOM());
       });
 
@@ -1198,22 +1291,25 @@
 
       // Repeater add/remove sub
       $root.on('click', '.cff-add-sub', function(){
-        var $f = $(this).closest('.cff-field-row');
+        var $builder = $(this).closest('.cff-subbuilder');
+        var $container = $builder.find('> .cff-subfields').first();
+        if (!$container.length) return;
         var $sub = renderSub({ label:'', name:'', type:'text' }, Date.now());
-        $f.find('.cff-subfields').append($sub);
+        $container.append($sub);
+        sortableSubs($container);
         save(readFromDOM());
         $(document).trigger('cff:refresh', $sub);
       });
 
       $root.on('click', '.cff-add-group-sub', function(){
-      var $builder = $(this).closest('.cff-groupbuilder');
-      var $sub = renderSub({ label:'', name:'', type:'text' }, Date.now());
-      var $fields = $builder.find('> .cff-group-fields').first();
-      if (!$fields.length) $fields = $builder.find('.cff-group-fields').first();
-      $fields.append($sub);
-      save(readFromDOM());
-      $(document).trigger('cff:refresh', $sub);
-    });
+        var $builder = $(this).closest('.cff-groupbuilder');
+        var $sub = renderSub({ label:'', name:'', type:'text' }, Date.now());
+        var $fields = $builder.find('> .cff-group-fields').first();
+        if (!$fields.length) $fields = $builder.find('.cff-group-fields').first();
+        $fields.append($sub);
+        save(readFromDOM());
+        $(document).trigger('cff:refresh', $sub);
+      });
 
       $root.on('click', '.cff-remove-sub', function(){
         if (!window.confirm('Remove this sub field?')) return;
@@ -1283,6 +1379,19 @@
 
     }
 
+    $(document).on('cff:refresh', function(_, $target){
+      if (!$target || !$target.length) return;
+      var $rowTargets = $target.is('.cff-field-row') ? $target : $target.find('.cff-field-row');
+      $rowTargets.each(function(){
+        var $row = $(this);
+        toggleRepeaterOptions($row, $row.find('.cff-type').val() || 'text');
+      });
+      var $subTargets = $target.is('.cff-subfield') ? $target : $target.find('.cff-subfield');
+      $subTargets.each(function(){
+        var $sub = $(this);
+        toggleRepeaterOptions($sub, $sub.find('.cff-stype').val() || 'text');
+      });
+    });
     return { init:init, render:render };
   })();
 
