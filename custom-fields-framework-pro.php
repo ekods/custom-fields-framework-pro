@@ -2,14 +2,14 @@
 /**
  * Plugin Name: Custom Fields Framework Pro
  * Description: Custom fields with Field Groups, Repeater, Flexible Content, Location rules, and CFF-compatible frontend helpers.
- * Version: 0.15.2
+ * Version: 0.15.3
  * Author: Eko Dwi Saputro
  * Text Domain: https://theteamtheteam.com
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('CFFP_VERSION', '0.15.2');
+define('CFFP_VERSION', '0.15.3');
 define('CFFP_FILE', __FILE__);
 define('CFFP_DIR', plugin_dir_path(__FILE__));
 define('CFFP_URL', plugin_dir_url(__FILE__));
