@@ -28,6 +28,20 @@ class Plugin {
     ]);
   }
 
+  public static function register_options_cpt() {
+    register_post_type('cff_options', [
+      'labels' => [
+        'name' => __('Global Settings', 'cff'),
+        'singular_name' => __('Global Setting', 'cff'),
+      ],
+      'public' => false,
+      'show_ui' => false,
+      'show_in_menu' => false,
+      'supports' => ['title'],
+      'capability_type' => 'post',
+    ]);
+  }
+
   public function register_dynamic_cpts() {
     $defs = get_option('cffp_post_types', []);
     if (!is_array($defs)) return;
@@ -217,6 +231,7 @@ class Plugin {
 
   private function __construct() {
     add_action('init', [__CLASS__, 'register_cpt']);
+    add_action('init', [__CLASS__, 'register_options_cpt'], 15);
     add_action('init', [$this, 'register_dynamic_cpts'], 20);
     add_action('init', [$this, 'register_dynamic_taxonomies'], 25);
     add_action('init', [$this, 'register_term_meta_fields'], 30);
@@ -265,6 +280,7 @@ class Plugin {
     add_submenu_page('cff', __('Field Groups','cff'), __('Field Groups','cff'), $cap, 'edit.php?post_type=cff_group');
     add_submenu_page('cff', __('Post Types','cff'), __('Post Types','cff'), $cap, 'cff-post-types', [$this,'page_post_types']);
     add_submenu_page('cff', __('Taxonomies','cff'), __('Taxonomies','cff'), $cap, 'cff-taxonomies', [$this,'page_taxonomies']);
+    add_submenu_page('cff', __('Global Settings','cff'), __('Global Settings','cff'), $cap, 'cff-global-settings', [$this,'page_global_settings']);
     add_submenu_page('cff', __('Reorder','cff'), __('Reorder','cff'), $cap, 'cff-reorder', [$this,'page_reorder']);
     add_submenu_page('cff', __('Tools','cff'), __('Tools','cff'), $cap, 'cff-tools', [$this,'page_tools']);
     add_submenu_page('cff', __('Documentation','cff'), __('Documentation','cff'), $cap, 'cff-docs', [$this,'page_docs']);
@@ -308,6 +324,60 @@ class Plugin {
     }
     echo '</tbody></table>';
     echo '</div>';
+  }
+
+  private function ensure_global_settings_post() {
+    $saved_id = absint(get_option('cffp_global_settings_post_id', 0));
+    if ($saved_id) {
+      $saved_post = get_post($saved_id);
+      if ($saved_post && $saved_post->post_type === 'cff_options') {
+        return $saved_id;
+      }
+    }
+
+    $existing = get_posts([
+      'post_type' => 'cff_options',
+      'post_status' => 'any',
+      'numberposts' => 1,
+      'no_found_rows' => true,
+      'orderby' => 'ID',
+      'order' => 'ASC',
+    ]);
+    if (!empty($existing[0]->ID)) {
+      $post_id = (int) $existing[0]->ID;
+      update_option('cffp_global_settings_post_id', $post_id);
+      return $post_id;
+    }
+
+    $post_id = wp_insert_post([
+      'post_type' => 'cff_options',
+      'post_status' => 'publish',
+      'post_title' => __('Global Settings', 'cff'),
+    ]);
+
+    if ($post_id && !is_wp_error($post_id)) {
+      update_option('cffp_global_settings_post_id', (int) $post_id);
+      return (int) $post_id;
+    }
+
+    return 0;
+  }
+
+  public function page_global_settings() {
+    if (!current_user_can('manage_options')) return;
+
+    $post_id = $this->ensure_global_settings_post();
+    if (!$post_id) {
+      echo '<div class="wrap"><h1>' . esc_html__('Global Settings', 'cff') . '</h1><p>' . esc_html__('Unable to initialize global settings page.', 'cff') . '</p></div>';
+      return;
+    }
+
+    $url = add_query_arg([
+      'post' => $post_id,
+      'action' => 'edit',
+    ], admin_url('post.php'));
+    wp_safe_redirect($url);
+    exit;
   }
 
   public function page_docs() {
@@ -438,10 +508,16 @@ PHP;
           $duplicate_status = 'active';
         }
 
+          $plural = sanitize_text_field($_POST['cpt_plural'] ?? '');
+          $slug_input = isset($_POST['cpt_slug']) ? sanitize_title(wp_unslash($_POST['cpt_slug'])) : '';
+          if ($slug_input === '') {
+            $slug_input = sanitize_title($plural ?: $key);
+          }
+
           $defs[$key] = [
             'singular' => sanitize_text_field($_POST['cpt_singular'] ?? ''),
-          'plural'   => sanitize_text_field($_POST['cpt_plural'] ?? ''),
-          'slug'     => sanitize_title($_POST['cpt_slug'] ?? ($_POST['cpt_plural'] ?? $key)),
+          'plural'   => $plural,
+          'slug'     => $slug_input,
             'public'   => !empty($_POST['cpt_public']),
             'has_archive' => !empty($_POST['cpt_archive']),
             'show_in_rest' => !empty($_POST['cpt_rest']),
@@ -942,7 +1018,19 @@ PHP;
     echo '<label for="cff-reorder-taxonomy">Taxonomy</label> ';
     echo '<select id="cff-reorder-taxonomy">';
     foreach ($taxonomies as $tax) {
-      echo '<option value="'.esc_attr($tax->name).'">'.esc_html($tax->labels->name).'</option>';
+      $pt_labels = [];
+      foreach ((array) ($tax->object_type ?? []) as $pt_name) {
+        $pt_obj = get_post_type_object($pt_name);
+        if ($pt_obj) {
+          $pt_labels[] = $pt_obj->labels->singular_name ?? $pt_obj->labels->name ?? $pt_name;
+        } else {
+          $pt_labels[] = $pt_name;
+        }
+      }
+      $pt_labels = array_values(array_unique(array_filter($pt_labels)));
+      $tax_label = $tax->labels->name ?? $tax->label ?? $tax->name;
+      $display_label = $pt_labels ? (implode(', ', $pt_labels) . ' - ' . $tax_label) : $tax_label;
+      echo '<option value="'.esc_attr($tax->name).'">'.esc_html($display_label).'</option>';
     }
     echo '</select> ';
     echo '<button type="button" class="button" id="cff-reorder-load-terms">Load</button>';
@@ -1905,16 +1993,55 @@ PHP;
               </select>
               <p class="description">Choose how each repeater row is presented while editing.</p>
             </div>
-            <div class="cff-row-required">
+            <div class="cff-row-datetime-options">
               <span class="cff-tools-toggles">
-                <div>
-                  <strong>Required</strong>
-                </div>
+                <div><strong>Use Time</strong><div class="description">Enable time selector for datetime picker.</div></div>
                 <label class="cff-switch">
-                  <input type="checkbox" class="cff-required-toggle">
+                  <input type="checkbox" class="cff-datetime-use-time-toggle" checked>
                   <span class="cff-slider"></span>
                 </label>
               </span>
+            </div>
+            <div class="cff-row-rules">
+              <div class="cff-row-required">
+                <span class="cff-tools-toggles">
+                  <div>
+                    <strong>Required</strong>
+                  </div>
+                  <label class="cff-switch">
+                    <input type="checkbox" class="cff-required-toggle">
+                    <span class="cff-slider"></span>
+                  </label>
+                </span>
+              </div>
+              <div class="cff-row-conditional">
+                <span class="cff-tools-toggles">
+                  <div><strong>Conditional Logic</strong></div>
+                  <label class="cff-switch">
+                    <input type="checkbox" class="cff-conditional-enabled">
+                    <span class="cff-slider"></span>
+                  </label>
+                </span>
+                <div class="cff-conditional-config" style="margin-top:8px;display:none;">
+                  <p><label>Field Name</label>
+                    <select class="cff-input cff-conditional-field cff-select2">
+                      <option value="">Select field…</option>
+                    </select>
+                  </p>
+                  <p><label>Operator</label>
+                    <select class="cff-input cff-conditional-operator cff-select2">
+                      <option value="==">is equal to</option>
+                      <option value="!=">is not equal to</option>
+                      <option value="contains">contains</option>
+                      <option value="not_contains">does not contain</option>
+                      <option value="empty">is empty</option>
+                      <option value="not_empty">is not empty</option>
+                    </select>
+                  </p>
+                  <p class="cff-conditional-value-row"><label>Value</label>
+                  <input type="text" class="cff-input cff-conditional-value" placeholder="value"></p>
+                </div>
+              </div>
             </div>
           </div>
           <div class="cff-field-choice is-hidden">
@@ -2066,16 +2193,55 @@ PHP;
               </select>
               <p class="description">Choose how each repeater row is presented while editing.</p>
             </div>
-            <div class="cff-row-required">
+            <div class="cff-row-datetime-options">
               <span class="cff-tools-toggles">
-                <div>
-                  <strong>Required</strong>
-                </div>
+                <div><strong>Use Time</strong><div class="description">Enable time selector for datetime picker.</div></div>
                 <label class="cff-switch">
-                  <input type="checkbox" class="cff-required-toggle">
+                  <input type="checkbox" class="cff-datetime-use-time-toggle" checked>
                   <span class="cff-slider"></span>
                 </label>
               </span>
+            </div>
+            <div class="cff-row-rules">
+              <div class="cff-row-required">
+                <span class="cff-tools-toggles">
+                  <div>
+                    <strong>Required</strong>
+                  </div>
+                  <label class="cff-switch">
+                    <input type="checkbox" class="cff-required-toggle">
+                    <span class="cff-slider"></span>
+                  </label>
+                </span>
+              </div>
+              <div class="cff-row-conditional">
+                <span class="cff-tools-toggles">
+                  <div><strong>Conditional Logic</strong></div>
+                  <label class="cff-switch">
+                    <input type="checkbox" class="cff-conditional-enabled">
+                    <span class="cff-slider"></span>
+                  </label>
+                </span>
+                <div class="cff-conditional-config" style="margin-top:8px;display:none;">
+                  <p><label>Field Name</label>
+                    <select class="cff-input cff-conditional-field cff-select2">
+                      <option value="">Select field…</option>
+                    </select>
+                  </p>
+                  <p><label>Operator</label>
+                    <select class="cff-input cff-conditional-operator cff-select2">
+                      <option value="==">is equal to</option>
+                      <option value="!=">is not equal to</option>
+                      <option value="contains">contains</option>
+                      <option value="not_contains">does not contain</option>
+                      <option value="empty">is empty</option>
+                      <option value="not_empty">is not empty</option>
+                    </select>
+                  </p>
+                  <p class="cff-conditional-value-row"><label>Value</label>
+                  <input type="text" class="cff-input cff-conditional-value" placeholder="value"></p>
+                </div>
+              </div>
             </div>
           </div>
           <div class="cff-field-choice is-hidden">
@@ -2205,6 +2371,7 @@ PHP;
           <option value="page_template">Page Template</option>
           <option value="post">Specific Post</option>
           <option value="page">Specific Page</option>
+          <option value="options_page">Options Page</option>
         </select>
 
         <select class="cff-input cff-loc-op">
@@ -2255,10 +2422,17 @@ PHP;
         'required' => !empty($f['required']),
         'placeholder' => $this->sanitize_string_value($f['placeholder'] ?? ''),
       ];
+      $conditional_logic = $this->sanitize_conditional_logic($f['conditional_logic'] ?? []);
+      if ($conditional_logic) {
+        $item['conditional_logic'] = $conditional_logic;
+      }
 
       if ($type === 'repeater') {
         $item['sub_fields'] = $this->sanitize_subfields($f['sub_fields'] ?? []);
         $item['repeater_layout'] = $this->sanitize_repeater_layout($f['repeater_layout'] ?? 'default');
+      }
+      if ($type === 'datetime_picker') {
+        $item['datetime_use_time'] = !array_key_exists('datetime_use_time', $f) ? true : !empty($f['datetime_use_time']);
       }
       if ($type === 'flexible') {
         $item['layouts'] = $this->sanitize_layouts($f['layouts'] ?? []);
@@ -2366,11 +2540,18 @@ PHP;
         'required' => !empty($s['required']),
         'placeholder' => $this->sanitize_string_value($s['placeholder'] ?? ''),
       ];
+      $conditional_logic = $this->sanitize_conditional_logic($s['conditional_logic'] ?? []);
+      if ($conditional_logic) {
+        $item['conditional_logic'] = $conditional_logic;
+      }
       if ($type === 'relational') {
         $item['relational_type'] = $this->sanitize_relational_type($s['relational_type'] ?? 'post');
         $item['relational_subtype'] = $this->sanitize_string_value($s['relational_subtype'] ?? '');
         $item['relational_display'] = $this->sanitize_relational_display($s['relational_display'] ?? 'select');
         $item['relational_multiple'] = !empty($s['relational_multiple']);
+      }
+      if ($type === 'datetime_picker') {
+        $item['datetime_use_time'] = !array_key_exists('datetime_use_time', $s) ? true : !empty($s['datetime_use_time']);
       }
       if ($type === 'group' || $type === 'repeater') {
         $item['sub_fields'] = $this->sanitize_subfields($s['sub_fields'] ?? []);
@@ -2400,6 +2581,30 @@ PHP;
       ];
     }
     return $out;
+  }
+
+  private function sanitize_conditional_logic($logic) {
+    if (!is_array($logic) || empty($logic['enabled'])) {
+      return [];
+    }
+
+    $field = sanitize_key($logic['field'] ?? '');
+    if (!$field) return [];
+
+    $allowed = ['==', '!=', 'contains', 'not_contains', 'empty', 'not_empty'];
+    $operator = in_array(($logic['operator'] ?? '=='), $allowed, true) ? $logic['operator'] : '==';
+    $value = sanitize_text_field($logic['value'] ?? '');
+
+    if (in_array($operator, ['empty', 'not_empty'], true)) {
+      $value = '';
+    }
+
+    return [
+      'enabled' => true,
+      'field' => $field,
+      'operator' => $operator,
+      'value' => $value,
+    ];
   }
 
   private function output_hide_on_screen_css($hide) {
@@ -2631,6 +2836,9 @@ PHP;
   }
 
   private function match_rule($post, $param, $val) {
+    if ($param === 'options_page') {
+      return !empty($post->post_type) && $post->post_type === 'cff_options' && $val === 'global';
+    }
     if ($param === 'post_type') return $post->post_type === $val;
     if ($param === 'page_template') {
       $tpl = get_page_template_slug($post->ID);
@@ -3384,12 +3592,19 @@ PHP;
         'name' => $name,
         'type' => $type,
       ];
+      $conditional_logic = $this->sanitize_conditional_logic($f['conditional_logic'] ?? []);
+      if ($conditional_logic) {
+        $item['conditional_logic'] = $conditional_logic;
+      }
 
       if ($type === 'repeater' || $type === 'group') {
         $item['sub_fields'] = $this->sanitize_subfields($f['sub_fields'] ?? []);
       }
       if ($type === 'flexible') {
         $item['layouts'] = $this->sanitize_layouts($f['layouts'] ?? []);
+      }
+      if ($type === 'datetime_picker') {
+        $item['datetime_use_time'] = !array_key_exists('datetime_use_time', $f) ? true : !empty($f['datetime_use_time']);
       }
 
       $out[] = $item;

@@ -3,6 +3,23 @@ namespace CFF;
 if (!defined('ABSPATH')) exit;
 
 if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
+  function cff_conditional_attrs($field) {
+    $logic = (isset($field['conditional_logic']) && is_array($field['conditional_logic'])) ? $field['conditional_logic'] : [];
+    if (empty($logic['enabled'])) return '';
+
+    $source_field = sanitize_key($logic['field'] ?? '');
+    if (!$source_field) return '';
+
+    $allowed_ops = ['==', '!=', 'contains', 'not_contains', 'empty', 'not_empty'];
+    $operator = in_array(($logic['operator'] ?? '=='), $allowed_ops, true) ? $logic['operator'] : '==';
+    $value = is_scalar($logic['value'] ?? '') ? (string) $logic['value'] : '';
+
+    return ' data-cff-conditional-enabled="1"'
+      . ' data-cff-conditional-field="' . esc_attr($source_field) . '"'
+      . ' data-cff-conditional-operator="' . esc_attr($operator) . '"'
+      . ' data-cff-conditional-value="' . esc_attr($value) . '"';
+  }
+
   function cff_media_preview_html($type, $id) {
     $id = intval($id);
     if (!$id) return '<span class="cff-muted">No file selected</span>';
@@ -65,7 +82,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       $field_key = 'cff-field-' . wp_rand(1000, 9999);
     }
     $field_attr_name = esc_attr($field_key);
-    echo '<div class="' . esc_attr($field_classes) . '" data-field-name="' . esc_attr($field_attr_name) . '">';
+    echo '<div class="' . esc_attr($field_classes) . '" data-field-name="' . esc_attr($field_attr_name) . '"' . cff_conditional_attrs($f) . '>';
     $type_label = ucfirst(str_replace('_', ' ', $type));
     if ($is_accordion) {
       echo '<div class="postbox-header">';
@@ -130,7 +147,8 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       render_choice_input('cff_values['.esc_attr($name).']', $f['choices'] ?? [], $f['choice_display'] ?? '', $val, $required_attr);
     } elseif ($type === 'date_picker' || $type === 'datetime_picker') {
       $name_attr = 'cff_values[' . sanitize_key($name) . ']';
-      render_picker_input($name_attr, $val, $placeholder_attr, $required_attr, $type);
+      $use_time = ($type === 'datetime_picker') ? !array_key_exists('datetime_use_time', $f) || !empty($f['datetime_use_time']) : true;
+      render_picker_input($name_attr, $val, $placeholder_attr, $required_attr, $type, $use_time);
     } elseif ($type === 'link') {
       render_link_field('cff_values[' . $name . ']', $val);
     } elseif ($type === 'wysiwyg') {
@@ -236,8 +254,13 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     echo '</div></div>';
   }
 
-  function render_picker_input($name_attr, $value, $placeholder_attr, $required_attr, $type) {
-    $input_type = $type === 'datetime_picker' ? 'datetime-local' : 'date';
+  function render_picker_input($name_attr, $value, $placeholder_attr, $required_attr, $type, $use_time = true) {
+    $is_datetime = ($type === 'datetime_picker');
+    $use_time = $is_datetime ? !empty($use_time) : false;
+    $input_type = ($is_datetime && $use_time) ? 'datetime-local' : 'date';
+    if (!$use_time && is_string($value) && strlen($value) >= 10) {
+      $value = substr($value, 0, 10);
+    }
     printf(
       '<input class="widefat" type="%s" name="%s" value="%s"%s%s>',
       esc_attr($input_type),
@@ -356,7 +379,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       $label_text = esc_html($label);
       $required_attr = $required ? ' required aria-required="true"' : '';
       if ($required) $label_text .= ' <span class="cff-required-indicator" aria-hidden="true">*</span>';
-      echo '<div class="cff-subfield-input">';
+      echo '<div class="cff-subfield-input"' . cff_conditional_attrs($s) . '>';
       echo '<label>'.$label_text.'</label>';
       if ($stype === 'textarea') {
         echo '<textarea class="widefat" rows="3" name="'.esc_attr($name_attr).'"'.$placeholder_attr.$required_attr.'>'.esc_textarea($v).'</textarea>';
@@ -377,7 +400,8 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     } elseif ($stype === 'choice') {
         render_choice_input($name_attr, $s['choices'] ?? [], $s['choice_display'] ?? '', $v, $required_attr);
       } elseif ($stype === 'date_picker' || $stype === 'datetime_picker') {
-        render_picker_input($name_attr, $v, $placeholder_attr, $required_attr, $stype);
+        $sub_use_time = ($stype === 'datetime_picker') ? !array_key_exists('datetime_use_time', $s) || !empty($s['datetime_use_time']) : true;
+        render_picker_input($name_attr, $v, $placeholder_attr, $required_attr, $stype, $sub_use_time);
       } elseif ($stype === 'link') {
         render_link_field($name_attr, $v);
       } elseif ($stype === 'wysiwyg') {
@@ -472,7 +496,7 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
       $label_text = esc_html($label);
       $required_attr = $required ? ' required aria-required="true"' : '';
       if ($required) $label_text .= ' <span class="cff-required-indicator" aria-hidden="true">*</span>';
-      echo '<div class="cff-subfield-input">';
+      echo '<div class="cff-subfield-input"' . cff_conditional_attrs($s) . '>';
       echo '<label>'.$label_text.'</label>';
       if ($stype === 'textarea') {
         echo '<textarea class="widefat" rows="3" name="'.esc_attr($name_attr).'"'.$placeholder_attr.$required_attr.'>'.esc_textarea($v).'</textarea>';
@@ -493,7 +517,8 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
       } elseif ($stype === 'choice') {
         render_choice_input($name_attr, $s['choices'] ?? [], $s['choice_display'] ?? '', $v, $required_attr);
       } elseif ($stype === 'date_picker' || $stype === 'datetime_picker') {
-        render_picker_input($name_attr, $v, $placeholder_attr, $required_attr, $stype);
+        $sub_use_time = ($stype === 'datetime_picker') ? !array_key_exists('datetime_use_time', $s) || !empty($s['datetime_use_time']) : true;
+        render_picker_input($name_attr, $v, $placeholder_attr, $required_attr, $stype, $sub_use_time);
       } elseif ($stype === 'link') {
         render_link_field($name_attr, $v);
       } elseif ($stype === 'wysiwyg') {
@@ -720,7 +745,7 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
         $label_text = esc_html($slabel);
         $required_attr = $required ? ' required aria-required="true"' : '';
         if ($required) $label_text .= ' <span class="cff-required-indicator" aria-hidden="true">*</span>';
-        echo '<div class="cff-subfield-input">';
+        echo '<div class="cff-subfield-input"' . cff_conditional_attrs($sf) . '>';
         echo '<label>'.$label_text.'</label>';
         if ($stype === 'textarea') {
           echo '<textarea class="widefat" rows="4" name="'.esc_attr($name_attr).'"'.$placeholder_attr.$required_attr.'>'.esc_textarea($v).'</textarea>';
@@ -741,7 +766,8 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
         } elseif ($stype === 'choice') {
           render_choice_input($name_attr, $sf['choices'] ?? [], $sf['choice_display'] ?? '', $v, $required_attr);
         } elseif ($stype === 'date_picker' || $stype === 'datetime_picker') {
-        render_picker_input($name_attr, $v, $placeholder_attr, $required_attr, $stype);
+        $sub_use_time = ($stype === 'datetime_picker') ? !array_key_exists('datetime_use_time', $sf) || !empty($sf['datetime_use_time']) : true;
+        render_picker_input($name_attr, $v, $placeholder_attr, $required_attr, $stype, $sub_use_time);
       } elseif ($stype === 'link') {
         render_link_field($name_attr, $v);
         } elseif ($stype === 'wysiwyg') {

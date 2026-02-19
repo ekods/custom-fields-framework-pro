@@ -418,6 +418,7 @@
       $field.find('> .cff-advanced > .cff-groupbuilder').toggle(t === 'group');
       $field.find('> .cff-advanced > .cff-flexbuilder').toggle(t === 'flexible');
       toggleRepeaterOptions($field, t);
+      toggleDatetimeOptions($field, t);
     }
 
     function togglePlaceholderRow($element, type){
@@ -437,6 +438,17 @@
         selected = ($element.find('.cff-type').val() || $element.find('.cff-stype').val() || '').trim();
       }
       $row.toggle(selected === 'repeater');
+    }
+
+    function toggleDatetimeOptions($element, type){
+      if (!$element || !$element.length) return;
+      var $row = $element.find('.cff-row-datetime-options').first();
+      if (!$row.length) return;
+      var selected = String(type || '').trim();
+      if (!selected) {
+        selected = ($element.find('.cff-type').val() || $element.find('.cff-stype').val() || '').trim();
+      }
+      $row.toggle(selected === 'datetime_picker');
     }
 
     function toggleSubGroup($sub){
@@ -536,6 +548,9 @@
       toggleRelationalPanel($el, s.type || 'text');
       $el.find('.cff-placeholder').val(s.placeholder || '');
       $el.find('.cff-required-toggle').prop('checked', !!s.required);
+      $el.find('.cff-datetime-use-time-toggle').prop('checked', (s.datetime_use_time !== false));
+      toggleDatetimeOptions($el, s.type || 'text');
+      renderConditionalPanel($el, s);
       if (s.type === 'group' && Array.isArray(s.sub_fields)) {
         var $gf = $el.find('> .cff-groupbuilder > .cff-group-fields').first();
         s.sub_fields.forEach(function(sf, sfi){ $gf.append(renderSub(sf, sfi)); });
@@ -619,6 +634,92 @@
       var hasValues = hasChoiceValues($panel);
       var visible = (type === 'choice') || hasValues;
       $panel.toggleClass('is-hidden', !visible);
+    }
+
+    function toggleConditionalValueInput($element){
+      var $config = $element.find('.cff-conditional-config').first();
+      if (!$config.length) return;
+      var op = $config.find('.cff-conditional-operator').val() || '==';
+      var needsValue = !(op === 'empty' || op === 'not_empty');
+      $config.find('.cff-conditional-value-row').toggle(needsValue);
+    }
+
+    function updateConditionalFieldOptions($element, forcedSelected){
+      var $select = $element.find('.cff-conditional-field').first();
+      if (!$select.length) return;
+
+      var current = (forcedSelected !== undefined)
+        ? String(forcedSelected || '')
+        : String($select.val() || '');
+
+      var names = [];
+      if ($element.hasClass('cff-field-row')) {
+        $('#cff-field-list .cff-field-row').each(function(){
+          var n = CFF.utils.sanitizeName($(this).find('.cff-name').val() || '');
+          if (n) names.push(n);
+        });
+      } else {
+        var $container = $element.parent();
+        $container.children('.cff-subfield').each(function(){
+          var n = CFF.utils.sanitizeName($(this).find('.cff-sname').val() || '');
+          if (n) names.push(n);
+        });
+      }
+
+      var seen = {};
+      names = names.filter(function(n){
+        if (seen[n]) return false;
+        seen[n] = true;
+        return true;
+      });
+
+      $select.empty().append('<option value="">Select field…</option>');
+      names.forEach(function(n){
+        $select.append($('<option></option>').attr('value', n).text(n));
+      });
+
+      if (current && !seen[current]) {
+        $select.append($('<option></option>').attr('value', current).text(current + ' (missing)'));
+      }
+
+      $select.val(current);
+    }
+
+    function refreshConditionalFieldDropdowns(){
+      $root.find('.cff-field-row, .cff-subfield').each(function(){
+        updateConditionalFieldOptions($(this));
+      });
+    }
+
+    function renderConditionalPanel($element, data){
+      var $toggle = $element.find('.cff-conditional-enabled').first();
+      var $config = $element.find('.cff-conditional-config').first();
+      if (!$toggle.length || !$config.length) return;
+
+      var logic = (data && typeof data === 'object') ? (data.conditional_logic || {}) : {};
+      var enabled = !!(logic && logic.enabled);
+      $toggle.prop('checked', enabled);
+      $config.toggle(enabled);
+      updateConditionalFieldOptions($element, (logic && logic.field) || '');
+      $config.find('.cff-conditional-operator').val((logic && logic.operator) || '==');
+      $config.find('.cff-conditional-value').val((logic && logic.value) || '');
+      toggleConditionalValueInput($element);
+    }
+
+    function readConditionalLogic($element){
+      var $toggle = $element.find('.cff-conditional-enabled').first();
+      var $config = $element.find('.cff-conditional-config').first();
+      if (!$toggle.length || !$config.length || !$toggle.is(':checked')) return null;
+
+      var field = CFF.utils.sanitizeName($config.find('.cff-conditional-field').val() || '');
+      if (!field) return null;
+
+      return {
+        enabled: true,
+        field: field,
+        operator: $config.find('.cff-conditional-operator').val() || '==',
+        value: $config.find('.cff-conditional-value').val() || ''
+      };
     }
 
     var relationalPostTypesCache = null;
@@ -803,6 +904,13 @@
         var item = { label: label, name: name, type: type };
         item.required = $f.find('.cff-required-toggle').is(':checked');
         item.placeholder = $f.find('.cff-placeholder').val() || '';
+        if (type === 'datetime_picker') {
+          item.datetime_use_time = $f.find('.cff-datetime-use-time-toggle').is(':checked');
+        }
+        var conditionalLogic = readConditionalLogic($f);
+        if (conditionalLogic) {
+          item.conditional_logic = conditionalLogic;
+        }
         if (type === 'choice') {
           item.choices = readChoices($f.find('.cff-choices-list'));
           item.choice_display = $f.find('.cff-choice-display').val() || 'select';
@@ -903,6 +1011,7 @@
       });
       save(readFromDOM());
       refreshReorderList();
+      refreshConditionalFieldDropdowns();
     }
 
     function render(){
@@ -972,8 +1081,11 @@
         var layoutValue = f.repeater_layout || 'default';
         $el.find('.cff-repeater-layout').val(layoutValue);
         toggleRepeaterOptions($el, f.type || 'text');
+        toggleDatetimeOptions($el, f.type || 'text');
         $el.find('.cff-placeholder').val(f.placeholder || '');
         $el.find('.cff-required-toggle').prop('checked', !!f.required);
+        $el.find('.cff-datetime-use-time-toggle').prop('checked', (f.datetime_use_time !== false));
+        renderConditionalPanel($el, f);
         var fieldKey = f._key || 'cff-field-' + i + '-' + Math.random().toString(36).slice(2);
         $el.attr('data-field-key', fieldKey);
         $el.data('field-key', fieldKey);
@@ -1060,6 +1172,13 @@
         };
 
         item.placeholder = $sub.find('.cff-placeholder').val() || '';
+        if (stype === 'datetime_picker') {
+          item.datetime_use_time = $sub.find('.cff-datetime-use-time-toggle').is(':checked');
+        }
+        var conditionalLogic = readConditionalLogic($sub);
+        if (conditionalLogic) {
+          item.conditional_logic = conditionalLogic;
+        }
 
         if (stype === 'choice') {
           item.choices = readChoices($sub.find('.cff-choices-list'));
@@ -1172,6 +1291,7 @@
       $root.on('input', '.cff-name', function(){
         $(this).data('manual', 1);
         $(this).val(CFF.utils.sanitizeName($(this).val()));
+        refreshConditionalFieldDropdowns();
       });
 
       // Label -> auto name
@@ -1188,6 +1308,7 @@
       $root.on('input', '.cff-sname', function(){
         $(this).data('manual', 1);
         $(this).val(CFF.utils.sanitizeName($(this).val()));
+        refreshConditionalFieldDropdowns();
       });
 
       $root.on('input', '.cff-slabel', function(){
@@ -1200,6 +1321,10 @@
 
 
       $root.on('input', '.cff-slabel, .cff-sname, .cff-stype, .cff-placeholder, .cff-choice-label, .cff-choice-value', CFF.utils.debounce(function(){
+        save(readFromDOM());
+      }, 150));
+
+      $root.on('input', '.cff-conditional-value', CFF.utils.debounce(function(){
         save(readFromDOM());
       }, 150));
 
@@ -1224,6 +1349,29 @@
         save(readFromDOM());
       });
 
+      $root.on('change', '.cff-datetime-use-time-toggle', function(){
+        save(readFromDOM());
+      });
+
+      $root.on('change', '.cff-conditional-enabled', function(){
+        var $ctx = $(this).closest('.cff-field-row, .cff-subfield');
+        var enabled = $(this).is(':checked');
+        updateConditionalFieldOptions($ctx);
+        $ctx.find('.cff-conditional-config').first().toggle(enabled);
+        toggleConditionalValueInput($ctx);
+        save(readFromDOM());
+      });
+
+      $root.on('change', '.cff-conditional-field', function(){
+        save(readFromDOM());
+      });
+
+      $root.on('change', '.cff-conditional-operator', function(){
+        var $ctx = $(this).closest('.cff-field-row, .cff-subfield');
+        toggleConditionalValueInput($ctx);
+        save(readFromDOM());
+      });
+
       // Layout name sanitize
       $root.on('input', '.cff-lname', function(){
         $(this).val(CFF.utils.sanitizeName($(this).val()));
@@ -1242,6 +1390,7 @@
           relational_multiple: $row.find('.cff-relational-multiple-toggle').is(':checked'),
         });
         togglePlaceholderRow($row, $(this).val());
+        toggleDatetimeOptions($row, $(this).val());
         save(readFromDOM());
       });
 
@@ -1263,6 +1412,7 @@
         });
         toggleRelationalPanel($sub, $(this).val());
         toggleRepeaterOptions($sub, $(this).val());
+        toggleDatetimeOptions($sub, $(this).val());
         save(readFromDOM());
       });
 
@@ -1385,11 +1535,13 @@
       $rowTargets.each(function(){
         var $row = $(this);
         toggleRepeaterOptions($row, $row.find('.cff-type').val() || 'text');
+        toggleDatetimeOptions($row, $row.find('.cff-type').val() || 'text');
       });
       var $subTargets = $target.is('.cff-subfield') ? $target : $target.find('.cff-subfield');
       $subTargets.each(function(){
         var $sub = $(this);
         toggleRepeaterOptions($sub, $sub.find('.cff-stype').val() || 'text');
+        toggleDatetimeOptions($sub, $sub.find('.cff-stype').val() || 'text');
       });
     });
     return { init:init, render:render };
@@ -1430,6 +1582,7 @@
              '<option value="page_template">Page Template</option>' +
              '<option value="post">Specific Post</option>' +
              '<option value="page">Specific Page</option>' +
+             '<option value="options_page">Options Page</option>' +
            '</select>' +
            '<select class="cff-input cff-loc-op">' +
              '<option value="==">is equal to</option>' +
@@ -1473,6 +1626,11 @@
          $.post(CFFP.ajax, {action:'cff_get_templates', nonce:CFFP.nonce}, function(res){
            cb(res && res.success ? res.data : []);
          });
+         return;
+       }
+
+       if (param === 'options_page') {
+         cb([{id:'global', text:'Global Settings'}]);
          return;
        }
 
@@ -2382,15 +2540,15 @@
     function init(){
       var $doc = $(document);
 
-      $doc.on('input', 'input[name="cpt_singular"]', function(){
+      $doc.on('input', 'input[name="cpt_plural"]', function(){
         var $form = $(this).closest('form');
         var $slug = $form.find('input[name="cpt_slug"]');
         maybeSetSlug($slug, $(this).val());
       });
 
-      $doc.on('input', 'input[name^="cpt_singular_i18n["]', function(){
+      $doc.on('input', 'input[name^="cpt_plural_i18n["]', function(){
         var name = $(this).attr('name') || '';
-        var match = name.match(/^cpt_(?:singular|plural)_i18n\[(.+)\]$/);
+        var match = name.match(/^cpt_plural_i18n\[(.+)\]$/);
         if (!match) return;
         var lang = match[1];
         var $form = $(this).closest('form');
@@ -2433,6 +2591,150 @@
     return { init:init };
   })();
 
+  CFF.conditionalLogic = (function(){
+    function init(){
+      var $scope = $('.cff-metabox, .wrap.cff-admin');
+      if (!$scope.length) return;
+
+      applyAll();
+
+      $(document).on('input change', ':input[name^="cff_values["]', function(){
+        applyAll();
+      });
+
+      $(document).on('cff:refresh', function(){
+        applyAll();
+      });
+    }
+
+    function applyAll(){
+      $('[data-cff-conditional-enabled="1"]').each(function(){
+        var $target = $(this);
+        var sourceField = String($target.data('cffConditionalField') || '');
+        var operator = String($target.data('cffConditionalOperator') || '==');
+        var expected = String($target.data('cffConditionalValue') || '');
+        if (!sourceField) return;
+
+        var $container = $target.closest('.cff-metabox');
+        if (!$container.length) {
+          $container = $(document.body);
+        }
+
+        var sourceVal = readFieldValue($container, sourceField);
+        var visible = compareValue(sourceVal, operator, expected);
+        toggleVisibility($target, visible);
+      });
+    }
+
+    function getNamedInputs($container, baseName){
+      return $container.find(':input').filter(function(){
+        var n = this.name || '';
+        return n === baseName || n === (baseName + '[]');
+      });
+    }
+
+    function readFieldValue($container, fieldName){
+      var baseName = 'cff_values[' + fieldName + ']';
+      var $inputs = getNamedInputs($container, baseName);
+      if (!$inputs.length) return '';
+
+      var isArray = $inputs.filter(function(){ return (this.name || '').slice(-2) === '[]'; }).length > 0;
+      if (isArray) {
+        var arr = [];
+        $inputs.each(function(){
+          var $el = $(this);
+          if ($el.is(':checkbox')) {
+            if ($el.is(':checked')) arr.push(String($el.val() || ''));
+            return;
+          }
+          if ($el.is('select[multiple]')) {
+            ($el.val() || []).forEach(function(v){ arr.push(String(v)); });
+            return;
+          }
+          var v = $el.val();
+          if (v !== null && v !== '') arr.push(String(v));
+        });
+        return arr;
+      }
+
+      var $radios = $inputs.filter(':radio');
+      if ($radios.length) {
+        var $checkedRadio = $radios.filter(':checked').first();
+        return $checkedRadio.length ? String($checkedRadio.val() || '') : '';
+      }
+
+      var $checkboxes = $inputs.filter(':checkbox');
+      if ($checkboxes.length) {
+        var $checked = $checkboxes.filter(':checked').last();
+        if ($checked.length) return String($checked.val() || '1');
+        var $hidden = $inputs.filter(':hidden').first();
+        return $hidden.length ? String($hidden.val() || '0') : '0';
+      }
+
+      var $selectMulti = $inputs.filter('select[multiple]').first();
+      if ($selectMulti.length) return ($selectMulti.val() || []).map(String);
+
+      return String($inputs.last().val() || '');
+    }
+
+    function isEmptyValue(value){
+      if ($.isArray(value)) return value.length === 0;
+      return String(value || '') === '';
+    }
+
+    function compareValue(actual, operator, expected){
+      var actualStr = $.isArray(actual) ? actual.map(String) : String(actual || '');
+      var expectedStr = String(expected || '');
+
+      if (operator === 'empty') return isEmptyValue(actual);
+      if (operator === 'not_empty') return !isEmptyValue(actual);
+
+      if ($.isArray(actualStr)) {
+        var has = actualStr.indexOf(expectedStr) !== -1;
+        if (operator === '==') return has;
+        if (operator === '!=') return !has;
+        if (operator === 'contains') return has;
+        if (operator === 'not_contains') return !has;
+        return false;
+      }
+
+      if (operator === '==') return actualStr === expectedStr;
+      if (operator === '!=') return actualStr !== expectedStr;
+      if (operator === 'contains') return actualStr.indexOf(expectedStr) !== -1;
+      if (operator === 'not_contains') return actualStr.indexOf(expectedStr) === -1;
+
+      return false;
+    }
+
+    function toggleVisibility($target, visible){
+      $target.toggle(visible);
+
+      $target.find(':input').each(function(){
+        var $input = $(this);
+        if ($input.hasClass('cff-conditional-enabled') || $input.hasClass('cff-conditional-field') || $input.hasClass('cff-conditional-operator') || $input.hasClass('cff-conditional-value')) {
+          return;
+        }
+
+        if (visible) {
+          $input.prop('disabled', false);
+          if ($input.data('cffRequiredBackup')) {
+            $input.prop('required', true);
+            $input.attr('aria-required', 'true');
+          }
+        } else {
+          if ($input.prop('required')) {
+            $input.data('cffRequiredBackup', true);
+          }
+          $input.prop('required', false);
+          $input.removeAttr('aria-required');
+          $input.prop('disabled', true);
+        }
+      });
+    }
+
+    return { init:init, applyAll:applyAll };
+  })();
+
   function sanitizeCptKey(str){
     return String(str || '')
       .toLowerCase()
@@ -2453,17 +2755,19 @@
     var $form = $('.cff-cpt-form');
     if (!$form.length) return;
     var $singular = $form.find('input[name="cpt_singular"]');
+    var $plural = $form.find('input[name="cpt_plural"]');
     var $key = $form.find('input[name="cpt_key"]');
     var $slug = $form.find('input[name="cpt_slug"]');
-    if (!$singular.length || !$key.length || !$slug.length) return;
+    if (!$singular.length || !$plural.length || !$key.length || !$slug.length) return;
 
     var keyAuto = !$key.prop('readonly') && !$key.val();
     var slugAuto = !$slug.val();
 
-    function syncFromSingular(){
+    function syncFromLabels(){
       var singular = $singular.val() || '';
+      var plural = $plural.val() || '';
       var nextKey = sanitizeCptKey(singular);
-      var nextSlug = sanitizeCptSlug(singular);
+      var nextSlug = sanitizeCptSlug(plural);
       if (keyAuto && !$key.prop('readonly')) {
         $key.val(nextKey);
       }
@@ -2473,7 +2777,10 @@
     }
 
     $singular.on('input.cffCptSlugs', function(){
-      syncFromSingular();
+      syncFromLabels();
+    });
+    $plural.on('input.cffCptSlugs', function(){
+      syncFromLabels();
     });
 
     $key.on('input.cffCptSlugs', function(e){
@@ -2485,7 +2792,7 @@
       slugAuto = this.value === '';
     });
 
-    syncFromSingular();
+    syncFromLabels();
   }
 
   /* -------------------------
@@ -2503,6 +2810,7 @@
      CFF.reorder.init();
     CFF.langTabs.init();
     CFF.autoSlug.init();
+    CFF.conditionalLogic.init();
     initCptAutoSlug();
   });
 })(jQuery);

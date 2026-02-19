@@ -240,6 +240,23 @@ if (!function_exists(__NAMESPACE__ . '\cff_render_ordered_fields')) {
   }
 }
 
+if (!function_exists(__NAMESPACE__ . '\cff_get_global_field')) {
+  function cff_get_global_field($selector, $format_value = true) {
+    $post_id = absint(get_option('cffp_global_settings_post_id', 0));
+    if (!$post_id) return null;
+    return get_field($selector, $post_id, $format_value);
+  }
+}
+
+if (!function_exists(__NAMESPACE__ . '\cff_the_global_field')) {
+  function cff_the_global_field($selector) {
+    $value = cff_get_global_field($selector, true);
+    if (is_scalar($value)) {
+      echo wp_kses_post(wpautop((string) $value));
+    }
+  }
+}
+
 if (!function_exists(__NAMESPACE__ . '\cff_get_ordered_field_names')) {
   /**
    * Resolve ordered field names from a matching field group.
