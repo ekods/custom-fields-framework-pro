@@ -1,4 +1,4 @@
-.postbox-container * {
+.cff-metabox * {
     box-sizing: border-box;
 }
 
@@ -18,7 +18,7 @@
   border-color:#cfd8e6;
   box-shadow:0 14px 32px rgba(15,23,42,.1);
 }
-.cff-field.postbox{
+.cff-field.cff-postbox{
   display:block;
   padding:0;
   box-shadow:none;
@@ -53,7 +53,7 @@
   margin:0;
   padding:0;
 }
-.cff-field:not(.postbox) .cff-input{
+.cff-field:not(.cff-postbox) .cff-input{
   margin-top:0;
   padding-top:14px;
   border-top:1px solid #eef1f6;
@@ -90,8 +90,8 @@
   font-size:12px;
   color:#56606a;
 }
-.cff-meta-name{text-transform:none}
-.cff-meta-type{text-transform:capitalize}
+.cff-meta-name{text-transform:none;font-size: 12px;font-weight: 400;}
+.cff-meta-type{text-transform:capitalize;font-size: 12px;font-weight: 400;}
 .cff-muted{color:#646970}
 .cff-required-indicator{color:#d63638;margin-left:6px;font-weight:600;font-size:13px;}
 .cff-media{border:1px solid #dcdcde;border-radius:10px;padding:10px;background:#fbfbfc;max-width:720px}
@@ -105,33 +105,33 @@
 .cff-pill{display:inline-block;padding:2px 8px;border:1px solid #ddd;border-radius:999px;background:#fff;font-size:12px;color:#444;margin-left:8px}
 .cff-metabox,
 #cff-field-list{display: flex;flex-direction: column; gap: 20px;}
-.cff-field.postbox{
+.cff-field.cff-postbox{
   display:block;
   padding:0;
   border:none;
   box-shadow:none;
 }
-.cff-field.postbox .postbox-header{
+.cff-field.cff-postbox .postbox-header{
   background:#fff;
   border:1px solid #dfe6ef;
   border-bottom:none;
-  border-radius:14px 14px 0 0;
-  padding: 6px 10px 6px 0;
+  border-radius:14px;
+  padding: 6px 10px;
   display:flex;
   align-items:center;
   gap:12px;
   box-shadow:0 6px 16px rgba(15,23,42,.08);
   background: linear-gradient(135deg, #f4f7fb, #eef4ff);
 }
-.cff-field.postbox .postbox-header .hndle{
+.cff-field.cff-postbox .postbox-header .cff-hndle{
   margin:0;
   font-weight:600;
   font-size:16px;
 }
-.cff-field.postbox .postbox-header .handle-actions{
+.cff-field.cff-postbox .postbox-header .handle-actions{
   margin-left:auto;
 }
-.cff-field.postbox .postbox-header .handlediv{
+.cff-field.cff-postbox .postbox-header .cff-handlediv{
   border:1px solid #dfe6ef;
   border-radius:10px;
   background:#fff;
@@ -140,24 +140,22 @@
   align-items:center;
   justify-content:center;
 }
-.cff-field.postbox .inside{
+.cff-field.cff-postbox .inside{
   padding:18px;
   border:1px solid #dfe6ef;
   border-radius:0 0 12px 12px;
   background:#fff;
   margin: 0 !important;
 }
-.cff-field.postbox.closed .inside{display:none}
+.cff-field.cff-postbox.closed .inside{display:none}
 
-.cff-field-wysiwyg.postbox .postbox-header,
-.cff-field-group.postbox .postbox-header{
+.cff-field.cff-postbox .postbox-header{
   background:linear-gradient(120deg,#edf4ff,#fefefe);
   border-color:#dfe6ef;
   box-shadow:0 12px 30px rgba(15,23,42,.08);
   cursor:pointer;
 }
-.cff-field-wysiwyg.postbox .toggle-indicator,
-.cff-field-group.postbox .toggle-indicator{
+.cff-field.cff-postbox .toggle-indicator{
   width:18px;
   height:18px;
   border-radius:50%;
@@ -166,18 +164,16 @@
   align-items:center;
   justify-content:center;
 }
-.cff-field-wysiwyg.postbox .toggle-indicator::before,
-.cff-field-group.postbox .toggle-indicator::before{
-  font-family:dashicons;
-  content:"\f140";
+.cff-field.cff-postbox .toggle-indicator::before{
+  content:"\25BE";
   font-size:12px;
+  line-height:1;
+  font-weight:700;
   color:#2271b1;
-  transform:rotate(0deg);
-  transition:transform .2s ease;
+  transition:color .2s ease;
 }
-.cff-field-wysiwyg.postbox.closed .toggle-indicator::before,
-.cff-field-group.postbox.closed .toggle-indicator::before{
-  transform:rotate(-90deg);
+.cff-field.cff-postbox:not(.closed) .toggle-indicator::before{
+  content:"\25B4";
 }
 .cff-link{display:grid;grid-template-columns:1fr;gap:8px;max-width:720px}
 .cff-link .widefat{margin:0}
@@ -216,41 +212,68 @@
   border-bottom:1px solid #dcdcde;
 }
 
-.cff-rep-rows:has(.cff-rep-row-grid){
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+.cff-repeater[data-layout="grid"] .cff-rep-rows{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+  gap:10px;
+}
+.cff-repeater[data-layout="grid"] .cff-rep-row{
+  margin:0;
 }
 
-.cff-subfield-input:has(.cff-rep-row-head-simple){
-  margin-top: 40px;
+.cff-repeater[data-layout="row"] .cff-rep-row-body{
+  display:grid;
+  grid-auto-flow:column;
+  grid-auto-columns:minmax(220px, 1fr);
+  gap:12px;
+  align-items:start;
+  overflow-x:auto;
 }
-.cff-rep-row:has(.cff-rep-row-head-simple){
-  border: 0;
-  margin: 0;
-  position: relative;
+.cff-repeater[data-layout="row"] .cff-subfield-input{
+  margin:0;
 }
-.cff-repeater:has(.cff-rep-row-head-simple){
-  margin: 0;
+
+.cff-repeater[data-layout="simple"]{
+  margin:0;
 }
-.cff-rep-row-head-simple{
+.cff-repeater[data-layout="simple"] .cff-rep-row{
+  border:0;
+  margin:0;
+  position:relative;
+  box-shadow:none;
+  background:transparent;
+}
+.cff-repeater[data-layout="simple"] .cff-rep-row-head-simple{
+  display:flex;
+  align-items:center;
+  gap:6px;
   justify-content: flex-end;
   background-color: transparent;
   border: 0;
   position: absolute;
+  top: 6px;
   right: 0;
-  cursor: grab;
+  z-index: 3;
 }
-.cff-rep-row-head-simple .cff-rep-left {
+.cff-repeater[data-layout="simple"] .cff-rep-row-head-simple .cff-rep-left {
   display:none;
 }
+.cff-repeater[data-layout="simple"] .cff-rep-toggle,
+.cff-repeater[data-layout="simple"] .cff-rep-row-head strong{
+  display:none !important;
+}
 
-.cff-rep-row-head-simple .cff-subfield-input {
+.cff-repeater[data-layout="simple"] .cff-subfield-input {
   border: 0;
   margin: 0;
+  background: transparent;
 }
-.cff-rep-row-simple .cff-rep-row-body {
-  padding: 0;
+.cff-repeater[data-layout="simple"] .cff-rep-row-simple .cff-rep-row-body {
+  padding: 22px 0 0;
+}
+
+.cff-group > .cff-subfield-input > .cff-repeater[data-layout="simple"]{
+  margin-top:6px;
 }
 
 
@@ -465,10 +488,10 @@
 .cff-field:hover{
   box-shadow:0 10px 22px rgba(15,23,42,.07);
 }
-.cff-field.postbox .postbox-header{
+.cff-field.cff-postbox .postbox-header{
   box-shadow:0 4px 10px rgba(15,23,42,.055);
 }
-.cff-field.postbox .inside{
+.cff-field.cff-postbox .inside{
   padding:16px;
 }
 .cff-rep-row,
@@ -491,7 +514,7 @@
     padding:12px;
     gap:8px;
   }
-  .cff-field.postbox .inside{
+  .cff-field.cff-postbox .inside{
     padding:12px;
   }
   .cff-link{

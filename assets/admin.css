@@ -98,13 +98,23 @@
 .cff-field-view-controls label{font-weight:600}
 .cff-field-view-controls select{min-width:160px;border-radius:4px;border:1px solid #8c8f94;background:#fff}
 .cff-field-reorder-view{display:none}
+.cff-field-mapping-view{display:none}
 .cff-field-builder-root[data-view-mode="reorder"] .cff-field-builder-view{display:none}
 .cff-field-builder-root[data-view-mode="reorder"] .cff-field-reorder-view{display:block}
+.cff-field-builder-root[data-view-mode="mapping"] .cff-field-builder-view{display:none}
+.cff-field-builder-root[data-view-mode="mapping"] .cff-field-reorder-view{display:none}
+.cff-field-builder-root[data-view-mode="mapping"] .cff-field-mapping-view{display:block}
 .cff-field-reorder-list{list-style:none;margin:0;padding:0;border:1px solid #dcdcde;border-radius:10px;background:#fdfdfd;min-height:60px}
 .cff-field-reorder-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #f0f0f1;background:#fff;cursor:grab}
 .cff-field-reorder-item:last-child{border-bottom:none}
 .cff-field-reorder-label{flex:1;font-weight:500}
 .cff-field-reorder-description{margin:0 0 8px;font-size:13px;color:#5c6470}
+.cff-field-mapping-table code{font-size:12px}
+.cff-field-mapping-block{margin-bottom:14px}
+.cff-field-mapping-title{margin:0 0 8px;font-size:13px;font-weight:600;color:#2a2d33}
+.cff-field-mapping-context{display:block;margin-top:2px;font-size:12px;font-weight:500;color:#646970}
+.cff-field-mapping-section td{font-weight:600;background:#f6f7f7}
+.cff-field-mapping-empty{color:#646970;margin:0}
 
 /* Language tabs */
 .cff-lang-tabs{border:1px solid #dcdcde;border-radius:10px;background:#fff}
@@ -797,5 +807,5 @@ body.post-type-cff_group .cff-tabs textarea,
 
 .post-type-cff_group .column-cff_fields { width: 70px; text-align:right; }
 .post-type-cff_group .column-cff_key { width: 260px; }
-.post-type-cff_group .column-cff_location { width: 160px; }
+.post-type-cff_group .column-cff_location { width: 370px; }
 .post-type-cff_group code { background:#f3f4f6; padding:2px 6px; border-radius:6px; }

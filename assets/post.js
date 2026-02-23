@@ -273,14 +273,13 @@ jQuery(function($){
   function togglePostbox($field){
     var isClosed = !$field.hasClass('closed');
     $field.toggleClass('closed', isClosed);
-    $field.find('.handlediv').attr('aria-expanded', !isClosed);
+    $field.find('> .postbox-header .cff-acc-toggle').attr('aria-expanded', !isClosed);
     $field.children('.inside').toggle(!isClosed);
   }
 
-  $(document).on('click', '.cff-field.postbox .postbox-header, .cff-field.postbox .handlediv, .cff-field.postbox .hndle', function(e){
-    if ($(e.target).closest('a').length) return;
+  $(document).on('click', '.cff-field.cff-postbox > .postbox-header .cff-acc-toggle', function(e){
     e.preventDefault();
-    togglePostbox($(this).closest('.cff-field.postbox'));
+    togglePostbox($(this).closest('.cff-field.cff-postbox'));
   });
 
   $(document).on('click', '.cff-rep-toggle', function(e){
@@ -311,9 +310,15 @@ jQuery(function($){
 
   function reindexRepeater($rep){
     var parent = String($rep.data('field') || '');
+    if (!parent) {
+      var presentName = $rep.find('> .cff-rep-present').attr('name') || '';
+      var mParent = presentName.match(/\[([^\[\]]+)\]\[__cff_present\]$/);
+      if (mParent && mParent[1]) parent = String(mParent[1]);
+    }
     if (!parent) return;
 
-    $rep.find('.cff-rep-row').each(function(newIndex){
+    var $rowsWrap = $rep.children('.cff-rep-rows').first();
+    $rowsWrap.children('.cff-rep-row').each(function(newIndex){
       var $row = $(this);
 
       // ambil oldIndex dari data-i atau dari name pertama
@@ -362,7 +367,8 @@ jQuery(function($){
 
 
   function updateRepeaterControls($rep){
-    var count = $rep.find('.cff-rep-row').length;
+    var $rowsWrap = $rep.children('.cff-rep-rows').first();
+    var count = $rowsWrap.children('.cff-rep-row').length;
 
     var min = parseInt($rep.data('min'), 10);
     var max = parseInt($rep.data('max'), 10);
@@ -373,7 +379,7 @@ jQuery(function($){
     // --- REMOVE: disable kalau count <= min (atau <=1 default safety)
     var canRemove = count > Math.max(1, min);
 
-    $rep.find('.cff-rep-remove').each(function(){
+    $rowsWrap.children('.cff-rep-row').find('> .cff-rep-row-head .cff-rep-remove').each(function(){
       $(this)
         .toggleClass('is-disabled', !canRemove)
         .attr('aria-disabled', canRemove ? null : 'true');
@@ -385,7 +391,7 @@ jQuery(function($){
     // --- ADD: disable kalau sudah max (kecuali max=0 unlimited)
     var canAdd = (!max || count < max);
 
-    $rep.find('.cff-rep-add').each(function(){
+    $rep.children('p').find('> .cff-rep-add').each(function(){
       $(this)
         .toggleClass('is-disabled', !canAdd)
         .attr('aria-disabled', canAdd ? null : 'true');
@@ -394,9 +400,9 @@ jQuery(function($){
 
     // optional: tooltip kecil biar jelas
     if (!canAdd && max) {
-      $rep.find('.cff-rep-add').attr('title', 'Max rows: ' + max);
+      $rep.children('p').find('> .cff-rep-add').attr('title', 'Max rows: ' + max);
     } else {
-      $rep.find('.cff-rep-add').removeAttr('title');
+      $rep.children('p').find('> .cff-rep-add').removeAttr('title');
     }
   }
 
@@ -424,13 +430,13 @@ jQuery(function($){
       e.preventDefault();
 
       var $rep = $(this).closest('.cff-repeater');
-      var tpl  = $rep.find('script.cff-rep-template').first().html();
+      var tpl  = $rep.children('.cff-rep-template').first().html();
       if (!tpl) return;
 
-      var idx = $rep.find('.cff-rep-row').length;
+      var $rows = $rep.children('.cff-rep-rows').first();
+      var idx = $rows.children('.cff-rep-row').length;
       tpl = cffReplaceAll(tpl, '__INDEX__', String(idx));
 
-      var $rows = $rep.find('.cff-rep-rows');
       var $new  = $(tpl);
 
       $rows.append($new);

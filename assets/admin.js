@@ -172,6 +172,7 @@
                     '<option value="default">Default (stacked rows)</option>' +
               '<option value="simple">Simple (Remove-only header)</option>' +
               '<option value="grid">Grid (multi-column body)</option>' +
+              '<option value="row">Row (single horizontal row)</option>' +
             '</select>' +
             '<p class="description">Change how each repeater row is rendered in the editor.</p>' +
           '</div>' +
@@ -181,6 +182,7 @@
                 '<option value="default">Default (stacked rows)</option>' +
             '<option value="simple">Simple (Remove-only header)</option>' +
             '<option value="grid">Grid (multi-column body)</option>' +
+            '<option value="row">Row (single horizontal row)</option>' +
           '</select>' +
           '<p class="description">Change how each repeater row is rendered in the editor.</p>' +
         '</div>' +
@@ -190,6 +192,7 @@
                   '<option value="default">Default (stacked rows)</option>' +
               '<option value="simple">Simple (Remove-only header)</option>' +
               '<option value="grid">Grid (multi-column body)</option>' +
+              '<option value="row">Row (single horizontal row)</option>' +
             '</select>' +
             '<p class="description">Change how each repeater row is rendered in the editor.</p>' +
           '</div>' +
@@ -199,6 +202,7 @@
                   '<option value="default">Default (stacked rows)</option>' +
                   '<option value="simple">Simple (Remove-only header)</option>' +
                   '<option value="grid">Grid (multi-column body)</option>' +
+                  '<option value="row">Row (single horizontal row)</option>' +
                 '</select>' +
                 '<p class="description">Change how each repeater row is rendered in the editor.</p>' +
               '</div>' +
@@ -972,7 +976,7 @@
 
 
     function setFieldViewMode(mode){
-      fieldViewMode = (mode === 'reorder') ? 'reorder' : 'builder';
+      fieldViewMode = (mode === 'reorder' || mode === 'mapping') ? mode : 'builder';
       $root.find('.cff-field-builder-root').attr('data-view-mode', fieldViewMode);
       $root.find('#cff-field-view-mode').val(fieldViewMode);
     }
@@ -1014,6 +1018,105 @@
       refreshConditionalFieldDropdowns();
     }
 
+    function typeLabel(type){
+      return String(type || 'text').replace(/_/g, ' ').replace(/\b\w/g, function(m){ return m.toUpperCase(); });
+    }
+
+    function buildMappingRowsRecursive(fields, depth){
+      depth = depth || 0;
+      var rows = '';
+      (fields || []).forEach(function(f){
+        if (!f || typeof f !== 'object') return;
+        var label = (f.label || f.name || '').toString();
+        var name = (f.name || '').toString();
+        if (!name) return;
+        var type = (f.type || 'text').toString();
+        var indent = new Array(depth + 1).join('&nbsp;&nbsp;&nbsp;');
+        rows += '<tr>' +
+          '<td>' + indent + CFF.utils.escapeHtml(label) + '</td>' +
+          '<td><code>' + CFF.utils.escapeHtml(name) + '</code></td>' +
+          '<td>' + CFF.utils.escapeHtml(typeLabel(type)) + '</td>' +
+        '</tr>';
+
+        if ((type === 'group' || type === 'repeater') && Array.isArray(f.sub_fields) && f.sub_fields.length) {
+          var section = (type === 'group') ? 'Group Fields' : 'Sub Fields (Repeater)';
+          rows += '<tr class="cff-field-mapping-section"><td colspan="3">' +
+            indent + CFF.utils.escapeHtml(section) +
+          '</td></tr>';
+          rows += buildMappingRowsRecursive(f.sub_fields, depth + 1);
+        }
+
+        if (type === 'flexible' && Array.isArray(f.layouts) && f.layouts.length) {
+          f.layouts.forEach(function(l){
+            if (!l || typeof l !== 'object') return;
+            var lLabel = (l.label || l.name || '').toString();
+            var lName = (l.name || '').toString();
+            if (!lName) return;
+            var layoutFields = Array.isArray(l.sub_fields) ? l.sub_fields : [];
+            if (!layoutFields.length) return;
+
+            rows += '<tr class="cff-field-mapping-section"><td colspan="3">' +
+              indent + CFF.utils.escapeHtml('Layout: ' + lLabel + ' (' + lName + ')') +
+            '</td></tr>';
+            rows += buildMappingRowsRecursive(layoutFields, depth + 1);
+          });
+        }
+      });
+      return rows;
+    }
+
+    function buildMappingTable(meta, fields){
+      var rows = buildMappingRowsRecursive(fields, 0);
+      if (!rows) return '';
+      var titleText = (meta && meta.title) ? meta.title : 'Fields';
+      var contextText = (meta && meta.context) ? meta.context : '';
+      return '' +
+        '<div class="cff-field-mapping-block">' +
+          '<h4 class="cff-field-mapping-title">' +
+            CFF.utils.escapeHtml(titleText) +
+            (contextText ? '<span class="cff-field-mapping-context">' + CFF.utils.escapeHtml(contextText) + '</span>' : '') +
+          '</h4>' +
+          '<table class="widefat striped cff-field-mapping-table">' +
+            '<thead><tr><th>Label</th><th>Name</th><th>Type</th></tr></thead>' +
+            '<tbody>' + rows + '</tbody>' +
+          '</table>' +
+        '</div>';
+    }
+
+    function buildMappingSections(fields, meta){
+      var html = buildMappingTable(meta, fields);
+      (fields || []).forEach(function(f){
+        if (!f || typeof f !== 'object') return;
+        var label = (f.label || f.name || '').toString();
+        var name = (f.name || '').toString();
+        if (!name) return;
+        var type = (f.type || 'text').toString();
+
+        if (type === 'group' && Array.isArray(f.sub_fields) && f.sub_fields.length) {
+          html += buildMappingTable({
+            title: label + ' | ' + name + ' | ' + typeLabel(type),
+            context: 'Group Fields'
+          }, f.sub_fields);
+        } else if (type === 'repeater' && Array.isArray(f.sub_fields) && f.sub_fields.length) {
+          html += buildMappingTable({
+            title: label + ' | ' + name + ' | ' + typeLabel(type),
+            context: 'Sub Fields (Repeater)'
+          }, f.sub_fields);
+        } else if (type === 'flexible' && Array.isArray(f.layouts) && f.layouts.length) {
+          var hasLayoutFields = f.layouts.some(function(l){
+            return l && Array.isArray(l.sub_fields) && l.sub_fields.length;
+          });
+          if (hasLayoutFields) {
+            html += buildMappingTable({
+              title: label + ' | ' + name + ' | ' + typeLabel(type),
+              context: 'Layouts'
+            }, [{ label: label, name: name, type: type, layouts: f.layouts }]);
+          }
+        }
+      });
+      return html;
+    }
+
     function render(){
       var data = load();
       $root.empty();
@@ -1034,6 +1137,7 @@
         '<select id="cff-field-view-mode">' +
           '<option value="builder">Builder</option>' +
           '<option value="reorder">Reorder</option>' +
+          '<option value="mapping">Mapping</option>' +
         '</select>' +
       '</div>';
 
@@ -1059,6 +1163,20 @@
         '</div>'
       );
       $builderRoot.append($reorderView);
+
+      var mappingSections = buildMappingSections(data, {
+        title: 'Top-level Fields',
+        context: 'Label | Name | Type'
+      });
+      if (!mappingSections) {
+        mappingSections = '<p class="cff-field-mapping-empty">No fields available</p>';
+      }
+      var $mappingView = $(
+        '<div class="cff-field-mapping-view">' +
+          mappingSections +
+        '</div>'
+      );
+      $builderRoot.append($mappingView);
 
       data.forEach(function(f, i){
         var html = CFF.utils.tmpl(tplField, {
@@ -2263,7 +2381,7 @@
         var labelCandidates = [
           $.trim($field.find('.cff-label-head label').first().text()),
           $.trim($field.find('.cff-field-head label').first().text()),
-          $.trim($field.find('.hndle').first().text()),
+          $.trim($field.find('.cff-hndle').first().text()),
           $.trim(name)
         ];
         var label = '';

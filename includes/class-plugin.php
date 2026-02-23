@@ -1990,6 +1990,7 @@ PHP;
                 <option value="default">Default (stacked rows)</option>
                 <option value="simple">Simple (remove-only header)</option>
                 <option value="grid">Grid (multi-column)</option>
+                <option value="row">Row (single horizontal row)</option>
               </select>
               <p class="description">Choose how each repeater row is presented while editing.</p>
             </div>
@@ -2130,7 +2131,6 @@ PHP;
           </div>
         </div>
       </div>
-    </div>
   </script>
 
     <script type="text/template" id="tmpl-cff-subfield">
@@ -2190,6 +2190,7 @@ PHP;
                 <option value="default">Default (stacked rows)</option>
                 <option value="simple">Simple (remove-only header)</option>
                 <option value="grid">Grid (multi-column)</option>
+                <option value="row">Row (single horizontal row)</option>
               </select>
               <p class="description">Choose how each repeater row is presented while editing.</p>
             </div>
@@ -2515,7 +2516,7 @@ PHP;
   }
 
   private function sanitize_repeater_layout($value) {
-    $allowed = ['default','simple','grid'];
+    $allowed = ['default','simple','grid','row'];
     $layout = sanitize_key($value ?? '');
     if (!in_array($layout, $allowed, true)) {
       return 'default';

@@ -43,7 +43,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         false,
         [
           'class' => 'cff-media-thumb',
-          'style' => 'max-width:150px;height:auto;display:block;'
+          'style' => 'max-width:150px;height:auto;display:block;object-fit: contain; width: 100%;'
         ]
       );
       if ($img) return $img;
@@ -75,8 +75,12 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     $placeholder = $f['placeholder'] ?? '';
     $placeholder_attr = $placeholder ? ' placeholder="' . esc_attr($placeholder) . '"' : '';
 
-    $is_accordion = ($type === 'repeater');
-    $field_classes = 'cff-field cff-field-' . $type . ($is_accordion ? ' postbox' : '');
+    $is_accordion = in_array($type, ['repeater', 'group'], true);
+    $is_initially_closed = $is_accordion;
+    $field_classes = 'cff-field cff-field-' . $type . ($is_accordion ? ' cff-postbox' : '');
+    if ($is_initially_closed) {
+      $field_classes .= ' closed';
+    }
     $field_key = $name ? sanitize_key($name) : sanitize_key($label);
     if (!$field_key) {
       $field_key = 'cff-field-' . wp_rand(1000, 9999);
@@ -86,17 +90,21 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     $type_label = ucfirst(str_replace('_', ' ', $type));
     if ($is_accordion) {
       echo '<div class="postbox-header">';
-      echo '<h2 class="hndle">'.$label_text.'</h2>';
+      echo '<div class="cff-hndle" role="heading" aria-level="2">';
+      echo '<div class="cff-hndle-label">'.$label_text.'</div>';
+      echo '<div class="cff-hndle-meta">';
+      echo '<div class="description cff-meta-type">Type <b>'.esc_html($type_label).'</b></div>';
+      echo '<div class="description cff-meta-name">'.esc_html($name).'</div>';
+      echo '</div>';
+      echo '</div>';
       echo '<div class="handle-actions hide-if-no-js">';
-      echo '<button type="button" class="handlediv" aria-expanded="false">';
+      echo '<button type="button" class="cff-handlediv cff-acc-toggle" aria-expanded="'.($is_initially_closed ? 'false' : 'true').'">';
       echo '<span class="screen-reader-text">'.esc_html__('Toggle panel', 'cff').'</span>';
-      echo '<span class="toggle-indicator" aria-hidden="true"></span>';
+      // echo '<span class="toggle-indicator" aria-hidden="true"></span>';
       echo '</button>';
       echo '</div>';
       echo '</div>';
       echo '<div class="inside cff-input">';
-      echo '<div class="description cff-meta-type">Type <b>'.esc_html($type_label).'</b></div>';
-      echo '<div class="description cff-meta-name">'.esc_html($name).'</div>';
     } else {
       echo '<div class="cff-label">';
       echo '<div class="cff-label-head">';
@@ -182,10 +190,12 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       $min = isset($f['min']) ? (int) $f['min'] : 1;
       $max = isset($f['max']) ? (int) $f['max'] : 0;
       $layout = isset($f['repeater_layout']) ? $f['repeater_layout'] : 'default';
-      $layout = in_array($layout, ['simple','grid','default'], true) ? $layout : 'default';
+      $layout = in_array($layout, ['simple','grid','row','default'], true) ? $layout : 'default';
 
+      $rep_field_key = sanitize_key($f['key'] ?? '');
+      if (!$rep_field_key) $rep_field_key = sanitize_key($name);
       echo '<div class="cff-repeater"
-        data-field="'.esc_attr($f['key'] ?? '').'"
+        data-field="'.esc_attr($rep_field_key).'"
         data-min="'.esc_attr($min).'"
         data-max="'.esc_attr($max).'"
         data-layout="'.esc_attr($layout).'"
@@ -202,9 +212,9 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
 
       echo '<p><button type="button" class="button cff-rep-add">Add Row</button></p>';
 
-      echo '<script type="text/template" class="cff-rep-template">';
+      echo '<template class="cff-rep-template">';
       render_repeater_row($name, $subs, [], '__INDEX__', $post->ID, null, $layout);
-      echo '</script>';
+      echo '</template>';
 
       echo '</div>';
 
@@ -240,9 +250,9 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
 
       echo '<div class="cff-flex-templates" style="display:none">';
       foreach ($layouts as $l) {
-        echo '<script type="text/template" class="cff-flex-template" data-layout="'.esc_attr($l['name']).'">';
+        echo '<template class="cff-flex-template" data-layout="'.esc_attr($l['name']).'">';
         render_flexible_row($name, $layouts, $layout_map, ['layout'=>$l['name'], 'fields'=>[]], '__INDEX__', $post->ID);
-        echo '</script>';
+        echo '</template>';
       }
       echo '</div>';
 
@@ -346,10 +356,12 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
   }
 
   function render_repeater_row($parent, $subs, $row, $i, $post_id, $name_prefix = null, $layout = 'default') {
-    $layout = in_array($layout, ['simple','grid','default'], true) ? $layout : 'default';
+    $layout = in_array($layout, ['simple','grid','row','default'], true) ? $layout : 'default';
     $row_classes = 'cff-rep-row';
     if ($layout === 'grid') {
       $row_classes .= ' cff-rep-row-grid';
+    } elseif ($layout === 'row') {
+      $row_classes .= ' cff-rep-row-row';
     } elseif ($layout === 'simple') {
       $row_classes .= ' cff-rep-row-simple';
     }
@@ -359,6 +371,8 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       $head_class .= ' cff-rep-row-head-simple ui-sortable-handle';
     } elseif ($layout === 'grid') {
       $head_class .= ' cff-rep-row-head-grid';
+    } elseif ($layout === 'row') {
+      $head_class .= ' cff-rep-row-head-row';
     }
     if ($layout === 'simple') {
       echo '<div class="'.esc_attr($head_class).'"><span class="cff-rep-drag" title="Drag"></span> <span style="margin:0 4px;">|</span> <button type="button" class="button-link cff-rep-remove">Remove</button></div>';
@@ -442,10 +456,11 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         $rows = is_array($v) ? $v : [];
         $min = isset($s['min']) ? (int) $s['min'] : 1;
         $max = isset($s['max']) ? (int) $s['max'] : 0;
-        $field_key = $s['key'] ?? '';
+        $field_key = sanitize_key($s['key'] ?? '');
+        if (!$field_key) $field_key = sanitize_key($sname);
         $repeater_prefix = $name_attr;
         $rep_layout = isset($s['repeater_layout']) ? $s['repeater_layout'] : 'default';
-        $rep_layout = in_array($rep_layout, ['simple','grid','default'], true) ? $rep_layout : 'default';
+        $rep_layout = in_array($rep_layout, ['simple','grid','row','default'], true) ? $rep_layout : 'default';
         echo '<div class="cff-repeater" data-field="'.esc_attr($field_key).'" data-min="'.esc_attr($min).'" data-max="'.esc_attr($max).'" data-layout="'.esc_attr($rep_layout).'">';
         echo '<input type="hidden" class="cff-rep-present" name="'.esc_attr($repeater_prefix).'[__cff_present]" value="1">';
         echo '<div class="cff-rep-rows">';
@@ -454,9 +469,9 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         }
         echo '</div>';
         echo '<p><button type="button" class="button cff-rep-add">Add Row</button></p>';
-        echo '<script type="text/template" class="cff-rep-template">';
+        echo '<template class="cff-rep-template">';
         render_repeater_row($sname, $rsubs, [], '__INDEX__', $post_id, $repeater_prefix, $rep_layout);
-        echo '</script>';
+        echo '</template>';
         echo '</div>';
       } elseif ($stype === 'relational') {
         render_relational_input(
@@ -560,10 +575,11 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
         $rows = is_array($v) ? $v : [];
         $min = isset($s['min']) ? (int) $s['min'] : 1;
         $max = isset($s['max']) ? (int) $s['max'] : 0;
-        $field_key = $s['key'] ?? '';
+        $field_key = sanitize_key($s['key'] ?? '');
+        if (!$field_key) $field_key = sanitize_key($sname);
         $repeater_prefix = $name_attr;
         $rep_layout = isset($s['repeater_layout']) ? $s['repeater_layout'] : 'default';
-        $rep_layout = in_array($rep_layout, ['simple','grid','default'], true) ? $rep_layout : 'default';
+        $rep_layout = in_array($rep_layout, ['simple','grid','row','default'], true) ? $rep_layout : 'default';
         echo '<div class="cff-repeater" data-field="'.esc_attr($field_key).'" data-min="'.esc_attr($min).'" data-max="'.esc_attr($max).'" data-layout="'.esc_attr($rep_layout).'">';
         echo '<input type="hidden" class="cff-rep-present" name="'.esc_attr($repeater_prefix).'[__cff_present]" value="1">';
         echo '<div class="cff-rep-rows">';
@@ -572,9 +588,9 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
         }
         echo '</div>';
         echo '<p><button type="button" class="button cff-rep-add">Add Row</button></p>';
-        echo '<script type="text/template" class="cff-rep-template">';
+        echo '<template class="cff-rep-template">';
         render_repeater_row($sname, $rsubs, [], '__INDEX__', $post_id, $repeater_prefix, $rep_layout);
-        echo '</script>';
+        echo '</template>';
         echo '</div>';
       } elseif ($stype === 'group') {
         $gsubs = isset($s['sub_fields']) ? $s['sub_fields'] : [];
