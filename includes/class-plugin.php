@@ -1160,14 +1160,11 @@ PHP;
 
     $links = [];
     foreach ($types as $slug => $obj) {
-      $url = get_post_type_archive_link($slug);
-      if (!$url) {
-        $rewrite = $obj->rewrite ?? [];
-        if (!empty($rewrite['slug'])) {
-          $path = '/' . trim($rewrite['slug'], '/') . '/';
-          $url = home_url($path);
-        }
+      if (empty($obj->has_archive)) {
+        continue;
       }
+
+      $url = get_post_type_archive_link($slug);
       if (!$url) continue;
       $label = $obj->labels->name ?? $obj->label ?? $slug;
       $links[] = [
