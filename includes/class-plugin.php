@@ -101,6 +101,24 @@ class Plugin {
         'menu_position' => isset($def['menu_position']) ? max(0, intval($def['menu_position'])) : 25,
         'menu_icon' => $menu_icon ?: 'dashicons-admin-post',
       ]);
+
+      if ($public && $has_archive) {
+        $archive_slug = $slug ?: $key;
+        $archive_slug = trim((string) $archive_slug, '/');
+        if ($archive_slug !== '') {
+          add_rewrite_rule(
+            '^' . preg_quote($archive_slug, '/') . '/?$',
+            'index.php?post_type=' . $key,
+            'top'
+          );
+          add_rewrite_rule(
+            '^' . preg_quote($archive_slug, '/') . '/page/([0-9]+)/?$',
+            'index.php?post_type=' . $key . '&paged=$matches[1]',
+            'top'
+          );
+        }
+      }
+
       if (!empty($def['list_thumbnail']) && in_array('thumbnail', $supports, true)) {
         $this->register_admin_thumbnail_column($key);
       }
@@ -246,6 +264,7 @@ class Plugin {
 
     add_action('admin_enqueue_scripts', [$this, 'assets']);
     add_action('admin_head-edit.php', [$this, 'remove_post_views_id']);
+    add_action('admin_notices', [$this, 'maybe_render_copy_to_translations_notice']);
     add_action('admin_init', [$this, 'handle_export_tools']);
     add_action('admin_init', [$this, 'handle_export_group']);
     add_action('admin_init', [$this, 'handle_export_acf_data']);
@@ -257,6 +276,7 @@ class Plugin {
     add_filter('pll_translate_taxonomy_rewrite_slug', [$this, 'pll_translate_taxonomy_rewrite_slug'], 10, 3);
     add_filter('pll_the_language_link', [$this, 'pll_fix_archive_lang_link'], 10, 3);
     add_filter('pll_the_language_link', [$this, 'pll_fix_taxonomy_lang_link'], 10, 3);
+    add_filter('redirect_post_location', [$this, 'add_copy_notice_flag_to_redirect'], 10, 2);
 
     add_action('wp_ajax_cff_search_posts', [$this, 'ajax_search_posts']);
     add_action('wp_ajax_cff_get_templates', [$this, 'ajax_get_templates']);
@@ -282,7 +302,7 @@ class Plugin {
     add_submenu_page('cff', __('Taxonomies','cff'), __('Taxonomies','cff'), $cap, 'cff-taxonomies', [$this,'page_taxonomies']);
     add_submenu_page('cff', __('Global Settings','cff'), __('Global Settings','cff'), $cap, 'cff-global-settings', [$this,'page_global_settings']);
     add_submenu_page('cff', __('Reorder','cff'), __('Reorder','cff'), $cap, 'cff-reorder', [$this,'page_reorder']);
-    add_submenu_page('cff', __('Tools','cff'), __('Tools','cff'), $cap, 'cff-tools', [$this,'page_tools']);
+    add_submenu_page('cff', __('Export / Import','cff'), __('Export / Import','cff'), $cap, 'cff-tools', [$this,'page_tools']);
     add_submenu_page('cff', __('Documentation','cff'), __('Documentation','cff'), $cap, 'cff-docs', [$this,'page_docs']);
 
     $post_types = get_post_types(['show_ui' => true, '_builtin' => false], 'objects');
@@ -470,6 +490,16 @@ PHP;
 
     $defs = get_option('cffp_post_types', []);
     if (!is_array($defs)) $defs = [];
+
+    if (!empty($_GET['updated'])) {
+      add_settings_error('cffp_post_types', 'updated', __('Custom Post Type saved.', 'cff'), 'updated');
+    }
+    if (!empty($_GET['duplicated'])) {
+      add_settings_error('cffp_post_types', 'duplicated', __('Custom Post Type duplicated.', 'cff'), 'updated');
+    }
+    if (!empty($_GET['deleted'])) {
+      add_settings_error('cffp_post_types', 'deleted', __('Custom Post Type deleted.', 'cff'), 'updated');
+    }
 
     $edit_key = isset($_GET['edit']) ? sanitize_key($_GET['edit']) : '';
     $editing  = ($edit_key && isset($defs[$edit_key]) && is_array($defs[$edit_key]));
@@ -2709,6 +2739,12 @@ PHP;
           echo '<div class="cff-metabox-fields">';
           foreach ($fields as $f) $this->render_field($post, $f);
           echo '</div>';
+          if ($this->polylang_active()) {
+            echo '<div class="cff-metabox-actions" style="margin-top:12px;padding-top:12px;border-top:1px solid #e2e4e7;">';
+            echo '<button type="submit" class="button" name="cff_copy_to_translations_trigger" value="1">' . esc_html__('Save + Copy CFF to Translations', 'cff') . '</button>';
+            echo '<p class="description" style="margin:8px 0 0;">' . esc_html__('Copy CFF values to all translated posts only when this button is clicked.', 'cff') . '</p>';
+            echo '</div>';
+          }
           echo '</div>';
         },
         $post_type,
@@ -2927,10 +2963,22 @@ PHP;
 
         if (is_array($data)) {
           if (isset($data['post_types'])) {
-            update_option('cffp_post_types', $this->sanitize_import_post_types((array)$data['post_types']));
+            $import_post_types = $this->sanitize_import_post_types((array)$data['post_types']);
+            $existing_post_types = get_option('cffp_post_types', []);
+            if (!is_array($existing_post_types)) $existing_post_types = [];
+            foreach ($import_post_types as $key => $definition) {
+              $existing_post_types[$key] = $definition;
+            }
+            update_option('cffp_post_types', $existing_post_types);
           }
           if (isset($data['taxonomies'])) {
-            update_option('cffp_taxonomies', $this->sanitize_import_taxonomies((array)$data['taxonomies']));
+            $import_taxonomies = $this->sanitize_import_taxonomies((array)$data['taxonomies']);
+            $existing_taxonomies = get_option('cffp_taxonomies', []);
+            if (!is_array($existing_taxonomies)) $existing_taxonomies = [];
+            foreach ($import_taxonomies as $key => $definition) {
+              $existing_taxonomies[$key] = $definition;
+            }
+            update_option('cffp_taxonomies', $existing_taxonomies);
           }
           if (isset($data['field_groups'])) {
             $this->import_field_groups((array)$data['field_groups']);
@@ -2958,30 +3006,87 @@ PHP;
       'numberposts' => -1,
       'no_found_rows' => true,
     ]);
+    $export_post_types = get_option('cffp_post_types', []);
+    if (!is_array($export_post_types)) $export_post_types = [];
+    $export_taxonomies = get_option('cffp_taxonomies', []);
+    if (!is_array($export_taxonomies)) $export_taxonomies = [];
 
-    echo '<div class="wrap cff-admin"><h1>Tools</h1><div class="cff-tools-grid">';
+    echo '<div class="wrap cff-admin"><h1>Export / Import</h1><div class="cff-tools-grid">';
 
     echo '<div class="cff-tools-card">';
     echo '<h2>Export</h2><p class="description">Download JSON export of Field Groups, Post Types, and Taxonomies.</p>';
     echo '<form method="post" action="'.esc_url($export_url).'">';
     echo wp_nonce_field('cff_export_nonce','cff_export_nonce',true,false);
     echo '<input type="hidden" name="cff_export" value="1">';
-    echo '<p><label><input type="checkbox" name="cff_export_post_types" checked> Post Types</label></p>';
-    echo '<p><label><input type="checkbox" name="cff_export_taxonomies" checked> Taxonomies</label></p>';
-    echo '<div class="cff-tools-field"><label>Field Groups</label>';
+    echo '<p><label><input type="checkbox" class="cff-export-toggle" data-target=".cff-export-post-types-list" name="cff_export_post_types" checked> Post Types</label></p>';
+    echo '<div class="cff-tools-field cff-export-post-types-list">';
+    echo '<input type="hidden" name="cff_export_post_types_filter" value="1">';
+    if ($export_post_types) {
+      echo '<div class="cff-export-checklist">';
+      foreach ($export_post_types as $pt_key => $pt_def) {
+        $label = trim((string)($pt_def['plural'] ?? $pt_def['singular'] ?? $pt_key));
+        if ($label === '') $label = $pt_key;
+        echo '<label><input type="checkbox" name="cff_export_post_types_keys[]" value="' . esc_attr($pt_key) . '" checked> ' . esc_html($label) . ' <code>' . esc_html($pt_key) . '</code></label>';
+      }
+      echo '</div>';
+      echo '<p class="description">Uncheck to exclude specific post types.</p>';
+    } else {
+      echo '<p class="description">No custom post types found.</p>';
+    }
+    echo '</div>';
+
+    echo '<p><label><input type="checkbox" class="cff-export-toggle" data-target=".cff-export-taxonomies-list" name="cff_export_taxonomies" checked> Taxonomies</label></p>';
+    echo '<div class="cff-tools-field cff-export-taxonomies-list">';
+    echo '<input type="hidden" name="cff_export_taxonomies_filter" value="1">';
+    if ($export_taxonomies) {
+      echo '<div class="cff-export-checklist">';
+      foreach ($export_taxonomies as $tax_key => $tax_def) {
+        $label = trim((string)($tax_def['plural'] ?? $tax_def['singular'] ?? $tax_key));
+        if ($label === '') $label = $tax_key;
+        echo '<label><input type="checkbox" name="cff_export_taxonomies_keys[]" value="' . esc_attr($tax_key) . '" checked> ' . esc_html($label) . ' <code>' . esc_html($tax_key) . '</code></label>';
+      }
+      echo '</div>';
+      echo '<p class="description">Uncheck to exclude specific taxonomies.</p>';
+    } else {
+      echo '<p class="description">No custom taxonomies found.</p>';
+    }
+    echo '</div>';
+
+    echo '<p><label><input type="checkbox" class="cff-export-toggle" data-target=".cff-export-field-groups-list" name="cff_export_field_groups" checked> Field Groups</label></p>';
+    echo '<div class="cff-tools-field cff-export-field-groups-list">';
+    echo '<input type="hidden" name="cff_export_field_groups_filter" value="1">';
     if ($export_groups) {
       echo '<div class="cff-export-checklist">';
       foreach ($export_groups as $group) {
         echo '<label><input type="checkbox" name="cff_export_groups[]" value="' . esc_attr($group->ID) . '" checked> ' . esc_html($group->post_title) . '</label>';
       }
       echo '</div>';
-      echo '<p class="description">Uncheck to exclude specific groups.</p>';
+      echo '<p class="description">Uncheck to exclude specific field groups.</p>';
     } else {
       echo '<p class="description">No field groups found.</p>';
     }
     echo '</div>';
     echo '<p><button class="button button-primary">Download Export JSON</button></p>';
     echo '</form>';
+    echo '<script>
+    document.addEventListener("DOMContentLoaded", function () {
+      var toggles = document.querySelectorAll(".cff-export-toggle");
+      function syncToggle(toggle) {
+        var target = toggle.getAttribute("data-target");
+        if (!target) return;
+        var panel = document.querySelector(target);
+        if (!panel) return;
+        var show = !!toggle.checked;
+        panel.style.display = show ? "" : "none";
+        var inputs = panel.querySelectorAll("input, select, textarea, button");
+        inputs.forEach(function (el) { el.disabled = !show; });
+      }
+      toggles.forEach(function (toggle) {
+        syncToggle(toggle);
+        toggle.addEventListener("change", function () { syncToggle(toggle); });
+      });
+    });
+    </script>';
     echo '</div>';
 
     echo '<div class="cff-tools-card">';
@@ -3055,15 +3160,59 @@ PHP;
 
     $include_post_types = !empty($_REQUEST['cff_export_post_types']);
     $include_taxonomies = !empty($_REQUEST['cff_export_taxonomies']);
-    $has_group_filter = isset($_REQUEST['cff_export_groups']);
-    $group_ids = $has_group_filter ? array_filter(array_map('absint', (array) $_REQUEST['cff_export_groups'])) : [];
+    $include_field_groups = !empty($_REQUEST['cff_export_field_groups']);
+
+    $all_post_types = get_option('cffp_post_types', []);
+    if (!is_array($all_post_types)) $all_post_types = [];
+    $post_types_payload = [];
+    if ($include_post_types) {
+      $has_pt_filter = !empty($_REQUEST['cff_export_post_types_filter']);
+      if ($has_pt_filter) {
+        $pt_keys = isset($_REQUEST['cff_export_post_types_keys']) ? array_map('sanitize_key', (array) $_REQUEST['cff_export_post_types_keys']) : [];
+        foreach ($pt_keys as $pt_key) {
+          if (isset($all_post_types[$pt_key])) {
+            $post_types_payload[$pt_key] = $all_post_types[$pt_key];
+          }
+        }
+      } else {
+        $post_types_payload = $all_post_types;
+      }
+    }
+
+    $all_taxonomies = get_option('cffp_taxonomies', []);
+    if (!is_array($all_taxonomies)) $all_taxonomies = [];
+    $taxonomies_payload = [];
+    if ($include_taxonomies) {
+      $has_tax_filter = !empty($_REQUEST['cff_export_taxonomies_filter']);
+      if ($has_tax_filter) {
+        $tax_keys = isset($_REQUEST['cff_export_taxonomies_keys']) ? array_map('sanitize_key', (array) $_REQUEST['cff_export_taxonomies_keys']) : [];
+        foreach ($tax_keys as $tax_key) {
+          if (isset($all_taxonomies[$tax_key])) {
+            $taxonomies_payload[$tax_key] = $all_taxonomies[$tax_key];
+          }
+        }
+      } else {
+        $taxonomies_payload = $all_taxonomies;
+      }
+    }
+
+    $field_groups_payload = [];
+    if ($include_field_groups) {
+      $has_group_filter = !empty($_REQUEST['cff_export_field_groups_filter']);
+      if ($has_group_filter) {
+        $group_ids = isset($_REQUEST['cff_export_groups']) ? array_filter(array_map('absint', (array) $_REQUEST['cff_export_groups'])) : [];
+        $field_groups_payload = $group_ids ? $this->export_field_groups($group_ids) : [];
+      } else {
+        $field_groups_payload = $this->export_field_groups();
+      }
+    }
 
     $payload = [
       'version' => defined('CFFP_VERSION') ? CFFP_VERSION : '0.0.0',
       'exported_at' => gmdate('c'),
-      'post_types' => $include_post_types ? get_option('cffp_post_types', []) : [],
-      'taxonomies' => $include_taxonomies ? get_option('cffp_taxonomies', []) : [],
-      'field_groups' => $has_group_filter ? $this->export_field_groups($group_ids) : $this->export_field_groups(),
+      'post_types' => $post_types_payload,
+      'taxonomies' => $taxonomies_payload,
+      'field_groups' => $field_groups_payload,
     ];
 
     $json = wp_json_encode($payload, JSON_PRETTY_PRINT);
@@ -3879,6 +4028,26 @@ PHP;
     $located = locate_template($file);
     if ($located) return $located;
     return $template;
+  }
+
+  public function add_copy_notice_flag_to_redirect($location, $post_id) {
+    if (empty($_POST['cff_copy_to_translations_trigger'])) {
+      return $location;
+    }
+    if (!function_exists('pll_get_post_translations')) {
+      return $location;
+    }
+    return add_query_arg('cff_copied_translations', '1', $location);
+  }
+
+  public function maybe_render_copy_to_translations_notice() {
+    if (empty($_GET['cff_copied_translations'])) {
+      return;
+    }
+    if (!current_user_can('edit_posts')) {
+      return;
+    }
+    echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('CFF values were copied to available translations.', 'cff') . '</p></div>';
   }
 
   private function get_post_type_definition($post_type) {

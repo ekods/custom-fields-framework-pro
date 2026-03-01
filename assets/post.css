@@ -212,6 +212,12 @@
   border-bottom:1px solid #dcdcde;
 }
 
+.cff-rep-rows { 
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
 .cff-repeater[data-layout="grid"] .cff-rep-rows{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
@@ -242,18 +248,25 @@
   position:relative;
   box-shadow:none;
   background:transparent;
+  display: flex;
+  align-items: start;
+  min-height: 72px;
+  gap: 10px;
 }
 .cff-repeater[data-layout="simple"] .cff-rep-row-head-simple{
   display:flex;
   align-items:center;
+  flex-direction: column;
   gap:6px;
   justify-content: flex-end;
   background-color: transparent;
+  background: transparent;
   border: 0;
-  position: absolute;
+  position: relative;
   top: 6px;
   right: 0;
   z-index: 3;
+  padding: 0;
 }
 .cff-repeater[data-layout="simple"] .cff-rep-row-head-simple .cff-rep-left {
   display:none;
@@ -266,10 +279,17 @@
 .cff-repeater[data-layout="simple"] .cff-subfield-input {
   border: 0;
   margin: 0;
-  background: transparent;
+  background: #eee;
 }
 .cff-repeater[data-layout="simple"] .cff-rep-row-simple .cff-rep-row-body {
-  padding: 22px 0 0;
+  padding: 0;
+  flex: 1;
+}
+
+.cff-repeater[data-layout="simple"] .cff-rep-row.cff-rep-row-simple:not(:last-child){
+  border-bottom: 1px solid #000;
+  border-radius: 0;
+  padding-bottom: 10px;
 }
 
 .cff-group > .cff-subfield-input > .cff-repeater[data-layout="simple"]{
@@ -292,6 +312,30 @@
 .cff-rep-toggle:before{font-family:dashicons;content:"\f142"} /* arrow-down */
 .cff-rep-row.is-collapsed .cff-rep-toggle:before{content:"\f140"} /* arrow-right */
 .cff-rep-row.is-collapsed .cff-rep-row-body{display:none}
+
+.cff-field .cff-rep-remove{
+  width:28px;
+  height:28px;
+  border:1px solid #dcdcde;
+  border-radius:8px;
+  background:#fff;
+  color:#b32d2e;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  text-decoration:none;
+  cursor:pointer;
+}
+.cff-field .cff-rep-remove:hover{
+  border-color:#b32d2e;
+  color:#b32d2e;
+  background:#fff5f5;
+}
+.cff-field .cff-rep-remove .dashicons{
+  font-size:16px;
+  width:16px;
+  height:16px;
+}
 
 .cff-rep-row-body{padding:12px}
 .cff-rep-row-grid .cff-rep-row-body{

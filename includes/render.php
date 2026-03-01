@@ -375,9 +375,9 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       $head_class .= ' cff-rep-row-head-row';
     }
     if ($layout === 'simple') {
-      echo '<div class="'.esc_attr($head_class).'"><span class="cff-rep-drag" title="Drag"></span> <span style="margin:0 4px;">|</span> <button type="button" class="button-link cff-rep-remove">Remove</button></div>';
+      echo '<div class="'.esc_attr($head_class).'"><span class="cff-rep-drag" title="Drag"></span><button type="button" class="button-link cff-rep-remove" title="Remove row" aria-label="Remove row"><span class="dashicons dashicons-trash" aria-hidden="true"></span></button></div>';
     } else {
-      echo '<div class="'.esc_attr($head_class).'"><div class="cff-rep-left"><span class="cff-rep-drag" title="Drag"></span><button type="button" class="cff-rep-toggle" title="Collapse"></button><strong>Row</strong></div><button type="button" class="button-link cff-rep-remove">Remove</button></div>';
+      echo '<div class="'.esc_attr($head_class).'"><div class="cff-rep-left"><span class="cff-rep-drag" title="Drag"></span><button type="button" class="cff-rep-toggle" title="Collapse"></button><strong>Row</strong></div><button type="button" class="button-link cff-rep-remove" title="Remove row" aria-label="Remove row"><span class="dashicons dashicons-trash" aria-hidden="true"></span></button></div>';
     }
     echo '<div class="cff-rep-row-body">';
     $row_prefix = ($name_prefix !== null ? $name_prefix : 'cff_values['.$parent.']') . '['.$i.']';
@@ -837,6 +837,7 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
     if (!isset($_POST['cff_content_nonce']) || !wp_verify_nonce($_POST['cff_content_nonce'], 'cff_content_save')) return;
     if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
     if (!current_user_can('edit_post', $post_id)) return;
+    $copy_to_translations = !empty($_POST['cff_copy_to_translations_trigger']);
 
     if (isset($_POST['cff_group_field_order']) && is_array($_POST['cff_group_field_order'])) {
       foreach ((array) $_POST['cff_group_field_order'] as $group_id => $raw_order) {
@@ -861,7 +862,12 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
       }
     }
 
-    if (!isset($_POST['cff_values']) || !is_array($_POST['cff_values'])) return;
+    if (!isset($_POST['cff_values']) || !is_array($_POST['cff_values'])) {
+      if ($copy_to_translations) {
+        cff_copy_values_to_polylang_translations($post_id);
+      }
+      return;
+    }
 
     $vals = $_POST['cff_values'];
 
@@ -892,6 +898,47 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
       }
 
       update_post_meta($post_id, $key, $value);
+    }
+
+    if ($copy_to_translations) {
+      cff_copy_values_to_polylang_translations($post_id);
+    }
+  }
+
+  function cff_copy_values_to_polylang_translations($post_id) {
+    if (!function_exists('pll_get_post_translations')) return;
+
+    $translations = pll_get_post_translations($post_id);
+    if (!is_array($translations) || count($translations) < 2) return;
+
+    $source_meta = get_post_meta($post_id);
+    if (!is_array($source_meta)) {
+      $source_meta = [];
+    }
+
+    $cff_meta = [];
+    foreach ($source_meta as $meta_key => $meta_values) {
+      if (strpos((string) $meta_key, '_cff_') !== 0) continue;
+      $cff_meta[$meta_key] = is_array($meta_values) ? $meta_values : [];
+    }
+
+    foreach ($translations as $translated_post_id) {
+      $translated_post_id = absint($translated_post_id);
+      if (!$translated_post_id || $translated_post_id === absint($post_id)) continue;
+
+      $target_meta = get_post_meta($translated_post_id);
+      if (is_array($target_meta)) {
+        foreach ($target_meta as $meta_key => $meta_values) {
+          if (strpos((string) $meta_key, '_cff_') !== 0) continue;
+          delete_post_meta($translated_post_id, $meta_key);
+        }
+      }
+
+      foreach ($cff_meta as $meta_key => $meta_values) {
+        foreach ((array) $meta_values as $meta_value) {
+          add_post_meta($translated_post_id, $meta_key, maybe_unserialize($meta_value));
+        }
+      }
     }
   }
 

@@ -376,16 +376,11 @@ jQuery(function($){
     if (isNaN(min) || min < 0) min = 1;
     if (isNaN(max) || max < 0) max = 0; // 0 = unlimited
 
-    // --- REMOVE: disable kalau count <= min (atau <=1 default safety)
-    var canRemove = count > Math.max(1, min);
-
     $rowsWrap.children('.cff-rep-row').find('> .cff-rep-row-head .cff-rep-remove').each(function(){
       $(this)
-        .toggleClass('is-disabled', !canRemove)
-        .attr('aria-disabled', canRemove ? null : 'true');
-
-      // kalau button, ini ngaruh. kalau link, tetap aman.
-      try { $(this).prop('disabled', !canRemove); } catch(e){}
+        .removeClass('is-disabled')
+        .attr('aria-disabled', null);
+      try { $(this).prop('disabled', false); } catch(e){}
     });
 
     // --- ADD: disable kalau sudah max (kecuali max=0 unlimited)
@@ -447,8 +442,6 @@ jQuery(function($){
 
       updateRepeaterControls($rep);
 
-      if ($(this).hasClass('is-disabled')) return;
-
       $rep.closest('form').trigger('change');
     });
 
@@ -466,8 +459,6 @@ jQuery(function($){
       reindexRepeater($rep);
 
       updateRepeaterControls($rep);
-
-      if ($(this).hasClass('is-disabled')) return;
 
       $rep.closest('form').trigger('change');
     });
