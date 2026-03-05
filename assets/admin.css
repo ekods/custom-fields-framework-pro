@@ -228,6 +228,22 @@
   font-size: 12px;
   color: #56606a;
 }
+.cff-row-repeater-advanced{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(140px,1fr));
+  gap:8px;
+}
+.cff-row-repeater-col{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.cff-row-repeater-col .cff-input{
+  width:100%;
+}
+.cff-row-repeater-collapse{
+  margin-top:4px;
+}
 .cff-row-datetime-options{
   display:none;
   margin-top:8px;

@@ -9,6 +9,61 @@ if (!defined('ABSPATH')) exit;
 $GLOBALS['cff_row_stack'] = [];
 
 function cff_meta_key($name) { return '_cff_' . sanitize_key($name); }
+function cff_value_not_empty($value) {
+  if (is_array($value)) return !empty($value);
+  return !($value === null || $value === '');
+}
+
+function cff_collect_field_aliases($fields, &$map) {
+  foreach ((array) $fields as $field) {
+    $name = sanitize_key($field['name'] ?? '');
+    if (!$name) continue;
+    $aliases = [];
+    foreach ((array) ($field['aliases'] ?? []) as $alias) {
+      $alias = sanitize_key($alias);
+      if ($alias && $alias !== $name) $aliases[] = $alias;
+    }
+    if ($aliases) {
+      $existing = isset($map[$name]) && is_array($map[$name]) ? $map[$name] : [];
+      $map[$name] = array_values(array_unique(array_merge($existing, $aliases)));
+    }
+    if (isset($field['sub_fields']) && is_array($field['sub_fields'])) {
+      cff_collect_field_aliases($field['sub_fields'], $map);
+    }
+    if (isset($field['layouts']) && is_array($field['layouts'])) {
+      foreach ($field['layouts'] as $layout) {
+        if (isset($layout['sub_fields']) && is_array($layout['sub_fields'])) {
+          cff_collect_field_aliases($layout['sub_fields'], $map);
+        }
+      }
+    }
+  }
+}
+
+function cff_get_field_aliases($selector) {
+  static $alias_map = null;
+  $selector = sanitize_key($selector);
+  if (!$selector) return [];
+
+  if ($alias_map === null) {
+    $alias_map = [];
+    $groups = get_posts([
+      'post_type' => 'cff_group',
+      'post_status' => ['publish', 'draft', 'pending', 'private'],
+      'posts_per_page' => -1,
+      'no_found_rows' => true,
+      'fields' => 'ids',
+    ]);
+    foreach ((array) $groups as $group_id) {
+      $settings = get_post_meta((int) $group_id, '_cff_settings', true);
+      $fields = isset($settings['fields']) && is_array($settings['fields']) ? $settings['fields'] : [];
+      cff_collect_field_aliases($fields, $alias_map);
+    }
+  }
+
+  return isset($alias_map[$selector]) && is_array($alias_map[$selector]) ? $alias_map[$selector] : [];
+}
+
 function cff_format_value($val, $format_value = true) {
   if (!$format_value) return $val;
   if (is_array($val)) {
@@ -57,9 +112,21 @@ function cff_format_value($val, $format_value = true) {
 
 if (!function_exists('get_field')) {
   function get_field($selector, $post_id = false, $format_value = true) {
+    $selector = sanitize_key($selector);
+    if (!$selector) return null;
     $post_id = $post_id ? $post_id : get_the_ID();
     if (!$post_id) return null;
     $val = get_post_meta($post_id, cff_meta_key($selector), true);
+    if (!cff_value_not_empty($val)) {
+      $aliases = cff_get_field_aliases($selector);
+      foreach ($aliases as $alias) {
+        $alias_val = get_post_meta($post_id, cff_meta_key($alias), true);
+        if (cff_value_not_empty($alias_val)) {
+          $val = $alias_val;
+          break;
+        }
+      }
+    }
     return cff_format_value($val, $format_value);
   }
 }

@@ -258,16 +258,19 @@ class Plugin {
     add_action('admin_menu', [$this, 'admin_menu']);
     add_action('add_meta_boxes', [$this, 'meta_boxes']);
     add_action('save_post_cff_group', [$this, 'save_group'], 10, 2);
+    add_action('save_post_cff_options', [$this, 'save_global_ui_settings'], 10, 2);
 
     add_action('add_meta_boxes', [$this, 'content_meta_boxes'], 20, 2);
     add_action('save_post', [$this, 'save_content_fields'], 10, 2);
 
     add_action('admin_enqueue_scripts', [$this, 'assets']);
+    add_action('enqueue_block_editor_assets', [$this, 'enqueue_block_editor_assets']);
     add_action('admin_head-edit.php', [$this, 'remove_post_views_id']);
     add_action('admin_notices', [$this, 'maybe_render_copy_to_translations_notice']);
     add_action('admin_init', [$this, 'handle_export_tools']);
     add_action('admin_init', [$this, 'handle_export_group']);
     add_action('admin_init', [$this, 'handle_export_acf_data']);
+    add_action('rest_api_init', [$this, 'register_rest_fields']);
     add_action('pre_get_posts', [$this, 'apply_reorder_post_types']);
     add_filter('get_terms_args', [$this, 'apply_reorder_terms_args'], 10, 2);
     add_filter('category_rewrite_rules', [$this, 'category_rewrite_rules']);
@@ -452,6 +455,16 @@ PHP;
     echo '<p class="description">' . esc_html__('This page explains how to debug and render Field Group reorder data on the frontend.', 'cff') . '</p>';
 
     echo '<div class="postbox" style="max-width:980px;margin-top:16px;"><div class="inside">';
+    echo '<h2 style="margin-top:8px;">' . esc_html__('0. Global Settings looks empty?', 'cff') . '</h2>';
+    echo '<p>' . esc_html__('Global Settings will only display fields from Field Groups that match this location rule:', 'cff') . ' <strong>' . esc_html__('Options Page == Global Settings', 'cff') . '</strong>.</p>';
+    echo '<ol style="line-height:1.8;">';
+    echo '<li>' . esc_html__('Open Field Groups and create/edit a group.', 'cff') . '</li>';
+    echo '<li>' . esc_html__('In Location Rules, add: Options Page == Global Settings.', 'cff') . '</li>';
+    echo '<li>' . esc_html__('Save the group, then reopen Global Settings.', 'cff') . '</li>';
+    echo '</ol>';
+    echo '</div></div>';
+
+    echo '<div class="postbox" style="max-width:980px;margin-top:16px;"><div class="inside">';
     echo '<h2 style="margin-top:8px;">' . esc_html__('1. Save reorder in the editor', 'cff') . '</h2>';
     echo '<ol style="line-height:1.8;">';
     echo '<li>' . esc_html__('Open a post/page/custom post that has CFF Field Group metaboxes.', 'cff') . '</li>';
@@ -483,6 +496,349 @@ PHP;
 
     echo '<p style="margin-top:16px;">' . esc_html__('Open this page directly:', 'cff') . ' <code>admin.php?page=cff-docs</code></p>';
     echo '</div>';
+  }
+
+  public function register_rest_fields() {
+    $post_types = get_post_types(['show_in_rest' => true], 'names');
+    if (!is_array($post_types) || !$post_types) return;
+
+    foreach ($post_types as $post_type) {
+      $post_type = sanitize_key($post_type);
+      if (!$post_type) continue;
+      if (in_array($post_type, ['cff_group', 'cff_options', 'revision'], true)) continue;
+
+      $writable = (bool) apply_filters('cff_rest_fields_writable', true, $post_type);
+      $schema_properties = $this->build_rest_schema_properties_for_post_type($post_type);
+
+      register_rest_field($post_type, 'cff', [
+        'get_callback' => function($object) use ($post_type) {
+          $post_id = absint($object['id'] ?? 0);
+          if (!$post_id) return [];
+          return $this->get_rest_cff_payload($post_id, $post_type);
+        },
+        'update_callback' => $writable ? function($value, $object) use ($post_type) {
+          $post_id = absint($object->ID ?? 0);
+          if (!$post_id) return new \WP_Error('cff_rest_invalid_post', __('Invalid post object.', 'cff'), ['status' => 400]);
+          return $this->update_rest_cff_payload($post_id, $post_type, $value);
+        } : null,
+        'schema' => [
+          'description' => __('Custom Fields Framework values.', 'cff'),
+          'type' => 'object',
+          'context' => ['view', 'edit'],
+          'readonly' => !$writable,
+          'properties' => $schema_properties,
+          'additionalProperties' => true,
+        ],
+      ]);
+    }
+  }
+
+  private function get_rest_cff_payload($post_id, $post_type) {
+    $post = get_post($post_id);
+    if (!$post || $post->post_type !== $post_type) return [];
+
+    $definitions = $this->get_field_definitions_for_post($post);
+    if (!$definitions) {
+      $definitions = $this->get_field_definitions_for_post_type($post_type);
+    }
+
+    $format_value = (bool) apply_filters('cff_rest_fields_format_value', true, $post_type, $post_id);
+    $out = [];
+    foreach ($definitions as $name => $field) {
+      $name = sanitize_key($name);
+      if (!$name) continue;
+
+      if ($format_value && function_exists(__NAMESPACE__ . '\get_field')) {
+        $out[$name] = get_field($name, $post_id, true);
+      } else {
+        $out[$name] = get_post_meta($post_id, $this->meta_key($name), true);
+      }
+    }
+    return $out;
+  }
+
+  private function update_rest_cff_payload($post_id, $post_type, $value) {
+    if (is_object($value)) {
+      $value = (array) $value;
+    }
+    if (!is_array($value)) {
+      return new \WP_Error('cff_rest_invalid_payload', __('CFF payload must be an object.', 'cff'), ['status' => 400]);
+    }
+    if (!current_user_can('edit_post', $post_id)) {
+      return new \WP_Error('cff_rest_forbidden', __('You are not allowed to edit this post.', 'cff'), ['status' => 403]);
+    }
+
+    $post = get_post($post_id);
+    if (!$post || $post->post_type !== $post_type) {
+      return new \WP_Error('cff_rest_invalid_post_type', __('Post type mismatch.', 'cff'), ['status' => 400]);
+    }
+
+    $definitions = $this->get_field_definitions_for_post($post);
+    if (!$definitions) {
+      $definitions = $this->get_field_definitions_for_post_type($post_type);
+    }
+    if (!$definitions) return true;
+
+    $readonly_fields = array_values(array_filter(array_map('sanitize_key', (array) apply_filters('cff_rest_fields_readonly', [], $post_type, $post_id))));
+    $readonly_map = array_fill_keys($readonly_fields, true);
+
+    foreach ($value as $field_name => $raw_field_value) {
+      $field_name = sanitize_key($field_name);
+      if (!$field_name || !isset($definitions[$field_name])) continue;
+      if (isset($readonly_map[$field_name])) continue;
+
+      $sanitized = $this->sanitize_rest_field_value($definitions[$field_name], $raw_field_value);
+      $meta_key = $this->meta_key($field_name);
+      if ($sanitized === null || $sanitized === '' || (is_array($sanitized) && empty($sanitized))) {
+        delete_post_meta($post_id, $meta_key);
+      } else {
+        update_post_meta($post_id, $meta_key, $sanitized);
+      }
+    }
+
+    return true;
+  }
+
+  private function get_field_definitions_for_post_type($post_type) {
+    $post_type = sanitize_key($post_type);
+    if (!$post_type) return [];
+
+    $probe = (object) [
+      'ID' => 0,
+      'post_type' => $post_type,
+    ];
+
+    $groups = get_posts([
+      'post_type' => 'cff_group',
+      'post_status' => 'publish',
+      'numberposts' => -1,
+      'no_found_rows' => true,
+    ]);
+
+    $definitions = [];
+    foreach ($groups as $group) {
+      $settings = get_post_meta($group->ID, '_cff_settings', true);
+      $location = is_array($settings['location'] ?? null) ? $settings['location'] : [];
+      if (!$this->match_location($probe, $location)) continue;
+      foreach ((array) ($settings['fields'] ?? []) as $field) {
+        $name = sanitize_key($field['name'] ?? '');
+        if ($name) $definitions[$name] = $field;
+      }
+    }
+    return $definitions;
+  }
+
+  private function build_rest_schema_properties_for_post_type($post_type) {
+    $definitions = $this->get_field_definitions_for_post_type($post_type);
+    $properties = [];
+    foreach ($definitions as $name => $field) {
+      $name = sanitize_key($name);
+      if (!$name) continue;
+      $properties[$name] = $this->build_rest_schema_for_field($field);
+    }
+    return $properties;
+  }
+
+  private function build_rest_schema_for_field($field) {
+    $type = sanitize_key($field['type'] ?? 'text');
+    $schema = [
+      'description' => sanitize_text_field($field['label'] ?? $field['name'] ?? $type),
+    ];
+
+    if ($type === 'number') {
+      $schema['type'] = 'number';
+      return $schema;
+    }
+    if ($type === 'checkbox') {
+      $schema['type'] = 'boolean';
+      return $schema;
+    }
+    if ($type === 'choice') {
+      $display = sanitize_key($field['choice_display'] ?? 'select');
+      $choices = [];
+      foreach ((array) ($field['choices'] ?? []) as $choice) {
+        $value = sanitize_text_field($choice['value'] ?? ($choice['label'] ?? ''));
+        if ($value !== '') $choices[] = $value;
+      }
+      $choices = array_values(array_unique($choices));
+      if ($display === 'checkbox') {
+        $schema['type'] = 'array';
+        $schema['items'] = ['type' => 'string'];
+        if ($choices) $schema['items']['enum'] = $choices;
+      } else {
+        $schema['type'] = 'string';
+        if ($choices) $schema['enum'] = $choices;
+      }
+      return $schema;
+    }
+    if ($type === 'link') {
+      $schema['type'] = 'object';
+      $schema['properties'] = [
+        'url' => ['type' => 'string'],
+        'title' => ['type' => 'string'],
+        'target' => ['type' => 'string'],
+      ];
+      return $schema;
+    }
+    if ($type === 'image' || $type === 'file') {
+      $schema['type'] = 'object';
+      $schema['properties'] = [
+        'id' => ['type' => 'integer'],
+        'url' => ['type' => 'string'],
+      ];
+      return $schema;
+    }
+    if ($type === 'group') {
+      $schema['type'] = 'object';
+      $schema['properties'] = [];
+      foreach ((array) ($field['sub_fields'] ?? []) as $sub) {
+        $sub_name = sanitize_key($sub['name'] ?? '');
+        if (!$sub_name) continue;
+        $schema['properties'][$sub_name] = $this->build_rest_schema_for_field($sub);
+      }
+      return $schema;
+    }
+    if ($type === 'repeater') {
+      $schema['type'] = 'array';
+      $item_schema = ['type' => 'object', 'properties' => []];
+      foreach ((array) ($field['sub_fields'] ?? []) as $sub) {
+        $sub_name = sanitize_key($sub['name'] ?? '');
+        if (!$sub_name) continue;
+        $item_schema['properties'][$sub_name] = $this->build_rest_schema_for_field($sub);
+      }
+      $schema['items'] = $item_schema;
+      $min = max(0, intval($field['min'] ?? 0));
+      $max = max(0, intval($field['max'] ?? 0));
+      if ($min > 0) $schema['minItems'] = $min;
+      if ($max > 0) $schema['maxItems'] = $max;
+      return $schema;
+    }
+    if ($type === 'flexible') {
+      $schema['type'] = 'array';
+      $schema['items'] = [
+        'type' => 'object',
+        'properties' => [
+          'layout' => ['type' => 'string'],
+          'fields' => ['type' => 'object'],
+        ],
+      ];
+      return $schema;
+    }
+
+    $schema['type'] = 'string';
+    return $schema;
+  }
+
+  private function sanitize_rest_field_value($field, $value) {
+    if (is_object($value)) {
+      $value = (array) $value;
+    }
+    $type = sanitize_key($field['type'] ?? 'text');
+
+    if ($type === 'number') {
+      if ($value === '' || $value === null) return null;
+      return is_numeric($value) ? 0 + $value : null;
+    }
+    if ($type === 'checkbox') {
+      return !empty($value) ? '1' : '0';
+    }
+    if ($type === 'choice') {
+      $display = sanitize_key($field['choice_display'] ?? 'select');
+      if ($display === 'checkbox') {
+        if (!is_array($value)) return [];
+        $out = [];
+        foreach ($value as $item) {
+          $item = sanitize_text_field($item);
+          if ($item !== '') $out[] = $item;
+        }
+        return array_values(array_unique($out));
+      }
+      return sanitize_text_field(is_scalar($value) ? (string) $value : '');
+    }
+    if ($type === 'url') {
+      return is_scalar($value) ? esc_url_raw((string) $value) : '';
+    }
+    if ($type === 'link') {
+      if (!is_array($value)) return null;
+      return [
+        'url' => esc_url_raw($value['url'] ?? ''),
+        'title' => sanitize_text_field($value['title'] ?? ''),
+        'target' => sanitize_text_field($value['target'] ?? ''),
+      ];
+    }
+    if ($type === 'image' || $type === 'file') {
+      if (is_array($value)) {
+        if (isset($value['id'])) return absint($value['id']);
+        return null;
+      }
+      return absint($value);
+    }
+    if ($type === 'repeater') {
+      if (is_object($value)) $value = (array) $value;
+      if (!is_array($value)) return [];
+      $rows = [];
+      $sub_map = [];
+      foreach ((array) ($field['sub_fields'] ?? []) as $sub) {
+        $sub_name = sanitize_key($sub['name'] ?? '');
+        if ($sub_name) $sub_map[$sub_name] = $sub;
+      }
+      foreach ($value as $row) {
+        if (!is_array($row)) continue;
+        $clean_row = [];
+        foreach ($sub_map as $sub_name => $sub_field) {
+          if (!array_key_exists($sub_name, $row)) continue;
+          $clean_row[$sub_name] = $this->sanitize_rest_field_value($sub_field, $row[$sub_name]);
+        }
+        if ($clean_row) $rows[] = $clean_row;
+      }
+      return $rows;
+    }
+    if ($type === 'group') {
+      if (is_object($value)) $value = (array) $value;
+      if (!is_array($value)) return [];
+      $clean = [];
+      foreach ((array) ($field['sub_fields'] ?? []) as $sub) {
+        $sub_name = sanitize_key($sub['name'] ?? '');
+        if (!$sub_name || !array_key_exists($sub_name, $value)) continue;
+        $clean[$sub_name] = $this->sanitize_rest_field_value($sub, $value[$sub_name]);
+      }
+      return $clean;
+    }
+    if ($type === 'flexible') {
+      if (is_object($value)) $value = (array) $value;
+      if (!is_array($value)) return [];
+      $layout_map = [];
+      foreach ((array) ($field['layouts'] ?? []) as $layout) {
+        $layout_name = sanitize_key($layout['name'] ?? '');
+        if ($layout_name) $layout_map[$layout_name] = $layout;
+      }
+      $rows = [];
+      foreach ($value as $row) {
+        if (is_object($row)) $row = (array) $row;
+        if (!is_array($row)) continue;
+        $layout_name = sanitize_key($row['layout'] ?? '');
+        if (!$layout_name || !isset($layout_map[$layout_name])) continue;
+        $row_fields = $row['fields'] ?? [];
+        if (is_object($row_fields)) $row_fields = (array) $row_fields;
+        if (!is_array($row_fields)) $row_fields = [];
+        $clean_fields = [];
+        foreach ((array) ($layout_map[$layout_name]['sub_fields'] ?? []) as $sub) {
+          $sub_name = sanitize_key($sub['name'] ?? '');
+          if (!$sub_name || !array_key_exists($sub_name, $row_fields)) continue;
+          $clean_fields[$sub_name] = $this->sanitize_rest_field_value($sub, $row_fields[$sub_name]);
+        }
+        $rows[] = [
+          'layout' => $layout_name,
+          'fields' => $clean_fields,
+        ];
+      }
+      return $rows;
+    }
+
+    if ($type === 'wysiwyg' || $type === 'embed') {
+      return wp_kses_post(is_scalar($value) ? (string) $value : '');
+    }
+    return sanitize_text_field(is_scalar($value) ? (string) $value : '');
   }
 
   public function page_post_types() {
@@ -1179,6 +1535,30 @@ PHP;
     }
   }
 
+  public function enqueue_block_editor_assets() {
+    $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+    if (!$screen || $screen->base !== 'post') return;
+    if (!method_exists($screen, 'is_block_editor') || !$screen->is_block_editor()) return;
+
+    $enabled_default = !empty(get_option('cffp_block_sidebar_enabled', 0));
+    $enabled = (bool) apply_filters('cff_block_sidebar_enabled', $enabled_default, $screen);
+    if (!$enabled) return;
+
+    wp_enqueue_style('cff-block-sidebar', CFFP_URL . 'assets/block-sidebar.css', [], $this->asset_ver('assets/block-sidebar.css'));
+    wp_enqueue_script(
+      'cff-block-sidebar',
+      CFFP_URL . 'assets/block-sidebar.js',
+      ['wp-plugins', 'wp-edit-post', 'wp-element', 'wp-dom-ready'],
+      $this->asset_ver('assets/block-sidebar.js'),
+      true
+    );
+    wp_localize_script('cff-block-sidebar', 'CFFBlockSidebar', [
+      'enabled' => true,
+      'title' => __('CFF Fields', 'cff'),
+      'empty' => __('No CFF field groups are active for this post.', 'cff'),
+    ]);
+  }
+
   private function asset_ver($rel_path) {
     $path = CFFP_DIR . ltrim($rel_path, '/');
     return file_exists($path) ? (string) filemtime($path) : CFFP_VERSION;
@@ -1815,6 +2195,30 @@ PHP;
 
   public function meta_boxes() {
     add_meta_box('cff_group_settings', __('Settings', 'cff'), [$this,'render_group_settings'], 'cff_group', 'normal', 'high');
+    add_meta_box('cff_global_ui_settings', __('Editor UI Settings', 'cff'), [$this,'render_global_ui_settings'], 'cff_options', 'normal', 'high');
+  }
+
+  public function render_global_ui_settings($post) {
+    if (!$post || $post->post_type !== 'cff_options') return;
+    wp_nonce_field('cff_global_ui_settings_save', 'cff_global_ui_settings_nonce');
+
+    $enabled = !empty(get_option('cffp_block_sidebar_enabled', 0));
+
+    echo '<p><label>';
+    echo '<input type="checkbox" name="cffp_block_sidebar_enabled" value="1" ' . checked($enabled, true, false) . '> ';
+    echo esc_html__('Enable CFF panels in Gutenberg document sidebar.', 'cff');
+    echo '</label></p>';
+    echo '<p class="description">' . esc_html__('When enabled, CFF metabox groups are moved into Gutenberg sidebar panels. You can still override behavior via filter: cff_block_sidebar_enabled.', 'cff') . '</p>';
+  }
+
+  public function save_global_ui_settings($post_id, $post) {
+    if (!$post || $post->post_type !== 'cff_options') return;
+    if (!isset($_POST['cff_global_ui_settings_nonce']) || !wp_verify_nonce($_POST['cff_global_ui_settings_nonce'], 'cff_global_ui_settings_save')) return;
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
+    if (!current_user_can('edit_post', $post_id)) return;
+
+    $enabled = !empty($_POST['cffp_block_sidebar_enabled']) ? 1 : 0;
+    update_option('cffp_block_sidebar_enabled', $enabled);
   }
 
   public function render_group_settings($post) {
@@ -1935,6 +2339,7 @@ PHP;
       'categories' => 'Categories',
       'tags' => 'Tags',
       'trackbacks' => 'Send Trackbacks',
+      'copy_to_translations' => 'Save + Copy CFF to Translations Button',
     ];
 
     foreach ($hide_keys as $k => $label) {
@@ -2020,6 +2425,27 @@ PHP;
                 <option value="row">Row (single horizontal row)</option>
               </select>
               <p class="description">Choose how each repeater row is presented while editing.</p>
+              <div class="cff-row-repeater-advanced">
+                <div class="cff-row-repeater-col">
+                  <label>Min Rows</label>
+                  <input type="number" class="cff-input cff-repeater-min" min="0" step="1" value="0">
+                </div>
+                <div class="cff-row-repeater-col">
+                  <label>Max Rows (0 = unlimited)</label>
+                  <input type="number" class="cff-input cff-repeater-max" min="0" step="1" value="0">
+                </div>
+              </div>
+              <div class="cff-row-repeater-col">
+                <label>Row Label Field (sub field name)</label>
+                <input type="text" class="cff-input cff-repeater-row-label" placeholder="title">
+              </div>
+              <span class="cff-tools-toggles cff-row-repeater-collapse">
+                <div><strong>Collapsed by default</strong></div>
+                <label class="cff-switch">
+                  <input type="checkbox" class="cff-repeater-collapsed-toggle">
+                  <span class="cff-slider"></span>
+                </label>
+              </span>
             </div>
             <div class="cff-row-datetime-options">
               <span class="cff-tools-toggles">
@@ -2220,6 +2646,27 @@ PHP;
                 <option value="row">Row (single horizontal row)</option>
               </select>
               <p class="description">Choose how each repeater row is presented while editing.</p>
+              <div class="cff-row-repeater-advanced">
+                <div class="cff-row-repeater-col">
+                  <label>Min Rows</label>
+                  <input type="number" class="cff-input cff-repeater-min" min="0" step="1" value="0">
+                </div>
+                <div class="cff-row-repeater-col">
+                  <label>Max Rows (0 = unlimited)</label>
+                  <input type="number" class="cff-input cff-repeater-max" min="0" step="1" value="0">
+                </div>
+              </div>
+              <div class="cff-row-repeater-col">
+                <label>Row Label Field (sub field name)</label>
+                <input type="text" class="cff-input cff-repeater-row-label" placeholder="title">
+              </div>
+              <span class="cff-tools-toggles cff-row-repeater-collapse">
+                <div><strong>Collapsed by default</strong></div>
+                <label class="cff-switch">
+                  <input type="checkbox" class="cff-repeater-collapsed-toggle">
+                  <span class="cff-slider"></span>
+                </label>
+              </span>
             </div>
             <div class="cff-row-datetime-options">
               <span class="cff-tools-toggles">
@@ -2437,27 +2884,45 @@ PHP;
     // sanitize fields
     $clean = [];
     $seen = [];
+    $seen_keys = [];
     foreach ($fields as $f) {
       $type = isset($f['type']) ? sanitize_key($f['type']) : 'text';
       $name = isset($f['name']) ? sanitize_key($f['name']) : '';
       if (!$name || isset($seen[$name])) continue;
       $seen[$name] = true;
 
+      $field_key = $this->sanitize_field_key($f['key'] ?? '');
+      while (isset($seen_keys[$field_key])) {
+        $field_key = $this->sanitize_field_key('');
+      }
+      $seen_keys[$field_key] = true;
+
       $item = [
         'label' => $this->sanitize_string_value($f['label'] ?? $name),
         'name'  => $name,
         'type'  => $type,
+        'key' => $field_key,
         'required' => !empty($f['required']),
         'placeholder' => $this->sanitize_string_value($f['placeholder'] ?? ''),
       ];
+      $aliases = $this->sanitize_field_aliases($f['aliases'] ?? [], $name);
+      if ($aliases) {
+        $item['aliases'] = $aliases;
+      }
       $conditional_logic = $this->sanitize_conditional_logic($f['conditional_logic'] ?? []);
       if ($conditional_logic) {
         $item['conditional_logic'] = $conditional_logic;
       }
 
       if ($type === 'repeater') {
-        $item['sub_fields'] = $this->sanitize_subfields($f['sub_fields'] ?? []);
+        $sub_fields = $this->sanitize_subfields($f['sub_fields'] ?? []);
+        $min = $this->sanitize_repeater_min($f['min'] ?? 0);
+        $item['sub_fields'] = $sub_fields;
         $item['repeater_layout'] = $this->sanitize_repeater_layout($f['repeater_layout'] ?? 'default');
+        $item['min'] = $min;
+        $item['max'] = $this->sanitize_repeater_max($f['max'] ?? 0, $min);
+        $item['repeater_row_label'] = $this->sanitize_repeater_row_label($f['repeater_row_label'] ?? '', $sub_fields);
+        $item['repeater_collapsed'] = !empty($f['repeater_collapsed']);
       }
       if ($type === 'datetime_picker') {
         $item['datetime_use_time'] = !array_key_exists('datetime_use_time', $f) ? true : !empty($f['datetime_use_time']);
@@ -2494,6 +2959,11 @@ PHP;
         $op = in_array(($rule['operator'] ?? '=='), ['==','!='], true) ? $rule['operator'] : '==';
         $val = sanitize_text_field($rule['value'] ?? '');
         if (!$val) continue;
+        if ($param === 'options_page') {
+          $val = sanitize_key(str_replace([' ', '-'], '_', (string) $val));
+          if ($val === 'global_settings') $val = 'global';
+          if ($val !== 'global') $val = 'global';
+        }
         $g[] = ['param'=>$param,'operator'=>$op,'value'=>$val];
       }
       if ($g) $loc_clean[] = $g;
@@ -2516,7 +2986,8 @@ PHP;
 
     $allowed_hide = [
       'permalink','editor','excerpt','discussion','comments','revisions','slug',
-      'author','format','page_attributes','featured_image','categories','tags','trackbacks'
+      'author','format','page_attributes','featured_image','categories','tags','trackbacks',
+      'copy_to_translations'
     ];
 
     $hide = [];
@@ -2551,23 +3022,77 @@ PHP;
     return $layout;
   }
 
+  private function sanitize_repeater_min($value) {
+    return max(0, intval($value));
+  }
+
+  private function sanitize_repeater_max($value, $min = 0) {
+    $max = max(0, intval($value));
+    $min = max(0, intval($min));
+    if ($max > 0 && $max < $min) {
+      $max = $min;
+    }
+    return $max;
+  }
+
+  private function sanitize_repeater_row_label($value, $sub_fields = []) {
+    $label = sanitize_key($value ?? '');
+    if (!$label) return '';
+    if (!is_array($sub_fields) || !$sub_fields) return $label;
+
+    foreach ($sub_fields as $sub_field) {
+      if (sanitize_key($sub_field['name'] ?? '') === $label) {
+        return $label;
+      }
+    }
+    return '';
+  }
+
+  private function sanitize_field_key($value = '') {
+    $key = sanitize_key($value ?? '');
+    if ($key) return $key;
+    return 'fld_' . substr(md5(uniqid((string) wp_rand(), true)), 0, 12);
+  }
+
+  private function sanitize_field_aliases($aliases, $current_name) {
+    $current_name = sanitize_key($current_name);
+    $out = [];
+    foreach ((array) $aliases as $alias) {
+      $alias = sanitize_key($alias);
+      if (!$alias || $alias === $current_name || isset($out[$alias])) continue;
+      $out[$alias] = true;
+    }
+    return array_keys($out);
+  }
+
   private function sanitize_subfields($subs) {
     $out = [];
     if (!is_array($subs)) return $out;
     $seen = [];
+    $seen_keys = [];
     foreach ($subs as $s) {
       $name = sanitize_key($s['name'] ?? '');
       if (!$name) continue;
       if (isset($seen[$name])) continue;
       $seen[$name] = true;
       $type = sanitize_key($s['type'] ?? 'text');
+      $field_key = $this->sanitize_field_key($s['key'] ?? '');
+      while (isset($seen_keys[$field_key])) {
+        $field_key = $this->sanitize_field_key('');
+      }
+      $seen_keys[$field_key] = true;
       $item = [
         'label' => $this->sanitize_string_value($s['label'] ?? $name),
         'name'  => $name,
         'type'  => $type,
+        'key' => $field_key,
         'required' => !empty($s['required']),
         'placeholder' => $this->sanitize_string_value($s['placeholder'] ?? ''),
       ];
+      $aliases = $this->sanitize_field_aliases($s['aliases'] ?? [], $name);
+      if ($aliases) {
+        $item['aliases'] = $aliases;
+      }
       $conditional_logic = $this->sanitize_conditional_logic($s['conditional_logic'] ?? []);
       if ($conditional_logic) {
         $item['conditional_logic'] = $conditional_logic;
@@ -2584,7 +3109,12 @@ PHP;
       if ($type === 'group' || $type === 'repeater') {
         $item['sub_fields'] = $this->sanitize_subfields($s['sub_fields'] ?? []);
         if ($type === 'repeater') {
+          $min = $this->sanitize_repeater_min($s['min'] ?? 0);
           $item['repeater_layout'] = $this->sanitize_repeater_layout($s['repeater_layout'] ?? 'default');
+          $item['min'] = $min;
+          $item['max'] = $this->sanitize_repeater_max($s['max'] ?? 0, $min);
+          $item['repeater_row_label'] = $this->sanitize_repeater_row_label($s['repeater_row_label'] ?? '', $item['sub_fields']);
+          $item['repeater_collapsed'] = !empty($s['repeater_collapsed']);
         }
       }
       if ($type === 'choice') {
@@ -2653,6 +3183,7 @@ PHP;
       'categories' => '#categorydiv',
       'tags' => '#tagsdiv-post_tag',
       'trackbacks' => '#trackbacksdiv',
+      'copy_to_translations' => '.cff-metabox-actions',
     ];
 
     $selectors = [];
@@ -2673,6 +3204,28 @@ PHP;
     if (!$post || empty($post->ID)) return;
 
     $groups = $this->get_groups_for_context($post);
+
+    if ($post_type === 'cff_options' && empty($groups)) {
+      add_meta_box(
+        'cff_global_settings_hint',
+        esc_html__('Global Settings is empty', 'cff'),
+        function() {
+          $create_group_url = add_query_arg(
+            [
+              'post_type' => 'cff_group',
+            ],
+            admin_url('post-new.php')
+          );
+
+          echo '<p>' . esc_html__('No Field Group is assigned to this page yet.', 'cff') . '</p>';
+          echo '<p>' . esc_html__('To show fields here, create/edit a Field Group and set Location Rules:', 'cff') . ' <strong>' . esc_html__('Options Page', 'cff') . ' == ' . esc_html__('Global Settings', 'cff') . '</strong>.</p>';
+          echo '<p><a class="button button-primary" href="' . esc_url($create_group_url) . '">' . esc_html__('Create Field Group', 'cff') . '</a></p>';
+        },
+        'cff_options',
+        'normal',
+        'high'
+      );
+    }
 
     // urutkan by order
     usort($groups, function($a, $b){
@@ -2871,7 +3424,9 @@ PHP;
 
   private function match_rule($post, $param, $val) {
     if ($param === 'options_page') {
-      return !empty($post->post_type) && $post->post_type === 'cff_options' && $val === 'global';
+      if (empty($post->post_type) || $post->post_type !== 'cff_options') return false;
+      $normalized = sanitize_key(str_replace([' ', '-'], '_', (string) $val));
+      return in_array($normalized, ['global', 'global_settings'], true);
     }
     if ($param === 'post_type') return $post->post_type === $val;
     if ($param === 'page_template') {
@@ -3728,17 +4283,28 @@ PHP;
 
   private function sanitize_fields($fields) {
     $out = [];
+    $seen_keys = [];
     foreach ((array) $fields as $f) {
       if (!is_array($f)) continue;
       $type = sanitize_key($f['type'] ?? 'text');
       $name = sanitize_key($f['name'] ?? '');
       if (!$name) continue;
+      $field_key = $this->sanitize_field_key($f['key'] ?? '');
+      while (isset($seen_keys[$field_key])) {
+        $field_key = $this->sanitize_field_key('');
+      }
+      $seen_keys[$field_key] = true;
 
       $item = [
         'label' => sanitize_text_field($f['label'] ?? $name),
         'name' => $name,
         'type' => $type,
+        'key' => $field_key,
       ];
+      $aliases = $this->sanitize_field_aliases($f['aliases'] ?? [], $name);
+      if ($aliases) {
+        $item['aliases'] = $aliases;
+      }
       $conditional_logic = $this->sanitize_conditional_logic($f['conditional_logic'] ?? []);
       if ($conditional_logic) {
         $item['conditional_logic'] = $conditional_logic;
@@ -3746,6 +4312,14 @@ PHP;
 
       if ($type === 'repeater' || $type === 'group') {
         $item['sub_fields'] = $this->sanitize_subfields($f['sub_fields'] ?? []);
+        if ($type === 'repeater') {
+          $min = $this->sanitize_repeater_min($f['min'] ?? 0);
+          $item['repeater_layout'] = $this->sanitize_repeater_layout($f['repeater_layout'] ?? 'default');
+          $item['min'] = $min;
+          $item['max'] = $this->sanitize_repeater_max($f['max'] ?? 0, $min);
+          $item['repeater_row_label'] = $this->sanitize_repeater_row_label($f['repeater_row_label'] ?? '', $item['sub_fields']);
+          $item['repeater_collapsed'] = !empty($f['repeater_collapsed']);
+        }
       }
       if ($type === 'flexible') {
         $item['layouts'] = $this->sanitize_layouts($f['layouts'] ?? []);

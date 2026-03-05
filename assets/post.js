@@ -362,29 +362,155 @@ jQuery(function($){
       window.cffInitWysiwyg($row);
     });
 
+    updateRepeaterRowTitles($rep);
     $rep.closest('form').trigger('change');
+  }
+
+  function getRepeaterMinMax($rep){
+    var min = parseInt($rep.data('min'), 10);
+    var max = parseInt($rep.data('max'), 10);
+    if (isNaN(min) || min < 0) min = 0;
+    if (isNaN(max) || max < 0) max = 0;
+    if (max > 0 && max < min) max = min;
+    return { min: min, max: max };
+  }
+
+  function getRepeaterRowLabelValue($row, rowLabelField){
+    if (!rowLabelField) return '';
+    var escaped = escapeReg(rowLabelField);
+    var $candidate = $row.find(
+      ':input[name$="[' + rowLabelField + ']"], :input[name$="[' + rowLabelField + '][]"]'
+    ).not('[type=hidden]').first();
+    if (!$candidate.length) {
+      $candidate = $row.find(':input[name]').filter(function(){
+        var name = $(this).attr('name') || '';
+        return new RegExp('\\[' + escaped + '\\](?:\\[\\])?$').test(name);
+      }).not('[type=hidden]').first();
+    }
+    if (!$candidate.length) return '';
+
+    if ($candidate.is(':checkbox')) {
+      if ($candidate.attr('name') && /\[\]$/.test($candidate.attr('name'))) {
+        var out = [];
+        $row.find(':checkbox[name="' + $candidate.attr('name') + '"]:checked').each(function(){
+          out.push($(this).val());
+        });
+        return out.join(', ');
+      }
+      return $candidate.is(':checked') ? ($candidate.val() || '1') : '';
+    }
+    if ($candidate.is(':radio')) {
+      var radioName = $candidate.attr('name') || '';
+      return $row.find(':radio[name="' + radioName + '"]:checked').val() || '';
+    }
+    var value = $candidate.val();
+    if (Array.isArray(value)) {
+      value = value.join(', ');
+    }
+    return $.trim(String(value || ''));
+  }
+
+  function updateRepeaterRowTitles($rep){
+    var rowLabelField = String($rep.data('row-label') || '');
+    $rep.children('.cff-rep-rows').first().children('.cff-rep-row').each(function(index){
+      var $row = $(this);
+      var title = 'Row ' + (index + 1);
+      var labelValue = getRepeaterRowLabelValue($row, rowLabelField);
+      if (labelValue) {
+        title += ': ' + labelValue;
+      }
+      $row.find('> .cff-rep-row-head .cff-rep-row-title').text(title);
+    });
+  }
+
+  function createRepeaterRowFromTemplate($rep){
+    var tpl = $rep.children('.cff-rep-template').first().html();
+    if (!tpl) return $();
+
+    var $rows = $rep.children('.cff-rep-rows').first();
+    var idx = $rows.children('.cff-rep-row').length;
+    tpl = cffReplaceAll(tpl, '__INDEX__', String(idx));
+    var $new = $(tpl);
+
+    var collapseDefault = String($rep.data('collapsed-default') || '') === '1';
+    var layout = String($rep.data('layout') || '');
+    if (collapseDefault && layout !== 'simple') {
+      $new.addClass('is-collapsed');
+    }
+
+    $rows.append($new);
+    initSortable($rows);
+    window.cffInitWysiwyg($new);
+    initLinkPickers($new);
+    updateRepeaterRowTitles($rep);
+    return $new;
+  }
+
+  function copyRepeaterRowValues($sourceRow, $targetRow){
+    if (!$sourceRow.length || !$targetRow.length) return;
+
+    if (window.tinymce) {
+      try { tinymce.triggerSave(); } catch(e){}
+    }
+
+    var $srcInputs = $sourceRow.find(':input[name]').not('.select2-search__field');
+    var $dstInputs = $targetRow.find(':input[name]').not('.select2-search__field');
+    var limit = Math.min($srcInputs.length, $dstInputs.length);
+
+    for (var i = 0; i < limit; i++) {
+      var $src = $($srcInputs[i]);
+      var $dst = $($dstInputs[i]);
+      var tag = ($dst.prop('tagName') || '').toLowerCase();
+      var type = ($dst.attr('type') || '').toLowerCase();
+
+      if (tag === 'select') {
+        $dst.val($src.val());
+        $dst.trigger('change');
+        continue;
+      }
+      if (type === 'checkbox' || type === 'radio') {
+        $dst.prop('checked', $src.is(':checked'));
+        $dst.trigger('change');
+        continue;
+      }
+      $dst.val($src.val());
+    }
+  }
+
+  function ensureRepeaterMinRows($rep){
+    var limits = getRepeaterMinMax($rep);
+    var $rows = $rep.children('.cff-rep-rows').first();
+    var guard = 0;
+    while ($rows.children('.cff-rep-row').length < limits.min && guard < 100) {
+      createRepeaterRowFromTemplate($rep);
+      guard++;
+    }
   }
 
 
   function updateRepeaterControls($rep){
     var $rowsWrap = $rep.children('.cff-rep-rows').first();
     var count = $rowsWrap.children('.cff-rep-row').length;
-
-    var min = parseInt($rep.data('min'), 10);
-    var max = parseInt($rep.data('max'), 10);
-
-    if (isNaN(min) || min < 0) min = 1;
-    if (isNaN(max) || max < 0) max = 0; // 0 = unlimited
-
-    $rowsWrap.children('.cff-rep-row').find('> .cff-rep-row-head .cff-rep-remove').each(function(){
-      $(this)
-        .removeClass('is-disabled')
-        .attr('aria-disabled', null);
-      try { $(this).prop('disabled', false); } catch(e){}
-    });
+    var limits = getRepeaterMinMax($rep);
+    var min = limits.min;
+    var max = limits.max;
+    var canRemove = count > min;
 
     // --- ADD: disable kalau sudah max (kecuali max=0 unlimited)
     var canAdd = (!max || count < max);
+
+    $rowsWrap.children('.cff-rep-row').find('> .cff-rep-row-head .cff-rep-remove').each(function(){
+      $(this)
+        .toggleClass('is-disabled', !canRemove)
+        .attr('aria-disabled', canRemove ? null : 'true');
+      try { $(this).prop('disabled', !canRemove); } catch(e){}
+    });
+    $rowsWrap.children('.cff-rep-row').find('> .cff-rep-row-head .cff-rep-clone').each(function(){
+      $(this)
+        .toggleClass('is-disabled', !canAdd)
+        .attr('aria-disabled', canAdd ? null : 'true');
+      try { $(this).prop('disabled', !canAdd); } catch(e){}
+    });
 
     $rep.children('p').find('> .cff-rep-add').each(function(){
       $(this)
@@ -412,7 +538,10 @@ jQuery(function($){
   initLinkPickers($(document));
 
   $('.cff-repeater').each(function(){
-    updateRepeaterControls($(this));
+    var $rep = $(this);
+    ensureRepeaterMinRows($rep);
+    updateRepeaterRowTitles($rep);
+    updateRepeaterControls($rep);
   });
 
 
@@ -425,20 +554,11 @@ jQuery(function($){
       e.preventDefault();
 
       var $rep = $(this).closest('.cff-repeater');
-      var tpl  = $rep.children('.cff-rep-template').first().html();
-      if (!tpl) return;
+      var limits = getRepeaterMinMax($rep);
+      var count = $rep.children('.cff-rep-rows').first().children('.cff-rep-row').length;
+      if (limits.max > 0 && count >= limits.max) return;
 
-      var $rows = $rep.children('.cff-rep-rows').first();
-      var idx = $rows.children('.cff-rep-row').length;
-      tpl = cffReplaceAll(tpl, '__INDEX__', String(idx));
-
-      var $new  = $(tpl);
-
-      $rows.append($new);
-
-      initSortable($rows);
-      window.cffInitWysiwyg($new);
-      initLinkPickers($new);
+      createRepeaterRowFromTemplate($rep);
 
       updateRepeaterControls($rep);
 
@@ -452,6 +572,9 @@ jQuery(function($){
 
       var $rep = $(this).closest('.cff-repeater');
       var $row = $(this).closest('.cff-rep-row');
+      var limits = getRepeaterMinMax($rep);
+      var count = $rep.children('.cff-rep-rows').first().children('.cff-rep-row').length;
+      if (count <= limits.min) return;
 
       window.cffRemoveWysiwyg($row);
       $row.remove();
@@ -462,6 +585,30 @@ jQuery(function($){
 
       $rep.closest('form').trigger('change');
     });
+
+  $(document)
+    .off('click.cffRepClone', '.cff-rep-clone')
+    .on('click.cffRepClone', '.cff-rep-clone', function(e){
+      e.preventDefault();
+      var $rep = $(this).closest('.cff-repeater');
+      var $source = $(this).closest('.cff-rep-row');
+      var limits = getRepeaterMinMax($rep);
+      var count = $rep.children('.cff-rep-rows').first().children('.cff-rep-row').length;
+      if (limits.max > 0 && count >= limits.max) return;
+
+      var $new = createRepeaterRowFromTemplate($rep);
+      if ($new.length) {
+        copyRepeaterRowValues($source, $new);
+      }
+      updateRepeaterRowTitles($rep);
+      updateRepeaterControls($rep);
+      $rep.closest('form').trigger('change');
+    });
+
+  $(document).on('input.cffRepLabel change.cffRepLabel', '.cff-repeater .cff-rep-row :input', function(){
+    var $rep = $(this).closest('.cff-repeater');
+    updateRepeaterRowTitles($rep);
+  });
 
   /* -------------------------
    * Sync TinyMCE to textarea before submit

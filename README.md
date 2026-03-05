@@ -14,23 +14,24 @@ Kemampuan utama:
 - Dukungan Polylang untuk label/slug
 - Utilitas Import/Export dan migrasi ACF
 - Helper frontend bergaya ACF
+- REST API field `cff` otomatis per post type yang mendukung REST
 
 ### 1.2 Fitur Utama
 
 #### Field Groups
 - Buat field group di `cff_group`.
 - Tentukan lokasi group berdasarkan rule:
-- `post_type`
-- `page_template`
-- post tertentu
-- page tertentu
+  - `post_type`
+  - `page_template`
+  - post tertentu
+  - page tertentu
 - Atur presentasi:
-- style (`standard`, `seamless`)
-- posisi metabox (`high`, `normal`, `side`)
-- posisi label (`top`, `left`)
-- posisi instruksi (`below_labels`, `below_fields`)
-- urutan tampil antar group
-- hide-on-screen untuk panel default WordPress
+  - style (`standard`, `seamless`)
+  - posisi metabox (`high`, `normal`, `side`)
+  - posisi label (`top`, `left`)
+  - posisi instruksi (`below_labels`, `below_fields`)
+  - urutan tampil antar group
+  - hide-on-screen untuk panel default WordPress
 
 #### Jenis Field yang Didukung
 - `text`
@@ -56,28 +57,33 @@ Kemampuan utama:
 - Repeater dengan sub field.
 - Group dengan sub field.
 - Flexible Content dengan layout dan field per layout.
-- Opsi layout repeater: `default`, `simple`, `grid`.
+- Opsi layout repeater: `default`, `simple`, `grid`, `row`.
+- Opsi lanjutan repeater:
+  - `min` dan `max` rows
+  - clone row
+  - collapse row default
+  - row label dinamis dari nama sub field tertentu
 
 #### Dynamic Post Types
 - Buat, edit, duplikat, hapus CPT dari admin.
 - Pengaturan:
-- label singular/plural
-- slug
-- public, archive, REST API
-- supports
-- taxonomy terkait
-- menu icon dan menu position
-- kolom thumbnail di daftar admin
-- opsi nonaktifkan single view
+  - label singular/plural
+  - slug
+  - public, archive, REST API
+  - supports
+  - taxonomy terkait
+  - menu icon dan menu position
+  - kolom thumbnail di daftar admin
+  - opsi nonaktifkan single view
 - Slug bisa otomatis dari label plural jika slug kosong.
 
 #### Dynamic Taxonomies
 - Buat, edit, hapus taxonomy.
 - Pengaturan:
-- label singular/plural
-- slug
-- hierarchical/public/REST API
-- target post type
+  - label singular/plural
+  - slug
+  - hierarchical/public/REST API
+  - target post type
 - Mendukung i18n label/slug saat Polylang aktif.
 
 #### Sistem Reorder
@@ -88,10 +94,10 @@ Kemampuan utama:
 
 #### Tools dan Portabilitas Data
 - Export JSON:
-- Post Types
-- Taxonomies
-- Field Groups
-- bisa pilih Field Group tertentu
+  - Post Types
+  - Taxonomies
+  - Field Groups
+  - bisa pilih Field Group tertentu
 - Import JSON dari format export plugin ini.
 - Import dasar ACF JSON (mapping basic).
 - Migrasi field group dari ACF.
@@ -152,6 +158,9 @@ Dari `includes/helpers/acf-compat.php`:
 - `the_sub_field($selector)`
 - `\CFF\cff_get_ordered_fields($post_id, $group_id, $include_values = false, $format_value = true)`
 - `\CFF\cff_render_ordered_fields($post_id, $group_id)`
+- `\CFF\cff_get_global_field($selector, $format_value = true)`
+- `\CFF\cff_the_global_field($selector)`
+- `\CFF\cff_get_ordered_field_names($post_id, $candidate_names = [], $group_id = 0)`
 
 Dari `includes/helpers/relational-helpers.php`:
 - `cff_get_relational_post()`
@@ -161,7 +170,16 @@ Dari `includes/helpers/relational-helpers.php`:
 - `cff_get_relational_user()`
 - `cff_get_relational_users()`
 
-### 1.7 Contoh Penggunaan
+Dari `includes/helpers/frontend-helpers.php`:
+- `\CFF\cff_get_value($field_name, $post_id = 0, $default = null, $format_value = true)`
+- `\CFF\cff_has_value($field_name, $post_id = 0)`
+- `\CFF\cff_get_text($field_name, $post_id = 0, $default = '')`
+- `\CFF\cff_get_image_url($field_name, $post_id = 0, $size = 'full', $default = '')`
+- `\CFF\cff_get_file_url($field_name, $post_id = 0, $default = '')`
+- `\CFF\cff_get_repeater_rows($field_name, $post_id = 0)`
+- `\CFF\cff_get_group_value($group_field, $sub_field, $post_id = 0, $default = null)`
+
+### 1.7 Contoh Penggunaan (Frontend Helper)
 
 ```php
 <?php
@@ -179,7 +197,70 @@ if (have_rows('sections')) {
 }
 ```
 
-### 1.8 Alur Import/Export (Disarankan)
+Contoh helper baru:
+
+```php
+<?php
+use function CFF\cff_get_text;
+use function CFF\cff_get_image_url;
+use function CFF\cff_get_repeater_rows;
+
+$headline = cff_get_text('headline');
+$hero_image = cff_get_image_url('hero_image', 0, 'large');
+$faq_rows = cff_get_repeater_rows('faq_items');
+```
+
+### 1.8 REST API (`cff`)
+
+- Field REST `cff` otomatis tersedia pada post type yang `show_in_rest = true`.
+- Endpoint mengikuti post type REST default WordPress.
+- Secara default payload bisa dibaca dan ditulis (jika user punya izin edit post).
+
+Contoh baca data:
+
+```http
+GET /wp-json/wp/v2/posts/123?_fields=id,title,cff
+```
+
+Contoh update data:
+
+```http
+POST /wp-json/wp/v2/posts/123
+Content-Type: application/json
+
+{
+  "cff": {
+    "headline": "Updated headline",
+    "faq_items": [
+      { "question": "Q1", "answer": "A1" },
+      { "question": "Q2", "answer": "A2" }
+    ]
+  }
+}
+```
+
+Filter yang tersedia:
+- `cff_rest_fields_writable` untuk mengunci write per post type.
+- `cff_rest_fields_format_value` untuk mengatur format output value.
+- `cff_rest_fields_readonly` untuk menandai field tertentu readonly saat update.
+
+### 1.9 Gutenberg Sidebar (Opsional)
+
+- Buka `Custom Fields > Global Settings`.
+- Pada panel **Editor UI Settings**, aktifkan:
+  - `Enable CFF panels in Gutenberg document sidebar`.
+- Toggle ini menyimpan option `cffp_block_sidebar_enabled`.
+- Saat aktif, metabox CFF dipindahkan ke panel sidebar Gutenberg.
+
+Override via kode (opsional):
+
+```php
+add_filter('cff_block_sidebar_enabled', function($enabled, $screen){
+  return true;
+}, 10, 2);
+```
+
+### 1.10 Alur Import/Export (Disarankan)
 
 1. Export dari site sumber (`Tools > Export`).
 2. Import JSON di site tujuan (`Tools > Import`).
@@ -187,16 +268,17 @@ if (have_rows('sections')) {
 4. Verifikasi location rules dan render field di editor.
 5. Jika migrasi value ACF, gunakan alur export SQL dan eksekusi dengan aman.
 
-### 1.9 Troubleshooting
+### 1.11 Troubleshooting
 
 - URL jadi 404 setelah ubah CPT/taxonomy: re-save `Settings > Permalinks`.
 - Field group tidak muncul: cek location rules dan kecocokan post type/template.
+- Global Settings kosong: pastikan ada Field Group dengan rule `Options Page == Global Settings`.
 - Media picker bermasalah: cek konflik script/style dari plugin optimasi.
 - Hasil migrasi ACF belum lengkap: tinjau field type ACF yang tidak punya mapping langsung lalu sesuaikan manual.
 
-### 1.10 Versi
+### 1.12 Versi
 
-- Versi plugin saat ini: `0.15.2`
+- Versi plugin saat ini: `1.01`
 
 ---
 
@@ -214,23 +296,24 @@ Core capabilities:
 - Polylang-aware labels/slugs
 - Import/Export and ACF migration utilities
 - ACF-style frontend helper functions
+- Automatic `cff` REST field for post types that support REST
 
 ### 2.2 Main Features
 
 #### Field Groups
 - Create field groups in `cff_group`.
 - Assign groups using location rules:
-- `post_type`
-- `page_template`
-- specific post
-- specific page
+  - `post_type`
+  - `page_template`
+  - specific post
+  - specific page
 - Configure presentation:
-- style (`standard`, `seamless`)
-- metabox position (`high`, `normal`, `side`)
-- label placement (`top`, `left`)
-- instruction placement (`below_labels`, `below_fields`)
-- display order between groups
-- hide-on-screen controls for native WP panels
+  - style (`standard`, `seamless`)
+  - metabox position (`high`, `normal`, `side`)
+  - label placement (`top`, `left`)
+  - instruction placement (`below_labels`, `below_fields`)
+  - display order between groups
+  - hide-on-screen controls for native WP panels
 
 #### Supported Field Types
 - `text`
@@ -256,28 +339,33 @@ Core capabilities:
 - Repeater with sub fields.
 - Group with nested sub fields.
 - Flexible Content with layouts and per-layout fields.
-- Repeater layout variants: `default`, `simple`, `grid`.
+- Repeater layout variants: `default`, `simple`, `grid`, `row`.
+- Advanced repeater controls:
+  - `min` and `max` rows
+  - row cloning
+  - default-collapsed rows
+  - dynamic row title from a selected sub field
 
 #### Dynamic Post Types
 - Create, edit, duplicate, delete CPTs from admin UI.
 - Configure:
-- singular/plural labels
-- slug
-- public, archive, REST API
-- supports
-- assigned taxonomies
-- menu icon and menu position
-- optional list thumbnail column
-- optional block single view
+  - singular/plural labels
+  - slug
+  - public, archive, REST API
+  - supports
+  - assigned taxonomies
+  - menu icon and menu position
+  - optional list thumbnail column
+  - optional block single view
 - Slug can auto-generate from plural label when empty.
 
 #### Dynamic Taxonomies
 - Create, edit, delete taxonomies.
 - Configure:
-- singular/plural labels
-- slug
-- hierarchical/public/REST API
-- target post types
+  - singular/plural labels
+  - slug
+  - hierarchical/public/REST API
+  - target post types
 - Supports Polylang i18n labels/slugs.
 
 #### Reorder System
@@ -288,10 +376,10 @@ Core capabilities:
 
 #### Tools and Data Portability
 - Export JSON:
-- Post Types
-- Taxonomies
-- Field Groups
-- selective Field Group export
+  - Post Types
+  - Taxonomies
+  - Field Groups
+  - selective Field Group export
 - Import JSON from plugin export format.
 - Basic ACF JSON field-group import mapping.
 - Migrate field groups from ACF.
@@ -352,6 +440,9 @@ From `includes/helpers/acf-compat.php`:
 - `the_sub_field($selector)`
 - `\CFF\cff_get_ordered_fields($post_id, $group_id, $include_values = false, $format_value = true)`
 - `\CFF\cff_render_ordered_fields($post_id, $group_id)`
+- `\CFF\cff_get_global_field($selector, $format_value = true)`
+- `\CFF\cff_the_global_field($selector)`
+- `\CFF\cff_get_ordered_field_names($post_id, $candidate_names = [], $group_id = 0)`
 
 From `includes/helpers/relational-helpers.php`:
 - `cff_get_relational_post()`
@@ -361,7 +452,16 @@ From `includes/helpers/relational-helpers.php`:
 - `cff_get_relational_user()`
 - `cff_get_relational_users()`
 
-### 2.7 Example Usage
+From `includes/helpers/frontend-helpers.php`:
+- `\CFF\cff_get_value($field_name, $post_id = 0, $default = null, $format_value = true)`
+- `\CFF\cff_has_value($field_name, $post_id = 0)`
+- `\CFF\cff_get_text($field_name, $post_id = 0, $default = '')`
+- `\CFF\cff_get_image_url($field_name, $post_id = 0, $size = 'full', $default = '')`
+- `\CFF\cff_get_file_url($field_name, $post_id = 0, $default = '')`
+- `\CFF\cff_get_repeater_rows($field_name, $post_id = 0)`
+- `\CFF\cff_get_group_value($group_field, $sub_field, $post_id = 0, $default = null)`
+
+### 2.7 Example Usage (Frontend Helper)
 
 ```php
 <?php
@@ -379,7 +479,70 @@ if (have_rows('sections')) {
 }
 ```
 
-### 2.8 Import/Export Workflow (Recommended)
+New helper example:
+
+```php
+<?php
+use function CFF\cff_get_text;
+use function CFF\cff_get_image_url;
+use function CFF\cff_get_repeater_rows;
+
+$headline = cff_get_text('headline');
+$hero_image = cff_get_image_url('hero_image', 0, 'large');
+$faq_rows = cff_get_repeater_rows('faq_items');
+```
+
+### 2.8 REST API (`cff`)
+
+- The `cff` REST field is automatically registered on post types with `show_in_rest = true`.
+- It follows each post type's default WordPress REST endpoint.
+- By default, payload is readable and writable (subject to `edit_post` capability).
+
+Read example:
+
+```http
+GET /wp-json/wp/v2/posts/123?_fields=id,title,cff
+```
+
+Update example:
+
+```http
+POST /wp-json/wp/v2/posts/123
+Content-Type: application/json
+
+{
+  "cff": {
+    "headline": "Updated headline",
+    "faq_items": [
+      { "question": "Q1", "answer": "A1" },
+      { "question": "Q2", "answer": "A2" }
+    ]
+  }
+}
+```
+
+Available filters:
+- `cff_rest_fields_writable` to lock write access by post type.
+- `cff_rest_fields_format_value` to control formatted output value.
+- `cff_rest_fields_readonly` to make specific fields readonly on update.
+
+### 2.9 Gutenberg Sidebar (Optional)
+
+- Open `Custom Fields > Global Settings`.
+- In **Editor UI Settings**, enable:
+  - `Enable CFF panels in Gutenberg document sidebar`.
+- This toggle stores the `cffp_block_sidebar_enabled` option.
+- When enabled, CFF metabox groups are relocated into Gutenberg sidebar panels.
+
+Optional code override:
+
+```php
+add_filter('cff_block_sidebar_enabled', function($enabled, $screen){
+  return true;
+}, 10, 2);
+```
+
+### 2.10 Import/Export Workflow (Recommended)
 
 1. Export from source site (`Tools > Export`).
 2. Import JSON in target site (`Tools > Import`).
@@ -387,13 +550,14 @@ if (have_rows('sections')) {
 4. Verify location rules and field rendering in editor.
 5. If migrating ACF values, run SQL export workflow and apply SQL safely.
 
-### 2.9 Troubleshooting
+### 2.11 Troubleshooting
 
 - URLs return 404 after CPT/taxonomy changes: re-save `Settings > Permalinks`.
 - Field group not showing: verify location rules and post type/template match.
+- Global Settings is empty: make sure at least one Field Group uses `Options Page == Global Settings`.
 - Media picker not behaving as expected: check script/style conflicts from optimization plugins.
 - ACF migration is partially mapped: review unsupported ACF field types and adjust manually.
 
-### 2.10 Version
+### 2.12 Version
 
-- Current plugin version: `0.15.2`
+- Current plugin version: `1.01`

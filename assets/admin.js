@@ -416,6 +416,32 @@
       $input.trigger('change');
     }
 
+    function parseAliasesAttr($el, attrName){
+      var raw = $el.attr(attrName) || '';
+      if (!raw) return [];
+      try {
+        var parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return [];
+        var out = [];
+        parsed.forEach(function(item){
+          var key = CFF.utils.sanitizeName(item || '');
+          if (key && out.indexOf(key) === -1) out.push(key);
+        });
+        return out;
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function setAliasesAttr($el, attrName, aliases){
+      var out = [];
+      (aliases || []).forEach(function(item){
+        var key = CFF.utils.sanitizeName(item || '');
+        if (key && out.indexOf(key) === -1) out.push(key);
+      });
+      $el.attr(attrName, JSON.stringify(out));
+    }
+
     function toggleBuilders($field){
       var t = $field.find('.cff-type').val();
       $field.find('> .cff-advanced > .cff-subbuilder').toggle(t === 'repeater');
@@ -526,6 +552,11 @@
       if (s && s._tmp) {
         $el.attr('data-tmpkey', s._tmp);
       }
+      var subKey = CFF.utils.sanitizeName((s && s.key) || '');
+      if (!subKey) subKey = 'fld_' + Math.random().toString(36).slice(2, 14);
+      $el.attr('data-sub-key', subKey);
+      $el.attr('data-original-name', CFF.utils.sanitizeName((s && s.name) || ''));
+      setAliasesAttr($el, 'data-field-aliases', Array.isArray(s && s.aliases) ? s.aliases : []);
 
       var $wrap = $el.find('.cff-handle-wrap');
       if (!$wrap.length) {
@@ -571,6 +602,10 @@
       toggleChoicePanel($el, s.type);
       var subLayoutValue = s.repeater_layout || 'default';
       $el.find('.cff-repeater-layout').val(subLayoutValue);
+      $el.find('.cff-repeater-min').val(parseInt(s.min || 0, 10) || 0);
+      $el.find('.cff-repeater-max').val(parseInt(s.max || 0, 10) || 0);
+      $el.find('.cff-repeater-row-label').val(s.repeater_row_label || '');
+      $el.find('.cff-repeater-collapsed-toggle').prop('checked', !!s.repeater_collapsed);
       toggleRepeaterOptions($el, s.type || 'text');
       $(document).trigger('cff:refresh', $el);
       return $el;
@@ -906,6 +941,20 @@
         var type  = $f.find('.cff-type').val() || 'text';
 
         var item = { label: label, name: name, type: type };
+        item.key = CFF.utils.sanitizeName($f.attr('data-field-key') || '');
+        if (!item.key) {
+          item.key = 'fld_' + Math.random().toString(36).slice(2, 14);
+          $f.attr('data-field-key', item.key);
+        }
+        var originalName = CFF.utils.sanitizeName($f.attr('data-original-name') || '');
+        var aliases = parseAliasesAttr($f, 'data-field-aliases');
+        if (originalName && originalName !== name && aliases.indexOf(originalName) === -1) {
+          aliases.push(originalName);
+        }
+        aliases = aliases.filter(function(alias){ return alias && alias !== name; });
+        if (aliases.length) item.aliases = aliases;
+        $f.attr('data-original-name', name);
+        setAliasesAttr($f, 'data-field-aliases', aliases);
         item.required = $f.find('.cff-required-toggle').is(':checked');
         item.placeholder = $f.find('.cff-placeholder').val() || '';
         if (type === 'datetime_picker') {
@@ -932,6 +981,11 @@
             $f.find('> .cff-advanced > .cff-subbuilder > .cff-subfields').first()
           );
           item.repeater_layout = $f.find('.cff-repeater-layout').val() || 'default';
+          item.min = Math.max(0, parseInt($f.find('.cff-repeater-min').val() || 0, 10) || 0);
+          item.max = Math.max(0, parseInt($f.find('.cff-repeater-max').val() || 0, 10) || 0);
+          if (item.max > 0 && item.max < item.min) item.max = item.min;
+          item.repeater_row_label = CFF.utils.sanitizeName($f.find('.cff-repeater-row-label').val() || '');
+          item.repeater_collapsed = $f.find('.cff-repeater-collapsed-toggle').is(':checked');
         }
 
         if (type === 'group') {
@@ -1198,15 +1252,22 @@
         togglePlaceholderRow($el, f.type || 'text');
         var layoutValue = f.repeater_layout || 'default';
         $el.find('.cff-repeater-layout').val(layoutValue);
+        $el.find('.cff-repeater-min').val(parseInt(f.min || 0, 10) || 0);
+        $el.find('.cff-repeater-max').val(parseInt(f.max || 0, 10) || 0);
+        $el.find('.cff-repeater-row-label').val(f.repeater_row_label || '');
+        $el.find('.cff-repeater-collapsed-toggle').prop('checked', !!f.repeater_collapsed);
         toggleRepeaterOptions($el, f.type || 'text');
         toggleDatetimeOptions($el, f.type || 'text');
         $el.find('.cff-placeholder').val(f.placeholder || '');
         $el.find('.cff-required-toggle').prop('checked', !!f.required);
         $el.find('.cff-datetime-use-time-toggle').prop('checked', (f.datetime_use_time !== false));
         renderConditionalPanel($el, f);
-        var fieldKey = f._key || 'cff-field-' + i + '-' + Math.random().toString(36).slice(2);
+        var fieldKey = CFF.utils.sanitizeName(f.key || '');
+        if (!fieldKey) fieldKey = 'fld_' + Math.random().toString(36).slice(2, 14);
         $el.attr('data-field-key', fieldKey);
         $el.data('field-key', fieldKey);
+        $el.attr('data-original-name', CFF.utils.sanitizeName(f.name || ''));
+        setAliasesAttr($el, 'data-field-aliases', Array.isArray(f.aliases) ? f.aliases : []);
 
         if (f.type === 'repeater' && Array.isArray(f.sub_fields)) {
           var $sf = $el.find('> .cff-advanced > .cff-subbuilder > .cff-subfields').first();
@@ -1288,6 +1349,20 @@
           type:  stype,
           required: $sub.find('.cff-required-toggle').is(':checked')
         };
+        item.key = CFF.utils.sanitizeName($sub.attr('data-sub-key') || '');
+        if (!item.key) {
+          item.key = 'fld_' + Math.random().toString(36).slice(2, 14);
+          $sub.attr('data-sub-key', item.key);
+        }
+        var originalSubName = CFF.utils.sanitizeName($sub.attr('data-original-name') || '');
+        var subAliases = parseAliasesAttr($sub, 'data-field-aliases');
+        if (originalSubName && originalSubName !== name && subAliases.indexOf(originalSubName) === -1) {
+          subAliases.push(originalSubName);
+        }
+        subAliases = subAliases.filter(function(alias){ return alias && alias !== name; });
+        if (subAliases.length) item.aliases = subAliases;
+        $sub.attr('data-original-name', name);
+        setAliasesAttr($sub, 'data-field-aliases', subAliases);
 
         item.placeholder = $sub.find('.cff-placeholder').val() || '';
         if (stype === 'datetime_picker') {
@@ -1320,6 +1395,11 @@
             $sub.find('> .cff-subbuilder > .cff-subfields').first()
           );
           item.repeater_layout = $sub.find('.cff-repeater-layout').val() || 'default';
+          item.min = Math.max(0, parseInt($sub.find('.cff-repeater-min').val() || 0, 10) || 0);
+          item.max = Math.max(0, parseInt($sub.find('.cff-repeater-max').val() || 0, 10) || 0);
+          if (item.max > 0 && item.max < item.min) item.max = item.min;
+          item.repeater_row_label = CFF.utils.sanitizeName($sub.find('.cff-repeater-row-label').val() || '');
+          item.repeater_collapsed = $sub.find('.cff-repeater-collapsed-toggle').is(':checked');
         }
 
         subs.push(item);
@@ -2271,6 +2351,7 @@
             checkbox('categories','Categories') +
             checkbox('tags','Tags') +
             checkbox('trackbacks','Send Trackbacks') +
+            checkbox('copy_to_translations','Save + Copy CFF to Translations Button') +
 
           '</div>' +
         '</div>' +

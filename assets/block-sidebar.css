@@ -1,0 +1,11 @@
+.cff-sidebar-target .cff-metabox{
+  margin-top: 0;
+}
+
+.cff-sidebar-target .cff-field{
+  margin-bottom: 10px;
+}
+
+.postbox.cff-sidebar-source-hidden{
+  display: none !important;
+}
