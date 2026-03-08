@@ -958,11 +958,22 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
     }
   }
 
+  function cff_store_copy_to_translations_result($status) {
+    if (!is_user_logged_in()) return;
+    set_transient('cff_copy_to_translations_result_' . get_current_user_id(), sanitize_key((string) $status), MINUTE_IN_SECONDS * 10);
+  }
+
   function cff_copy_values_to_polylang_translations($post_id) {
-    if (!function_exists('pll_get_post_translations')) return;
+    if (!function_exists('pll_get_post_translations')) {
+      cff_store_copy_to_translations_result('missing_polylang');
+      return 'missing_polylang';
+    }
 
     $translations = pll_get_post_translations($post_id);
-    if (!is_array($translations) || count($translations) < 2) return;
+    if (!is_array($translations) || count($translations) < 2) {
+      cff_store_copy_to_translations_result('missing_translation_page');
+      return 'missing_translation_page';
+    }
 
     $source_meta = get_post_meta($post_id);
     if (!is_array($source_meta)) {
@@ -975,6 +986,7 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
       $cff_meta[$meta_key] = is_array($meta_values) ? $meta_values : [];
     }
 
+    $copied = 0;
     foreach ($translations as $translated_post_id) {
       $translated_post_id = absint($translated_post_id);
       if (!$translated_post_id || $translated_post_id === absint($post_id)) continue;
@@ -992,7 +1004,13 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
           add_post_meta($translated_post_id, $meta_key, maybe_unserialize($meta_value));
         }
       }
+
+      $copied++;
     }
+
+    $status = $copied > 0 ? 'copied' : 'missing_translation_page';
+    cff_store_copy_to_translations_result($status);
+    return $status;
   }
 
   function deep_sanitize($v) {

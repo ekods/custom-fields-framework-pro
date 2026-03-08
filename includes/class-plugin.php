@@ -4517,10 +4517,19 @@ PHP;
 
   public function filter_duplicate_row_action($actions, $post) {
     if (!current_user_can('edit_post', $post->ID)) return $actions;
+    $request_uri = isset($_SERVER['REQUEST_URI']) ? wp_unslash((string) $_SERVER['REQUEST_URI']) : '';
+    $redirect_to = '';
+    if ($request_uri) {
+      $redirect_to = wp_validate_redirect(home_url($request_uri), '');
+    }
+    if (!$redirect_to) {
+      $redirect_to = admin_url($post->post_type === 'post' ? 'edit.php' : 'edit.php?post_type=' . $post->post_type);
+    }
     $url = wp_nonce_url(
       add_query_arg([
         'action' => 'cff_duplicate_post',
         'post' => $post->ID,
+        'redirect_to' => $redirect_to,
       ], admin_url('admin-post.php')),
       'cff-duplicate-post_' . $post->ID
     );
@@ -4569,7 +4578,11 @@ PHP;
       }
     }
 
-    $redirect = wp_get_referer() ?: admin_url('edit.php?post_type=' . $post->post_type);
+    $redirect = isset($_REQUEST['redirect_to']) ? wp_unslash((string) $_REQUEST['redirect_to']) : '';
+    $redirect = wp_validate_redirect($redirect, '');
+    if (!$redirect) {
+      $redirect = wp_get_referer() ?: admin_url($post->post_type === 'post' ? 'edit.php' : 'edit.php?post_type=' . $post->post_type);
+    }
     $redirect = add_query_arg(['duplicated' => $new_post_id], $redirect);
     wp_safe_redirect($redirect);
     exit;
@@ -4608,10 +4621,59 @@ PHP;
     if (empty($_POST['cff_copy_to_translations_trigger'])) {
       return $location;
     }
-    if (!function_exists('pll_get_post_translations')) {
-      return $location;
+
+    $status = 'copied';
+    if (is_user_logged_in()) {
+      $transient_key = 'cff_copy_to_translations_result_' . get_current_user_id();
+      $stored_status = get_transient($transient_key);
+      if (is_string($stored_status) && $stored_status !== '') {
+        $status = sanitize_key($stored_status);
+      }
+      delete_transient($transient_key);
     }
-    return add_query_arg('cff_copied_translations', '1', $location);
+
+    return add_query_arg('cff_copied_translations', $status, $location);
+  }
+
+  private function get_missing_translation_create_links($post_id) {
+    $post_id = absint($post_id);
+    if (!$post_id || !function_exists('pll_languages_list') || !function_exists('pll_get_post_translations')) {
+      return [];
+    }
+
+    $post = get_post($post_id);
+    if (!$post || empty($post->post_type) || !post_type_exists($post->post_type) || !current_user_can('edit_post', $post_id)) {
+      return [];
+    }
+
+    $languages = pll_languages_list(['fields' => 'slug']);
+    $translations = pll_get_post_translations($post_id);
+    if (!is_array($languages) || empty($languages) || !is_array($translations)) {
+      return [];
+    }
+
+    $missing = array_values(array_diff($languages, array_keys($translations)));
+    if (empty($missing)) {
+      return [];
+    }
+
+    $links = [];
+    foreach ($missing as $lang) {
+      $lang = sanitize_key((string) $lang);
+      if ($lang === '') {
+        continue;
+      }
+      $links[] = [
+        'lang' => $lang,
+        'url' => add_query_arg([
+          'post_type' => $post->post_type,
+          'lang' => $lang,
+          'from_post' => $post_id,
+        ], admin_url('post-new.php')),
+      ];
+    }
+
+    return $links;
   }
 
   public function maybe_render_copy_to_translations_notice() {
@@ -4621,6 +4683,32 @@ PHP;
     if (!current_user_can('edit_posts')) {
       return;
     }
+
+    $status = sanitize_key((string) $_GET['cff_copied_translations']);
+    if ($status === 'missing_translation_page') {
+      $post_id = isset($_GET['post']) ? absint($_GET['post']) : 0;
+      $links = $this->get_missing_translation_create_links($post_id);
+      $message = esc_html__('Content was saved, but no translation posts/pages exist yet. Create the translation first, then use Save + Copy CFF to Translations again.', 'cff');
+      if (!empty($links)) {
+        $items = [];
+        foreach ($links as $link) {
+          $items[] = sprintf(
+            '<a href="%1$s">%2$s</a>',
+            esc_url($link['url']),
+            esc_html(sprintf(__('Create %s translation', 'cff'), strtoupper($link['lang'])))
+          );
+        }
+        $message .= ' ' . implode(' | ', $items);
+      }
+      echo '<div class="notice notice-warning is-dismissible"><p>' . $message . '</p></div>';
+      return;
+    }
+
+    if ($status === 'missing_polylang') {
+      echo '<div class="notice notice-warning is-dismissible"><p>' . esc_html__('Content was saved, but Polylang is not available, so translations could not be updated.', 'cff') . '</p></div>';
+      return;
+    }
+
     echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('CFF values were copied to available translations.', 'cff') . '</p></div>';
   }
 
