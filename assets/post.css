@@ -61,6 +61,17 @@
   flex-direction:column;
   gap:12px;
 }
+.cff-field-actions{
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+  padding-top:12px;
+  margin-top:4px;
+  border-top:1px solid #eef1f6;
+}
+.cff-field.cff-postbox .cff-field-actions{
+  margin-top:12px;
+}
 .cff-label .description{
   margin:0;
   color:#56606a;

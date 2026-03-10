@@ -43,7 +43,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         false,
         [
           'class' => 'cff-media-thumb',
-          'style' => 'max-width:150px;height:auto;display:block;object-fit: contain; width: 100%;'
+          'style' => 'max-width:max-content;height:auto;display:block;object-fit:contain;width:100%;aspect-ratio:initial;'
         ]
       );
       if ($img) return $img;
@@ -61,6 +61,16 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
   function cff_has_meaningful_value($value) {
     if (is_array($value)) return !empty($value);
     return !($value === null || $value === '');
+  }
+
+  function cff_render_copy_to_translations_field_action() {
+    if (!function_exists('pll_current_language')) {
+      return;
+    }
+
+    echo '<div class="cff-field-actions">';
+    echo '<button type="submit" class="button" name="cff_copy_to_translations_trigger" value="1">' . esc_html__('Save + Copy CFF to Translations', 'cff') . '</button>';
+    echo '</div>';
   }
 
   function cff_get_value_with_aliases($plugin, $post_id, $name, $field) {
@@ -291,6 +301,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       echo '<input class="widefat" type="text" name="cff_values['.esc_attr($name).']" value="'.esc_attr($val).'"'.$placeholder_attr.$required_attr.'>';
     }
 
+    cff_render_copy_to_translations_field_action();
     echo '</div></div>';
   }
 
