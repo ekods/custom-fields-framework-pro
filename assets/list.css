@@ -1,0 +1,17 @@
+.edit-php table[style*="display: none"] > #inlineedit,
+.edit-php #inlineedit {
+  display: none !important;
+}
+
+.edit-php .row-actions .inline.hide-if-no-js,
+.edit-php .row-actions .inline-edit.hide-if-no-js {
+  display: inline !important;
+}
+
+.post-type-cff_group .inline-edit-row,
+.post-type-cff_group .inline-editor,
+.post-type-cff_group .quick-edit-row,
+.post-type-cff_group .bulk-edit-row,
+.post-type-cff_group .inline-edit-row-page {
+  display: none !important;
+}

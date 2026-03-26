@@ -7,14 +7,16 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     $logic = (isset($field['conditional_logic']) && is_array($field['conditional_logic'])) ? $field['conditional_logic'] : [];
     if (empty($logic['enabled'])) return '';
 
+    $source_key = sanitize_key($logic['key'] ?? '');
     $source_field = sanitize_key($logic['field'] ?? '');
-    if (!$source_field) return '';
+    if (!$source_key && !$source_field) return '';
 
     $allowed_ops = ['==', '!=', 'contains', 'not_contains', 'empty', 'not_empty'];
     $operator = in_array(($logic['operator'] ?? '=='), $allowed_ops, true) ? $logic['operator'] : '==';
     $value = is_scalar($logic['value'] ?? '') ? (string) $logic['value'] : '';
 
     return ' data-cff-conditional-enabled="1"'
+      . ' data-cff-conditional-key="' . esc_attr($source_key) . '"'
       . ' data-cff-conditional-field="' . esc_attr($source_field) . '"'
       . ' data-cff-conditional-operator="' . esc_attr($operator) . '"'
       . ' data-cff-conditional-value="' . esc_attr($value) . '"';
@@ -63,13 +65,161 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     return !($value === null || $value === '');
   }
 
-  function cff_render_copy_to_translations_field_action() {
+  function cff_generate_row_id($value = '') {
+    $value = sanitize_key($value);
+    if ($value) return $value;
+    return 'row_' . substr(md5(uniqid((string) wp_rand(), true)), 0, 12);
+  }
+
+  function cff_encode_copy_field_request($request) {
+    if (!is_array($request)) {
+      return '';
+    }
+
+    $root = sanitize_key($request['root'] ?? '');
+    $field = sanitize_key($request['field'] ?? '');
+    $key = sanitize_key($request['key'] ?? '');
+    $path = [];
+
+    foreach ((array) ($request['path'] ?? []) as $segment) {
+      if (!is_array($segment)) continue;
+      $name = sanitize_key($segment['name'] ?? '');
+      $type = sanitize_key($segment['type'] ?? '');
+      if (!$name || !$type) continue;
+      $path[] = [
+        'name' => $name,
+        'type' => $type,
+      ];
+    }
+
+    if (!$root && !$field) {
+      return '';
+    }
+
+    return base64_encode(wp_json_encode([
+      'root' => $root ?: $field,
+      'field' => $field ?: $root,
+      'key' => $key,
+      'path' => $path,
+    ]));
+  }
+
+  function cff_decode_copy_field_request($raw) {
+    $raw = is_scalar($raw) ? trim((string) $raw) : '';
+    if ($raw === '') return [];
+
+    $decoded = base64_decode($raw, true);
+    if ($decoded !== false) {
+      $request = json_decode($decoded, true);
+      if (is_array($request)) {
+        $root = sanitize_key($request['root'] ?? '');
+        $field = sanitize_key($request['field'] ?? '');
+        $key = sanitize_key($request['key'] ?? '');
+        $path = [];
+        foreach ((array) ($request['path'] ?? []) as $segment) {
+          if (!is_array($segment)) continue;
+          $name = sanitize_key($segment['name'] ?? '');
+          $type = sanitize_key($segment['type'] ?? '');
+          if (!$name || !$type) continue;
+          $path[] = ['name' => $name, 'type' => $type];
+        }
+        if ($root || $field) {
+          return [
+            'root' => $root ?: $field,
+            'field' => $field ?: $root,
+            'key' => $key,
+            'path' => $path,
+          ];
+        }
+      }
+    }
+
+    $field_name = sanitize_key($raw);
+    if (!$field_name) return [];
+
+    return [
+      'root' => $field_name,
+      'field' => $field_name,
+      'key' => '',
+      'path' => [],
+    ];
+  }
+
+  function cff_render_copy_to_translations_field_action($request = []) {
     if (!function_exists('pll_current_language')) {
       return;
     }
 
+    $payload = is_array($request) ? cff_encode_copy_field_request($request) : '';
+    if (!$payload) {
+      return;
+    }
+
+    $segments = [];
+    $root = sanitize_key($request['root'] ?? '');
+    $field = sanitize_key($request['field'] ?? '');
+    if ($root) {
+      $segments[] = $root;
+    }
+    foreach ((array) ($request['path'] ?? []) as $segment) {
+      if (!is_array($segment)) continue;
+      $name = sanitize_key($segment['name'] ?? '');
+      if ($name && ($root === '' || $name !== $root)) {
+        $segments[] = $name;
+      }
+    }
+    if ($field && ($root === '' || $field !== $root)) {
+      $segments[] = $field;
+    }
+    $segments = array_values(array_unique(array_filter($segments)));
+    $copy_indicator = implode(' -> ', $segments);
+    if ($copy_indicator === '') {
+      $copy_indicator = $field ?: $root;
+    }
+
     echo '<div class="cff-field-actions">';
-    echo '<button type="submit" class="button" name="cff_copy_to_translations_trigger" value="1">' . esc_html__('Save + Copy CFF to Translations', 'cff') . '</button>';
+    if ($copy_indicator !== '') {
+      echo '<div class="cff-copy-field-indicator">';
+      echo '<span class="cff-copy-field-indicator-label">' . esc_html__('Copy:', 'cff') . '</span> ';
+      echo '<code>' . esc_html($copy_indicator) . '</code>';
+      echo '</div>';
+    }
+    echo '<button type="submit" class="button cff-copy-field-action" name="cff_copy_field_to_translations" value="' . esc_attr($payload) . '" title="' . esc_attr__('Save + Copy This Field to Translations', 'cff') . '" aria-label="' . esc_attr__('Save + Copy This Field to Translations', 'cff') . '">';
+    echo '<span class="dashicons dashicons-translation" aria-hidden="true"></span>';
+    echo '</button>';
+    echo '</div>';
+  }
+
+  function cff_render_media_action_buttons() {
+    echo '<p class="cff-media-actions">';
+    echo '<button type="button" class="button cff-media-select" title="' . esc_attr__('Select media', 'cff') . '" aria-label="' . esc_attr__('Select media', 'cff') . '"><span class="dashicons dashicons-insert" aria-hidden="true"></span></button> ';
+    echo '<button type="button" class="button cff-media-clear" title="' . esc_attr__('Clear media', 'cff') . '" aria-label="' . esc_attr__('Clear media', 'cff') . '"><span class="dashicons dashicons-no-alt" aria-hidden="true"></span></button>';
+    echo '</p>';
+  }
+
+  function cff_render_gallery_field($name_attr, $value) {
+    $items = [];
+    foreach ((array) $value as $item) {
+      $id = absint(is_array($item) ? ($item['id'] ?? 0) : $item);
+      if ($id) $items[] = $id;
+    }
+    $items = array_values(array_unique($items));
+
+    echo '<div class="cff-gallery" data-type="gallery" data-name="' . esc_attr($name_attr) . '">';
+    echo '<input type="hidden" class="cff-gallery-present" name="' . esc_attr($name_attr) . '[__cff_present]" value="1">';
+    echo '<div class="cff-gallery-items">';
+    foreach ($items as $id) {
+      echo '<div class="cff-gallery-item" data-id="' . esc_attr($id) . '">';
+      echo '<input type="hidden" name="' . esc_attr($name_attr) . '[]" value="' . esc_attr($id) . '">';
+      echo '<button type="button" class="button-link cff-gallery-remove" aria-label="' . esc_attr__('Remove image', 'cff') . '" title="' . esc_attr__('Remove image', 'cff') . '"><span class="dashicons dashicons-no-alt" aria-hidden="true"></span></button>';
+      echo '<div class="cff-gallery-item-preview">' . cff_media_preview_html('image', $id) . '</div>';
+      echo '</div>';
+    }
+    echo '</div>';
+    echo '<p class="cff-media-actions">';
+    echo '<button type="button" class="button cff-gallery-select" title="' . esc_attr__('Select gallery images', 'cff') . '" aria-label="' . esc_attr__('Select gallery images', 'cff') . '"><span class="dashicons dashicons-format-gallery" aria-hidden="true"></span></button> ';
+    echo '<button type="button" class="button cff-gallery-clear" title="' . esc_attr__('Clear gallery', 'cff') . '" aria-label="' . esc_attr__('Clear gallery', 'cff') . '"><span class="dashicons dashicons-no-alt" aria-hidden="true"></span></button>';
+    echo '</p>';
     echo '</div>';
   }
 
@@ -121,8 +271,11 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     if (!$field_key) {
       $field_key = 'cff-field-' . wp_rand(1000, 9999);
     }
-    $field_attr_name = esc_attr($field_key);
-    echo '<div class="' . esc_attr($field_classes) . '" data-field-name="' . esc_attr($field_attr_name) . '"' . cff_conditional_attrs($f) . '>';
+    $field_attr_name = sanitize_key($name);
+    if (!$field_attr_name) {
+      $field_attr_name = $field_key;
+    }
+    echo '<div class="' . esc_attr($field_classes) . '" data-field-name="' . esc_attr($field_attr_name) . '" data-field-key="' . esc_attr($field_key) . '"' . cff_conditional_attrs($f) . '>';
     $type_label = ucfirst(str_replace('_', ' ', $type));
     if ($is_accordion) {
       echo '<div class="postbox-header">';
@@ -167,19 +320,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       echo '<input type="hidden" name="cff_values['.esc_attr($name).']" value="0">';
       echo '<label><input type="checkbox" name="cff_values['.esc_attr($name).']" value="1" '.$checked.$required_attr.'> ' . esc_html($label) . '</label>';
     } elseif ($type === 'url') {
-      $target_meta_key = $key . '_target';
-      $target_value = get_post_meta($post->ID, $target_meta_key, true);
-      if ($target_value !== '_blank' && ($f['target'] ?? '') === '_blank') {
-        $target_value = '_blank';
-      }
-      render_url_input_with_target(
-        'cff_values[' . $name . ']',
-        'cff_values[' . $name . '_target]',
-        $val,
-        $target_value,
-        $placeholder_attr,
-        $required_attr
-      );
+      render_url_input('cff_values[' . $name . ']', $val, $placeholder_attr, $required_attr);
     } elseif ($type === 'relational') {
       $rel_type = $f['relational_type'] ?? 'post';
       $rel_subtype = $f['relational_subtype'] ?? '';
@@ -188,7 +329,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
 
       render_relational_input('cff_values['.esc_attr($name).']', $rel_type, $rel_subtype, $rel_display, $val, $rel_multiple, $required_attr);
     } elseif ($type === 'choice') {
-      render_choice_input('cff_values['.esc_attr($name).']', $f['choices'] ?? [], $f['choice_display'] ?? '', $val, $required_attr);
+      render_choice_input('cff_values['.esc_attr($name).']', $f['choices'] ?? [], $f['choice_display'] ?? '', $val, $required_attr, $f['choice_default'] ?? '');
     } elseif ($type === 'date_picker' || $type === 'datetime_picker') {
       $name_attr = 'cff_values[' . sanitize_key($name) . ']';
       $use_time = ($type === 'datetime_picker') ? !array_key_exists('datetime_use_time', $f) || !empty($f['datetime_use_time']) : true;
@@ -217,16 +358,21 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       echo '<input type="hidden" class="cff-media-id" name="cff_values['.esc_attr($name).']" value="'.esc_attr($id).'">';
       echo '<input type="hidden" class="cff-media-url" name="cff_values['.esc_attr($name).'_url]" value="'.esc_attr($url).'">';
       echo '<div class="cff-media-preview">' . cff_media_preview_html($type, $id) . '</div>';
-      echo '<p><button type="button" class="button cff-media-select">Select</button> <button type="button" class="button cff-media-clear">Clear</button></p>';
+      cff_render_media_action_buttons();
       echo '</div>';
+    } elseif ($type === 'gallery') {
+      cff_render_gallery_field('cff_values[' . $name . ']', $val);
     } elseif ($type === 'repeater') {
       $rows = is_array($val) ? $val : [];
       $subs = isset($f['sub_fields']) ? $f['sub_fields'] : [];
 
       $min = isset($f['min']) ? (int) $f['min'] : 1;
       $max = isset($f['max']) ? (int) $f['max'] : 0;
+      if ($max > 0 && count($rows) > $max) {
+        $rows = array_slice($rows, 0, $max);
+      }
       $layout = isset($f['repeater_layout']) ? $f['repeater_layout'] : 'default';
-      $layout = in_array($layout, ['simple','grid','row','default'], true) ? $layout : 'default';
+      $layout = in_array($layout, ['simple','grid','row','gallery','default'], true) ? $layout : 'default';
       $row_label_field = sanitize_key($f['repeater_row_label'] ?? '');
       $collapsed_default = !empty($f['repeater_collapsed']);
 
@@ -246,14 +392,14 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
 
       echo '<div class="cff-rep-rows">';
       foreach ($rows as $i => $row) {
-        render_repeater_row($name, $subs, $row, $i, $post->ID, null, $layout, $row_label_field, $collapsed_default);
+        render_repeater_row($name, $subs, $row, $i, $post->ID, null, $layout, $row_label_field, $collapsed_default, $name, []);
       }
       echo '</div>';
 
       echo '<p><button type="button" class="button cff-rep-add">Add Row</button></p>';
 
       echo '<template class="cff-rep-template">';
-      render_repeater_row($name, $subs, [], '__INDEX__', $post->ID, null, $layout, $row_label_field, $collapsed_default);
+      render_repeater_row($name, $subs, [], '__INDEX__', $post->ID, null, $layout, $row_label_field, $collapsed_default, $name, []);
       echo '</template>';
 
       echo '</div>';
@@ -263,7 +409,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       $vals = is_array($val) ? $val : [];
       $subs = isset($f['sub_fields']) ? $f['sub_fields'] : [];
       echo '<div class="cff-group">';
-      render_group_fields('cff_values[' . $name . ']', $subs, $vals, $post->ID);
+      render_group_fields('cff_values[' . $name . ']', $subs, $vals, $post->ID, $name, []);
       echo '</div>';
     } elseif ($type === 'flexible') {
       $rows = is_array($val) ? $val : [];
@@ -274,7 +420,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       echo '<div class="cff-flexible" data-field="'.esc_attr($name).'">';
       echo '<div class="cff-flex-rows">';
       foreach ($rows as $i => $row) {
-        render_flexible_row($name, $layouts, $layout_map, $row, $i, $post->ID);
+        render_flexible_row($name, $layouts, $layout_map, $row, $i, $post->ID, $name, []);
       }
       echo '</div>';
 
@@ -291,7 +437,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       echo '<div class="cff-flex-templates" style="display:none">';
       foreach ($layouts as $l) {
         echo '<template class="cff-flex-template" data-layout="'.esc_attr($l['name']).'">';
-        render_flexible_row($name, $layouts, $layout_map, ['layout'=>$l['name'], 'fields'=>[]], '__INDEX__', $post->ID);
+        render_flexible_row($name, $layouts, $layout_map, ['layout'=>$l['name'], 'fields'=>[]], '__INDEX__', $post->ID, $name, []);
         echo '</template>';
       }
       echo '</div>';
@@ -300,8 +446,12 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     } else {
       echo '<input class="widefat" type="text" name="cff_values['.esc_attr($name).']" value="'.esc_attr($val).'"'.$placeholder_attr.$required_attr.'>';
     }
-
-    cff_render_copy_to_translations_field_action();
+    cff_render_copy_to_translations_field_action([
+      'root' => $name,
+      'field' => $name,
+      'key' => sanitize_key($f['key'] ?? ''),
+      'path' => [],
+    ]);
     echo '</div></div>';
   }
 
@@ -322,19 +472,26 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     );
   }
 
-  function render_url_input_with_target($name_attr, $target_attr, $value, $target_value, $placeholder_attr, $required_attr) {
+  function render_url_input($name_attr, $value, $placeholder_attr, $required_attr) {
     echo '<input class="widefat" type="url" name="'.esc_attr($name_attr).'" value="'.esc_attr($value).'"'.$placeholder_attr.$required_attr.'>';
-    echo '<div class="cff-row-url-target">';
-    echo '<input type="hidden" name="'.esc_attr($target_attr).'" value="">';
-    echo '<br>';
-    echo '<label><input type="checkbox" name="'.esc_attr($target_attr).'" value="_blank"' . checked($target_value, '_blank', false) . '> Open in new tab</label>';
-    echo '</div>';
+    echo '<p class="description">' . esc_html__('Simple URL field for a direct link only.', 'cff') . '</p>';
   }
 
-  function render_choice_input($name_attr, $choices, $display, $value, $required_attr) {
+  function render_choice_input($name_attr, $choices, $display, $value, $required_attr, $default_value = '') {
     $display = sanitize_key($display ?? '');
     $allowed = ['select','checkbox','radio','button_group','true_false'];
     if (!in_array($display, $allowed, true)) $display = 'select';
+    $default_value = is_scalar($default_value) ? (string) $default_value : '';
+
+    if ($value === '' || $value === null || $value === []) {
+      if ($display === 'checkbox') {
+        $value = $default_value !== '' ? [$default_value] : [];
+      } elseif ($display === 'true_false') {
+        $value = ($default_value === '1') ? '1' : $value;
+      } elseif ($default_value !== '') {
+        $value = $default_value;
+      }
+    }
 
     if (empty($choices)) {
       echo '<div class="cff-muted">' . esc_html__('No choices configured', 'cff') . '</div>';
@@ -410,8 +567,8 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     return $base . ': ' . $raw;
   }
 
-  function render_repeater_row($parent, $subs, $row, $i, $post_id, $name_prefix = null, $layout = 'default', $row_label_field = '', $collapsed_default = false) {
-    $layout = in_array($layout, ['simple','grid','row','default'], true) ? $layout : 'default';
+  function render_repeater_row($parent, $subs, $row, $i, $post_id, $name_prefix = null, $layout = 'default', $row_label_field = '', $collapsed_default = false, $root_name = '', $path = []) {
+    $layout = in_array($layout, ['simple','grid','row','gallery','default'], true) ? $layout : 'default';
     $row_classes = 'cff-rep-row';
     if ($layout === 'grid') {
       $row_classes .= ' cff-rep-row-grid';
@@ -419,13 +576,16 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       $row_classes .= ' cff-rep-row-row';
     } elseif ($layout === 'simple') {
       $row_classes .= ' cff-rep-row-simple';
+    } elseif ($layout === 'gallery') {
+      $row_classes .= ' cff-rep-row-gallery';
     }
-    if ($layout !== 'simple' && $collapsed_default) {
+    if (!in_array($layout, ['simple', 'gallery'], true) && $collapsed_default) {
       $row_classes .= ' is-collapsed';
     }
     $display_index = (is_numeric($i) ? intval($i) + 1 : 1);
     $row_title = cff_build_repeater_row_title($row, $row_label_field, $display_index);
-    echo '<div class="'.esc_attr($row_classes).'" data-i="'.esc_attr($i).'">';
+    $row_id = ($i === '__INDEX__') ? '__ROWID__' : cff_generate_row_id($row['__cff_row_id'] ?? '');
+    echo '<div class="'.esc_attr($row_classes).'" data-i="'.esc_attr($i).'" data-row-id="'.esc_attr($row_id).'">';
     $head_class = 'cff-rep-row-head';
     if ($layout === 'simple') {
       $head_class .= ' cff-rep-row-head-simple ui-sortable-handle';
@@ -433,14 +593,19 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       $head_class .= ' cff-rep-row-head-grid';
     } elseif ($layout === 'row') {
       $head_class .= ' cff-rep-row-head-row';
+    } elseif ($layout === 'gallery') {
+      $head_class .= ' cff-rep-row-head-gallery';
     }
     if ($layout === 'simple') {
       echo '<div class="'.esc_attr($head_class).'"><span class="cff-rep-drag" title="Drag"></span><button type="button" class="button-link cff-rep-clone" title="Clone row" aria-label="Clone row"><span class="dashicons dashicons-admin-page" aria-hidden="true"></span></button><button type="button" class="button-link cff-rep-remove" title="Remove row" aria-label="Remove row"><span class="dashicons dashicons-trash" aria-hidden="true"></span></button></div>';
+    } elseif ($layout === 'gallery') {
+      echo '<div class="'.esc_attr($head_class).'"><div class="cff-rep-left"><strong class="cff-rep-row-title">'.esc_html($row_title).'</strong></div><div class="cff-rep-actions"><span class="cff-rep-drag" title="Drag"></span><button type="button" class="button-link cff-rep-clone" title="Clone row" aria-label="Clone row"><span class="dashicons dashicons-admin-page" aria-hidden="true"></span></button><button type="button" class="button-link cff-rep-remove" title="Remove row" aria-label="Remove row"><span class="dashicons dashicons-trash" aria-hidden="true"></span></button></div></div>';
     } else {
       echo '<div class="'.esc_attr($head_class).'"><div class="cff-rep-left"><span class="cff-rep-drag" title="Drag"></span><button type="button" class="cff-rep-toggle" title="Collapse"></button><strong class="cff-rep-row-title">'.esc_html($row_title).'</strong></div><div class="cff-rep-actions"><button type="button" class="button-link cff-rep-clone" title="Clone row" aria-label="Clone row"><span class="dashicons dashicons-admin-page" aria-hidden="true"></span></button><button type="button" class="button-link cff-rep-remove" title="Remove row" aria-label="Remove row"><span class="dashicons dashicons-trash" aria-hidden="true"></span></button></div></div>';
     }
     echo '<div class="cff-rep-row-body">';
     $row_prefix = ($name_prefix !== null ? $name_prefix : 'cff_values['.$parent.']') . '['.$i.']';
+    echo '<input type="hidden" class="cff-row-id" name="'.esc_attr($row_prefix . '[__cff_row_id]').'" value="'.esc_attr($row_id).'">';
     foreach ($subs as $s) {
       $sname = $s['name'];
       $stype = $s['type'];
@@ -453,7 +618,13 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       $label_text = esc_html($label);
       $required_attr = $required ? ' required aria-required="true"' : '';
       if ($required) $label_text .= ' <span class="cff-required-indicator" aria-hidden="true">*</span>';
-      echo '<div class="cff-subfield-input"' . cff_conditional_attrs($s) . '>';
+      $sub_field_key = sanitize_key($s['key'] ?? '');
+      if (!$sub_field_key) $sub_field_key = sanitize_key($sname);
+      $current_path = array_merge((array) $path, [[
+        'name' => sanitize_key($sname),
+        'type' => sanitize_key($stype),
+      ]]);
+      echo '<div class="cff-subfield-input" data-field-name="' . esc_attr(sanitize_key($sname)) . '" data-field-key="' . esc_attr($sub_field_key) . '"' . cff_conditional_attrs($s) . '>';
       echo '<label>'.$label_text.'</label>';
       if ($stype === 'textarea') {
         echo '<textarea class="widefat" rows="3" name="'.esc_attr($name_attr).'"'.$placeholder_attr.$required_attr.'>'.esc_textarea($v).'</textarea>';
@@ -467,12 +638,9 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         echo '<input type="hidden" name="'.esc_attr($name_attr).'" value="0">';
         echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'" value="1" '.$checked.$required_attr.'> ' . esc_html($label) . '</label>';
     } elseif ($stype === 'url') {
-      $target_key = $sname . '_target';
-      $target_name_attr = $row_prefix . '[' . $target_key . ']';
-      $target_value = isset($row[$target_key]) ? $row[$target_key] : '';
-      render_url_input_with_target($name_attr, $target_name_attr, $v, $target_value, $placeholder_attr, $required_attr);
+          render_url_input($name_attr, $v, $placeholder_attr, $required_attr);
     } elseif ($stype === 'choice') {
-        render_choice_input($name_attr, $s['choices'] ?? [], $s['choice_display'] ?? '', $v, $required_attr);
+        render_choice_input($name_attr, $s['choices'] ?? [], $s['choice_display'] ?? '', $v, $required_attr, $s['choice_default'] ?? '');
       } elseif ($stype === 'date_picker' || $stype === 'datetime_picker') {
         $sub_use_time = ($stype === 'datetime_picker') ? !array_key_exists('datetime_use_time', $s) || !empty($s['datetime_use_time']) : true;
         render_picker_input($name_attr, $v, $placeholder_attr, $required_attr, $stype, $sub_use_time);
@@ -509,30 +677,35 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         echo '<input type="hidden" class="cff-media-id" name="'.esc_attr($name_attr).'" value="'.esc_attr($id).'">';
         echo '<input type="hidden" class="cff-media-url" name="'.esc_attr($url_attr).'" value="'.esc_attr($url).'">';
         echo '<div class="cff-media-preview">' . cff_media_preview_html($stype, $id) . '</div>';
-        echo '<p><button type="button" class="button cff-media-select">Select</button> <button type="button" class="button cff-media-clear">Clear</button></p>';
+        cff_render_media_action_buttons();
         echo '</div>';
+      } elseif ($stype === 'gallery') {
+        cff_render_gallery_field($name_attr, $v);
       } elseif ($stype === 'repeater') {
         $rsubs = isset($s['sub_fields']) ? $s['sub_fields'] : [];
         $rows = is_array($v) ? $v : [];
         $min = isset($s['min']) ? (int) $s['min'] : 1;
         $max = isset($s['max']) ? (int) $s['max'] : 0;
+        if ($max > 0 && count($rows) > $max) {
+          $rows = array_slice($rows, 0, $max);
+        }
         $field_key = sanitize_key($s['key'] ?? '');
         if (!$field_key) $field_key = sanitize_key($sname);
         $repeater_prefix = $name_attr;
         $rep_layout = isset($s['repeater_layout']) ? $s['repeater_layout'] : 'default';
-        $rep_layout = in_array($rep_layout, ['simple','grid','row','default'], true) ? $rep_layout : 'default';
+        $rep_layout = in_array($rep_layout, ['simple','grid','row','gallery','default'], true) ? $rep_layout : 'default';
         $row_label_field = sanitize_key($s['repeater_row_label'] ?? '');
         $collapsed_default = !empty($s['repeater_collapsed']);
         echo '<div class="cff-repeater" data-field="'.esc_attr($field_key).'" data-min="'.esc_attr($min).'" data-max="'.esc_attr($max).'" data-layout="'.esc_attr($rep_layout).'" data-row-label="'.esc_attr($row_label_field).'" data-collapsed-default="'.($collapsed_default ? '1' : '0').'">';
         echo '<input type="hidden" class="cff-rep-present" name="'.esc_attr($repeater_prefix).'[__cff_present]" value="1">';
         echo '<div class="cff-rep-rows">';
         foreach ($rows as $idx => $row) {
-          render_repeater_row($sname, $rsubs, $row, $idx, $post_id, $repeater_prefix, $rep_layout, $row_label_field, $collapsed_default);
+          render_repeater_row($sname, $rsubs, $row, $idx, $post_id, $repeater_prefix, $rep_layout, $row_label_field, $collapsed_default, $root_name, $current_path);
         }
         echo '</div>';
         echo '<p><button type="button" class="button cff-rep-add">Add Row</button></p>';
         echo '<template class="cff-rep-template">';
-        render_repeater_row($sname, $rsubs, [], '__INDEX__', $post_id, $repeater_prefix, $rep_layout, $row_label_field, $collapsed_default);
+        render_repeater_row($sname, $rsubs, [], '__INDEX__', $post_id, $repeater_prefix, $rep_layout, $row_label_field, $collapsed_default, $root_name, $current_path);
         echo '</template>';
         echo '</div>';
       } elseif ($stype === 'relational') {
@@ -550,17 +723,23 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         $gvals = is_array($v) ? $v : [];
         $group_prefix = $row_prefix . '[' . $sname . ']';
         echo '<div class="cff-group cff-group-nested">';
-        render_group_fields($group_prefix, $gsubs, $gvals, $post_id);
+        render_group_fields($group_prefix, $gsubs, $gvals, $post_id, $root_name, $current_path);
         echo '</div>';
       } else {
         echo '<input class="widefat" type="text" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$required_attr.'>';
       }
+      cff_render_copy_to_translations_field_action([
+        'root' => $root_name ?: sanitize_key($parent),
+        'field' => sanitize_key($sname),
+        'key' => $sub_field_key,
+        'path' => $current_path,
+      ]);
       echo '</div>';
     }
     echo '</div></div>';
   }
 
-function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
+function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name = '', $path = []) {
     foreach ($subs as $s) {
       $sname = $s['name'];
       $stype = $s['type'];
@@ -573,7 +752,13 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
       $label_text = esc_html($label);
       $required_attr = $required ? ' required aria-required="true"' : '';
       if ($required) $label_text .= ' <span class="cff-required-indicator" aria-hidden="true">*</span>';
-      echo '<div class="cff-subfield-input"' . cff_conditional_attrs($s) . '>';
+      $sub_field_key = sanitize_key($s['key'] ?? '');
+      if (!$sub_field_key) $sub_field_key = sanitize_key($sname);
+      $current_path = array_merge((array) $path, [[
+        'name' => sanitize_key($sname),
+        'type' => sanitize_key($stype),
+      ]]);
+      echo '<div class="cff-subfield-input" data-field-name="' . esc_attr(sanitize_key($sname)) . '" data-field-key="' . esc_attr($sub_field_key) . '"' . cff_conditional_attrs($s) . '>';
       echo '<label>'.$label_text.'</label>';
       if ($stype === 'textarea') {
         echo '<textarea class="widefat" rows="3" name="'.esc_attr($name_attr).'"'.$placeholder_attr.$required_attr.'>'.esc_textarea($v).'</textarea>';
@@ -587,12 +772,9 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
         echo '<input type="hidden" name="'.esc_attr($name_attr).'" value="0">';
         echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'" value="1" '.$checked.$required_attr.'> ' . esc_html($label) . '</label>';
       } elseif ($stype === 'url') {
-        $target_key = $sname . '_target';
-        $target_name_attr = $parent_prefix . '[' . $sname . '_target]';
-        $target_value = isset($vals[$target_key]) ? $vals[$target_key] : '';
-        render_url_input_with_target($name_attr, $target_name_attr, $v, $target_value, $placeholder_attr, $required_attr);
+        render_url_input($name_attr, $v, $placeholder_attr, $required_attr);
       } elseif ($stype === 'choice') {
-        render_choice_input($name_attr, $s['choices'] ?? [], $s['choice_display'] ?? '', $v, $required_attr);
+        render_choice_input($name_attr, $s['choices'] ?? [], $s['choice_display'] ?? '', $v, $required_attr, $s['choice_default'] ?? '');
       } elseif ($stype === 'date_picker' || $stype === 'datetime_picker') {
         $sub_use_time = ($stype === 'datetime_picker') ? !array_key_exists('datetime_use_time', $s) || !empty($s['datetime_use_time']) : true;
         render_picker_input($name_attr, $v, $placeholder_attr, $required_attr, $stype, $sub_use_time);
@@ -630,37 +812,42 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
         echo '<input type="hidden" class="cff-media-id" name="'.esc_attr($name_attr).'" value="'.esc_attr($id).'">';
         echo '<input type="hidden" class="cff-media-url" name="'.esc_attr($url_attr).'" value="'.esc_attr($url).'">';
         echo '<div class="cff-media-preview">' . cff_media_preview_html($stype, $id) . '</div>';
-        echo '<p><button type="button" class="button cff-media-select">Select</button> <button type="button" class="button cff-media-clear">Clear</button></p>';
+        cff_render_media_action_buttons();
         echo '</div>';
+      } elseif ($stype === 'gallery') {
+        cff_render_gallery_field($name_attr, $v);
       } elseif ($stype === 'repeater') {
         $rsubs = isset($s['sub_fields']) ? $s['sub_fields'] : [];
         $rows = is_array($v) ? $v : [];
         $min = isset($s['min']) ? (int) $s['min'] : 1;
         $max = isset($s['max']) ? (int) $s['max'] : 0;
+        if ($max > 0 && count($rows) > $max) {
+          $rows = array_slice($rows, 0, $max);
+        }
         $field_key = sanitize_key($s['key'] ?? '');
         if (!$field_key) $field_key = sanitize_key($sname);
         $repeater_prefix = $name_attr;
         $rep_layout = isset($s['repeater_layout']) ? $s['repeater_layout'] : 'default';
-        $rep_layout = in_array($rep_layout, ['simple','grid','row','default'], true) ? $rep_layout : 'default';
+        $rep_layout = in_array($rep_layout, ['simple','grid','row','gallery','default'], true) ? $rep_layout : 'default';
         $row_label_field = sanitize_key($s['repeater_row_label'] ?? '');
         $collapsed_default = !empty($s['repeater_collapsed']);
         echo '<div class="cff-repeater" data-field="'.esc_attr($field_key).'" data-min="'.esc_attr($min).'" data-max="'.esc_attr($max).'" data-layout="'.esc_attr($rep_layout).'" data-row-label="'.esc_attr($row_label_field).'" data-collapsed-default="'.($collapsed_default ? '1' : '0').'">';
         echo '<input type="hidden" class="cff-rep-present" name="'.esc_attr($repeater_prefix).'[__cff_present]" value="1">';
         echo '<div class="cff-rep-rows">';
         foreach ($rows as $idx => $row) {
-          render_repeater_row($sname, $rsubs, $row, $idx, $post_id, $repeater_prefix, $rep_layout, $row_label_field, $collapsed_default);
+          render_repeater_row($sname, $rsubs, $row, $idx, $post_id, $repeater_prefix, $rep_layout, $row_label_field, $collapsed_default, $root_name, $current_path);
         }
         echo '</div>';
         echo '<p><button type="button" class="button cff-rep-add">Add Row</button></p>';
         echo '<template class="cff-rep-template">';
-        render_repeater_row($sname, $rsubs, [], '__INDEX__', $post_id, $repeater_prefix, $rep_layout, $row_label_field, $collapsed_default);
+        render_repeater_row($sname, $rsubs, [], '__INDEX__', $post_id, $repeater_prefix, $rep_layout, $row_label_field, $collapsed_default, $root_name, $current_path);
         echo '</template>';
         echo '</div>';
       } elseif ($stype === 'group') {
         $gsubs = isset($s['sub_fields']) ? $s['sub_fields'] : [];
         $gvals = is_array($v) ? $v : [];
         echo '<div class="cff-group cff-group-nested">';
-        render_group_fields($name_attr, $gsubs, $gvals, $post_id);
+        render_group_fields($name_attr, $gsubs, $gvals, $post_id, $root_name, $current_path);
         echo '</div>';
       } elseif ($stype === 'relational') {
         render_relational_input(
@@ -675,6 +862,12 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
       } else {
         echo '<input class="widefat" type="text" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$placeholder_attr.$required_attr.'>';
       }
+      cff_render_copy_to_translations_field_action([
+        'root' => $root_name ?: sanitize_key($sname),
+        'field' => sanitize_key($sname),
+        'key' => $sub_field_key,
+        'path' => $current_path,
+      ]);
       echo '</div>';
     }
   }
@@ -741,6 +934,7 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
     $mode_class = ($mode === 'internal') ? ' is-mode-internal' : ' is-mode-custom';
 
     echo '<div class="cff-link cff-link-picker' . esc_attr($mode_class) . '" data-mode="' . esc_attr($mode) . '">';
+    echo '<p class="description">' . esc_html__('Use this for URL + label button, with internal/custom source and target options.', 'cff') . '</p>';
 
     echo '<div class="cff-link-mode">';
     echo '<label><input type="radio" name="' . esc_attr($name_attr) . '[mode]" value="internal" ' . checked($mode, 'internal', false) . '> Internal</label>';
@@ -801,18 +995,24 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
     echo '</div>';
   }
 
-  function render_flexible_row($parent, $layouts, $layout_map, $row, $i, $post_id) {
+  function render_flexible_row($parent, $layouts, $layout_map, $row, $i, $post_id, $root_name = '', $path = []) {
     $layout = isset($row['layout']) ? sanitize_key($row['layout']) : '';
     $fields = isset($row['fields']) && is_array($row['fields']) ? $row['fields'] : [];
     $l = isset($layout_map[$layout]) ? $layout_map[$layout] : null;
     $label = $l ? ($l['label'] ?? $layout) : $layout;
+    $row_id = ($i === '__INDEX__') ? '__ROWID__' : cff_generate_row_id($row['__cff_row_id'] ?? '');
 
-    echo '<div class="cff-flex-row" data-i="'.esc_attr($i).'" data-layout="'.esc_attr($layout).'">';
+    echo '<div class="cff-flex-row" data-i="'.esc_attr($i).'" data-layout="'.esc_attr($layout).'" data-row-id="'.esc_attr($row_id).'">';
     echo '<div class="cff-flex-head"><strong>'.esc_html($label).'</strong> <span class="cff-pill">'.esc_html($layout).'</span> ';
     echo '<button type="button" class="button-link cff-flex-remove">Remove</button></div>';
     echo '<input type="hidden" name="cff_values['.esc_attr($parent).']['.esc_attr($i).'][layout]" value="'.esc_attr($layout).'">';
+    echo '<input type="hidden" class="cff-row-id" name="cff_values['.esc_attr($parent).']['.esc_attr($i).'][__cff_row_id]" value="'.esc_attr($row_id).'">';
     echo '<div class="cff-flex-body">';
     if ($l) {
+      $layout_path = array_merge((array) $path, [[
+        'name' => sanitize_key($layout),
+        'type' => 'layout',
+      ]]);
       foreach (($l['sub_fields'] ?? []) as $sf) {
         $sname = $sf['name'];
         $stype = $sf['type'];
@@ -825,7 +1025,13 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
         $label_text = esc_html($slabel);
         $required_attr = $required ? ' required aria-required="true"' : '';
         if ($required) $label_text .= ' <span class="cff-required-indicator" aria-hidden="true">*</span>';
-        echo '<div class="cff-subfield-input"' . cff_conditional_attrs($sf) . '>';
+        $sub_field_key = sanitize_key($sf['key'] ?? '');
+        if (!$sub_field_key) $sub_field_key = sanitize_key($sname);
+        $current_path = array_merge($layout_path, [[
+          'name' => sanitize_key($sname),
+          'type' => sanitize_key($stype),
+        ]]);
+        echo '<div class="cff-subfield-input" data-field-name="' . esc_attr(sanitize_key($sname)) . '" data-field-key="' . esc_attr($sub_field_key) . '"' . cff_conditional_attrs($sf) . '>';
         echo '<label>'.$label_text.'</label>';
         if ($stype === 'textarea') {
           echo '<textarea class="widefat" rows="4" name="'.esc_attr($name_attr).'"'.$placeholder_attr.$required_attr.'>'.esc_textarea($v).'</textarea>';
@@ -839,12 +1045,9 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
           echo '<input type="hidden" name="'.esc_attr($name_attr).'" value="0">';
           echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'" value="1" '.$checked.$required_attr.'> ' . esc_html($slabel) . '</label>';
         } elseif ($stype === 'url') {
-          $target_key = $sname . '_target';
-          $target_name_attr = 'cff_values['.$parent.']['.$i.'][fields]['.$sname.'_target]';
-          $target_value = isset($fields[$target_key]) ? $fields[$target_key] : '';
-          render_url_input_with_target($name_attr, $target_name_attr, $v, $target_value, $placeholder_attr, $required_attr);
+          render_url_input($name_attr, $v, $placeholder_attr, $required_attr);
         } elseif ($stype === 'choice') {
-          render_choice_input($name_attr, $sf['choices'] ?? [], $sf['choice_display'] ?? '', $v, $required_attr);
+          render_choice_input($name_attr, $sf['choices'] ?? [], $sf['choice_display'] ?? '', $v, $required_attr, $sf['choice_default'] ?? '');
         } elseif ($stype === 'date_picker' || $stype === 'datetime_picker') {
         $sub_use_time = ($stype === 'datetime_picker') ? !array_key_exists('datetime_use_time', $sf) || !empty($sf['datetime_use_time']) : true;
         render_picker_input($name_attr, $v, $placeholder_attr, $required_attr, $stype, $sub_use_time);
@@ -876,18 +1079,26 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
           echo '<input type="hidden" class="cff-media-id" name="'.esc_attr($name_attr).'" value="'.esc_attr($id).'">';
           echo '<input type="hidden" class="cff-media-url" name="'.esc_attr($url_attr).'" value="'.esc_attr($url).'">';
           echo '<div class="cff-media-preview">' . cff_media_preview_html($stype, $id) . '</div>';
-          echo '<p><button type="button" class="button cff-media-select">Select</button> <button type="button" class="button cff-media-clear">Clear</button></p>';
+          cff_render_media_action_buttons();
           echo '</div>';
+        } elseif ($stype === 'gallery') {
+          cff_render_gallery_field($name_attr, $v);
         } elseif ($stype === 'group') {
           $gsubs = isset($sf['sub_fields']) ? $sf['sub_fields'] : [];
           $gvals = is_array($v) ? $v : [];
           $group_prefix = 'cff_values['.$parent.']['.$i.'][fields]['.$sname.']';
           echo '<div class="cff-group cff-group-nested">';
-          render_group_fields($group_prefix, $gsubs, $gvals, $post_id);
+          render_group_fields($group_prefix, $gsubs, $gvals, $post_id, $root_name, $current_path);
           echo '</div>';
         } else {
           echo '<input class="widefat" type="text" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$placeholder_attr.$required_attr.'>';
         }
+        cff_render_copy_to_translations_field_action([
+          'root' => $root_name ?: sanitize_key($parent),
+          'field' => sanitize_key($sname),
+          'key' => $sub_field_key,
+          'path' => $current_path,
+        ]);
         echo '</div>';
       }
     } else {
@@ -901,7 +1112,8 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
     if (!isset($_POST['cff_content_nonce']) || !wp_verify_nonce($_POST['cff_content_nonce'], 'cff_content_save')) return;
     if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
     if (!current_user_can('edit_post', $post_id)) return;
-    $copy_to_translations = !empty($_POST['cff_copy_to_translations_trigger']);
+    $copy_all_to_translations = !empty($_POST['cff_copy_all_to_translations_trigger']);
+    $copy_field_to_translations = isset($_POST['cff_copy_field_to_translations']) ? wp_unslash((string) $_POST['cff_copy_field_to_translations']) : '';
 
     if (isset($_POST['cff_group_field_order']) && is_array($_POST['cff_group_field_order'])) {
       foreach ((array) $_POST['cff_group_field_order'] as $group_id => $raw_order) {
@@ -927,8 +1139,10 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
     }
 
     if (!isset($_POST['cff_values']) || !is_array($_POST['cff_values'])) {
-      if ($copy_to_translations) {
+      if ($copy_all_to_translations) {
         cff_copy_values_to_polylang_translations($post_id);
+      } elseif ($copy_field_to_translations) {
+        cff_copy_field_to_polylang_translations($plugin, $post_id, $copy_field_to_translations);
       }
       return;
     }
@@ -964,8 +1178,10 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
       update_post_meta($post_id, $key, $value);
     }
 
-    if ($copy_to_translations) {
+    if ($copy_all_to_translations) {
       cff_copy_values_to_polylang_translations($post_id);
+    } elseif ($copy_field_to_translations) {
+      cff_copy_field_to_polylang_translations($plugin, $post_id, $copy_field_to_translations);
     }
   }
 
@@ -975,17 +1191,6 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
   }
 
   function cff_copy_values_to_polylang_translations($post_id) {
-    if (!function_exists('pll_get_post_translations')) {
-      cff_store_copy_to_translations_result('missing_polylang');
-      return 'missing_polylang';
-    }
-
-    $translations = pll_get_post_translations($post_id);
-    if (!is_array($translations) || count($translations) < 2) {
-      cff_store_copy_to_translations_result('missing_translation_page');
-      return 'missing_translation_page';
-    }
-
     $source_meta = get_post_meta($post_id);
     if (!is_array($source_meta)) {
       $source_meta = [];
@@ -997,17 +1202,286 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
       $cff_meta[$meta_key] = is_array($meta_values) ? $meta_values : [];
     }
 
+    return cff_copy_meta_to_polylang_translations($post_id, $cff_meta, 'copied_all');
+  }
+
+  function cff_row_match_key($row, $index = 0, $layout_name = '') {
+    if (!is_array($row)) {
+      return 'idx:' . intval($index);
+    }
+    $row_id = sanitize_key($row['__cff_row_id'] ?? '');
+    if ($layout_name !== '') {
+      $layout_name = sanitize_key($layout_name);
+    } else {
+      $layout_name = sanitize_key($row['layout'] ?? '');
+    }
+    if ($row_id) {
+      return ($layout_name ? $layout_name . ':' : '') . $row_id;
+    }
+    return ($layout_name ? $layout_name . ':' : 'idx:') . intval($index);
+  }
+
+  function cff_remove_nested_field_value($target, $segments) {
+    if (!is_array($target) || empty($segments)) {
+      return is_array($target) ? $target : [];
+    }
+
+    $segment = array_shift($segments);
+    $name = sanitize_key($segment['name'] ?? '');
+    $type = sanitize_key($segment['type'] ?? '');
+    if (!$name || !$type) return $target;
+
+    if ($type === 'repeater') {
+      if (!isset($target[$name]) || !is_array($target[$name])) {
+        return $target;
+      }
+      if (empty($segments)) {
+        unset($target[$name]);
+        return $target;
+      }
+      foreach ($target[$name] as $index => $row) {
+        if (!is_array($row)) continue;
+        $target[$name][$index] = cff_remove_nested_field_value($row, $segments);
+      }
+      return $target;
+    }
+
+    if ($type === 'layout') {
+      if (empty($segments)) {
+        return is_array($target) ? $target : [];
+      }
+      foreach ($target as $index => $row) {
+        if (!is_array($row)) continue;
+        $row_layout = sanitize_key($row['layout'] ?? '');
+        if ($row_layout !== $name) continue;
+        $row_fields = isset($row['fields']) && is_array($row['fields']) ? $row['fields'] : [];
+        $target[$index]['fields'] = cff_remove_nested_field_value($row_fields, $segments);
+      }
+      return $target;
+    }
+
+    if (empty($segments)) {
+      unset($target[$name]);
+      return $target;
+    }
+
+    $child = isset($target[$name]) && is_array($target[$name]) ? $target[$name] : [];
+    $target[$name] = cff_remove_nested_field_value($child, $segments);
+    return $target;
+  }
+
+  function cff_copy_nested_field_value($source, $target, $segments) {
+    if (empty($segments)) {
+      return $source;
+    }
+
+    if (!is_array($target)) {
+      $target = [];
+    }
+    if (!is_array($source)) {
+      $source = [];
+    }
+
+    $segment = array_shift($segments);
+    $name = sanitize_key($segment['name'] ?? '');
+    $type = sanitize_key($segment['type'] ?? '');
+    if (!$name || !$type) return $target;
+
+    if ($type === 'repeater') {
+      $source_rows = isset($source[$name]) && is_array($source[$name]) ? $source[$name] : [];
+      $target_rows = isset($target[$name]) && is_array($target[$name]) ? $target[$name] : [];
+
+      if (empty($segments)) {
+        if ($source_rows) {
+          $target[$name] = $source_rows;
+        } else {
+          unset($target[$name]);
+        }
+        return $target;
+      }
+
+      $target_index_map = [];
+      foreach ($target_rows as $index => $target_row) {
+        $target_index_map[cff_row_match_key($target_row, $index)] = $index;
+      }
+
+      foreach ($source_rows as $index => $source_row) {
+        $match_key = cff_row_match_key($source_row, $index);
+        $target_index = array_key_exists($match_key, $target_index_map) ? $target_index_map[$match_key] : null;
+        $target_row = ($target_index !== null && isset($target_rows[$target_index]) && is_array($target_rows[$target_index])) ? $target_rows[$target_index] : [];
+        $merged_row = cff_copy_nested_field_value($source_row, $target_row, $segments);
+        $merged_row['__cff_row_id'] = cff_generate_row_id($source_row['__cff_row_id'] ?? $target_row['__cff_row_id'] ?? '');
+        if ($target_index !== null) {
+          $target_rows[$target_index] = $merged_row;
+        } else {
+          $target_rows[] = $merged_row;
+        }
+      }
+
+      foreach ($target_rows as $index => $target_row) {
+        $match_key = cff_row_match_key($target_row, $index);
+        if (isset($target_index_map[$match_key]) && !array_filter($source_rows, function($source_row, $source_index) use ($match_key) {
+          return cff_row_match_key($source_row, $source_index) === $match_key;
+        }, ARRAY_FILTER_USE_BOTH)) {
+          if (is_array($target_row)) {
+            $target_rows[$index] = cff_remove_nested_field_value($target_row, $segments);
+          }
+        }
+      }
+
+      $target[$name] = $target_rows;
+      return $target;
+    }
+
+    if ($type === 'layout') {
+      $source_rows = is_array($source) ? $source : [];
+      $target_rows = is_array($target) ? $target : [];
+      $target_index_map = [];
+      foreach ($target_rows as $index => $target_row) {
+        if (!is_array($target_row)) continue;
+        if (sanitize_key($target_row['layout'] ?? '') !== $name) continue;
+        $target_index_map[cff_row_match_key($target_row, $index, $name)] = $index;
+      }
+
+      foreach ($source_rows as $index => $source_row) {
+        if (!is_array($source_row)) continue;
+        if (sanitize_key($source_row['layout'] ?? '') !== $name) continue;
+        $match_key = cff_row_match_key($source_row, $index, $name);
+        $target_index = array_key_exists($match_key, $target_index_map) ? $target_index_map[$match_key] : null;
+        $target_row = ($target_index !== null && isset($target_rows[$target_index]) && is_array($target_rows[$target_index])) ? $target_rows[$target_index] : [
+          'layout' => $name,
+          '__cff_row_id' => cff_generate_row_id($source_row['__cff_row_id'] ?? ''),
+          'fields' => [],
+        ];
+        $source_fields = isset($source_row['fields']) && is_array($source_row['fields']) ? $source_row['fields'] : [];
+        $target_fields = isset($target_row['fields']) && is_array($target_row['fields']) ? $target_row['fields'] : [];
+        $target_row['fields'] = cff_copy_nested_field_value($source_fields, $target_fields, $segments);
+        $target_row['layout'] = $name;
+        $target_row['__cff_row_id'] = cff_generate_row_id($source_row['__cff_row_id'] ?? $target_row['__cff_row_id'] ?? '');
+        if ($target_index !== null) {
+          $target_rows[$target_index] = $target_row;
+        } else {
+          $target_rows[] = $target_row;
+        }
+      }
+
+      foreach ($target_rows as $index => $row) {
+        if (!is_array($row)) continue;
+        $target_layout = sanitize_key($row['layout'] ?? '');
+        if ($target_layout !== $name) continue;
+        $match_key = cff_row_match_key($row, $index, $name);
+        $exists = false;
+        foreach ($source_rows as $source_index => $source_row) {
+          if (!is_array($source_row)) continue;
+          if (sanitize_key($source_row['layout'] ?? '') !== $name) continue;
+          if (cff_row_match_key($source_row, $source_index, $name) === $match_key) {
+            $exists = true;
+            break;
+          }
+        }
+        if (!$exists) {
+          $target_fields = isset($row['fields']) && is_array($row['fields']) ? $row['fields'] : [];
+          $target_rows[$index]['fields'] = cff_remove_nested_field_value($target_fields, $segments);
+        }
+      }
+
+      return $target_rows;
+    }
+
+    $source_value = $source[$name] ?? null;
+    if (empty($segments)) {
+      if (array_key_exists($name, $source)) {
+        $target[$name] = $source_value;
+      } else {
+        unset($target[$name]);
+      }
+      return $target;
+    }
+
+    $target_child = isset($target[$name]) && is_array($target[$name]) ? $target[$name] : [];
+    $source_child = is_array($source_value) ? $source_value : [];
+    $target[$name] = cff_copy_nested_field_value($source_child, $target_child, $segments);
+    return $target;
+  }
+
+  function cff_copy_field_to_polylang_translations($plugin, $post_id, $field_request_raw) {
+    $request = cff_decode_copy_field_request($field_request_raw);
+    $root_name = sanitize_key($request['root'] ?? '');
+    if (!$root_name) {
+      return '';
+    }
+
+    $meta_key = $plugin->meta_key($root_name);
+    $path = isset($request['path']) && is_array($request['path']) ? $request['path'] : [];
+
+    if (!$path) {
+      $meta_values = get_post_meta($post_id, $meta_key, false);
+      $cff_meta = [
+        $meta_key => is_array($meta_values) ? $meta_values : [],
+      ];
+      return cff_copy_meta_to_polylang_translations($post_id, $cff_meta, 'copied_field');
+    }
+
+    if (!function_exists('pll_get_post_translations')) {
+      cff_store_copy_to_translations_result('missing_polylang');
+      return 'missing_polylang';
+    }
+
+    $translations = pll_get_post_translations($post_id);
+    if (!is_array($translations) || count($translations) < 2) {
+      cff_store_copy_to_translations_result('missing_translation_page');
+      return 'missing_translation_page';
+    }
+
+    $source_root = get_post_meta($post_id, $meta_key, true);
+    if (!is_array($source_root)) {
+      $source_root = [];
+    }
+
     $copied = 0;
     foreach ($translations as $translated_post_id) {
       $translated_post_id = absint($translated_post_id);
       if (!$translated_post_id || $translated_post_id === absint($post_id)) continue;
 
-      $target_meta = get_post_meta($translated_post_id);
-      if (is_array($target_meta)) {
-        foreach ($target_meta as $meta_key => $meta_values) {
-          if (strpos((string) $meta_key, '_cff_') !== 0) continue;
-          delete_post_meta($translated_post_id, $meta_key);
-        }
+      $target_root = get_post_meta($translated_post_id, $meta_key, true);
+      if (!is_array($target_root)) {
+        $target_root = [];
+      }
+
+      $merged = cff_copy_nested_field_value($source_root, $target_root, $path);
+      if (empty($merged)) {
+        delete_post_meta($translated_post_id, $meta_key);
+      } else {
+        update_post_meta($translated_post_id, $meta_key, $merged);
+      }
+      $copied++;
+    }
+
+    $status = $copied > 0 ? 'copied_field' : 'missing_translation_page';
+    cff_store_copy_to_translations_result($status);
+    return $status;
+  }
+
+  function cff_copy_meta_to_polylang_translations($post_id, $cff_meta, $success_status = 'copied_all') {
+    if (!function_exists('pll_get_post_translations')) {
+      cff_store_copy_to_translations_result('missing_polylang');
+      return 'missing_polylang';
+    }
+
+    $translations = pll_get_post_translations($post_id);
+    if (!is_array($translations) || count($translations) < 2) {
+      cff_store_copy_to_translations_result('missing_translation_page');
+      return 'missing_translation_page';
+    }
+
+    $success_status = sanitize_key($success_status ?: 'copied_all');
+    $copied = 0;
+    foreach ($translations as $translated_post_id) {
+      $translated_post_id = absint($translated_post_id);
+      if (!$translated_post_id || $translated_post_id === absint($post_id)) continue;
+
+      foreach ($cff_meta as $meta_key => $meta_values) {
+        delete_post_meta($translated_post_id, $meta_key);
       }
 
       foreach ($cff_meta as $meta_key => $meta_values) {
@@ -1019,7 +1493,7 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
       $copied++;
     }
 
-    $status = $copied > 0 ? 'copied' : 'missing_translation_page';
+    $status = $copied > 0 ? $success_status : 'missing_translation_page';
     cff_store_copy_to_translations_result($status);
     return $status;
   }
@@ -1033,6 +1507,14 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id) {
         if ($k === '__cff_present') continue;
 
         if ($val === '__cff_choice_empty__') continue;
+
+        if ($k === '__cff_row_id') {
+          $row_id = sanitize_key($val);
+          if ($row_id !== '') {
+            $out[$k] = $row_id;
+          }
+          continue;
+        }
 
         $out[$k] = deep_sanitize($val);
       }

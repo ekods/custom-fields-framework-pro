@@ -130,24 +130,24 @@
                 '<div class="cff-row-type-main">' +
                   '<label>Type</label>' +
                   '<select class="cff-input cff-type cff-select2">' +
-                  '<option value="text">Text</option>' +
-                  '<option value="number">Number</option>' +
-                  '<option value="textarea">Textarea</option>' +
-                  '<option value="wysiwyg">WYSIWYG</option>' +
-                  '<option value="color">Color</option>' +
-                  '<option value="url">URL</option>' +
-                  '<option value="link">Link</option>' +
-                  '<option value="embed">Embed</option>' +
+                    '<option value="text">Text</option>' +
+                    '<option value="number">Number</option>' +
+                    '<option value="textarea">Textarea</option>' +
+                    '<option value="wysiwyg">WYSIWYG</option>' +
+                    '<option value="color">Color</option>' +
+                    '<option value="url">URL (Simple)</option>' +
+                    '<option value="link">Link (URL + Label Button)</option>' +
+                    '<option value="embed">Embed</option>' +
                     '<option value="choice">Choice</option>' +
-                    '<option value="relational">Relational</option>' +
                     '<option value="relational">Relational</option>' +
                     '<option value="date_picker">Date Picker</option>' +
                     '<option value="datetime_picker">Date Time Picker</option>' +
                     '<option value="checkbox">Checkbox</option>' +
-                  '<option value="image">Image</option>' +
-                  '<option value="file">File</option>' +
-                  '<option value="repeater">Repeater</option>' +
-                  '<option value="group">Group</option>' +
+                    '<option value="image">Image</option>' +
+                    '<option value="gallery">Gallery</option>' +
+                    '<option value="file">File</option>' +
+                    '<option value="repeater">Repeater</option>' +
+                    '<option value="group">Group</option>' +
                     '<option value="flexible">Flexible Content</option>' +
                   '</select>' +
                 '</div>' +
@@ -161,81 +161,158 @@
                 '</button>' +
               '</div>' +
             '</div>' +
-              '<div class="cff-field-meta-row">' +
-          '<div class="cff-row-placeholder">' +
-            '<label>Placeholder</label>' +
-            '<input type="text" class="cff-input cff-placeholder" placeholder="Placeholder" value="{{placeholder}}">' +
-          '</div>' +
-          '<div class="cff-row-repeater-options">' +
-            '<label>Repeater Layout</label>' +
-            '<select class="cff-input cff-repeater-layout cff-select2">' +
-                    '<option value="default">Default (stacked rows)</option>' +
-              '<option value="simple">Simple (Remove-only header)</option>' +
-              '<option value="grid">Grid (multi-column body)</option>' +
-              '<option value="row">Row (single horizontal row)</option>' +
-            '</select>' +
-            '<p class="description">Change how each repeater row is rendered in the editor.</p>' +
-          '</div>' +
-        '<div class="cff-row-repeater-options">' +
-          '<label>Repeater Layout</label>' +
-          '<select class="cff-input cff-repeater-layout cff-select2">' +
+          '<div class="cff-field-meta-row">' +
+            '<div class="cff-row-placeholder">' +
+              '<label>Placeholder</label>' +
+              '<input type="text" class="cff-input cff-placeholder" placeholder="Placeholder" value="{{placeholder}}">' +
+            '</div>' +
+            '<div class="cff-row-repeater-options">' +
+              '<label>Repeater Layout</label>' +
+              '<select class="cff-input cff-repeater-layout cff-select2">' +
                 '<option value="default">Default (stacked rows)</option>' +
-            '<option value="simple">Simple (Remove-only header)</option>' +
-            '<option value="grid">Grid (multi-column body)</option>' +
-            '<option value="row">Row (single horizontal row)</option>' +
-          '</select>' +
-          '<p class="description">Change how each repeater row is rendered in the editor.</p>' +
-        '</div>' +
-          '<div class="cff-row-repeater-options">' +
-            '<label>Repeater Layout</label>' +
-            '<select class="cff-input cff-repeater-layout cff-select2">' +
-                  '<option value="default">Default (stacked rows)</option>' +
-              '<option value="simple">Simple (Remove-only header)</option>' +
-              '<option value="grid">Grid (multi-column body)</option>' +
-              '<option value="row">Row (single horizontal row)</option>' +
-            '</select>' +
-            '<p class="description">Change how each repeater row is rendered in the editor.</p>' +
-          '</div>' +
-              '<div class="cff-row-repeater-options">' +
-                '<label>Repeater Layout</label>' +
-                '<select class="cff-input cff-repeater-layout cff-select2">' +
-                  '<option value="default">Default (stacked rows)</option>' +
-                  '<option value="simple">Simple (Remove-only header)</option>' +
-                  '<option value="grid">Grid (multi-column body)</option>' +
-                  '<option value="row">Row (single horizontal row)</option>' +
-                '</select>' +
-                '<p class="description">Change how each repeater row is rendered in the editor.</p>' +
-              '</div>' +
-                '<div class="cff-row-required">' +
-                  '<span class="cff-tools-toggles">' +
-                    '<div>' +
-                      '<strong>Required</strong>' +
-                    '</div>' +
-                    '<label class="cff-switch">' +
-                      '<input type="checkbox" class="cff-required-toggle">' +
-                      '<span class="cff-slider"></span>' +
-                    '</label>' +
-                  '</span>' +
+                '<option value="simple">Simple (remove-only header)</option>' +
+                '<option value="grid">Grid (multi-column)</option>' +
+                '<option value="row">Row (single horizontal row)</option>' +
+                '<option value="gallery">Gallery Images</option>' +
+              '</select>' +
+              '<p class="description">Choose how each repeater row is presented while editing.</p>' +
+              '<div class="cff-row-repeater-advanced">' +
+                '<div class="cff-row-repeater-col">' +
+                  '<label>Min Rows</label>' +
+                  '<input type="number" class="cff-input cff-repeater-min" min="0" step="1" value="0">' +
+                '</div>' +
+                '<div class="cff-row-repeater-col">' +
+                  '<label>Max Rows (0 = unlimited)</label>' +
+                  '<input type="number" class="cff-input cff-repeater-max" min="0" step="1" value="0">' +
                 '</div>' +
               '</div>' +
-              '<div class="cff-field-choice is-hidden">' +
-                '<div class="cff-subhead">' +
-                  '<strong>Choices</strong> ' +
-                  '<button type="button" class="button cff-add-choice">Add Choice</button>' +
+              '<div class="cff-row-repeater-col">' +
+                '<label>Row Label Field (sub field name)</label>' +
+                '<input type="text" class="cff-input cff-repeater-row-label" placeholder="title">' +
+              '</div>' +
+              '<span class="cff-tools-toggles cff-row-repeater-collapse">' +
+                '<div><strong>Collapsed by default</strong></div>' +
+                '<label class="cff-switch">' +
+                  '<input type="checkbox" class="cff-repeater-collapsed-toggle">' +
+                  '<span class="cff-slider"></span>' +
+                '</label>' +
+              '</span>' +
+            '</div>' +
+            '<div class="cff-row-datetime-options">' +
+              '<span class="cff-tools-toggles">' +
+                '<div><strong>Use Time</strong><div class="description">Enable time selector for datetime picker.</div></div>' +
+                '<label class="cff-switch">' +
+                  '<input type="checkbox" class="cff-datetime-use-time-toggle" checked>' +
+                  '<span class="cff-slider"></span>' +
+                '</label>' +
+              '</span>' +
+            '</div>' +
+            '<div class="cff-row-rules">' +
+              '<div class="cff-row-required">' +
+                '<span class="cff-tools-toggles">' +
+                  '<div>' +
+                    '<strong>Required</strong>' +
+                  '</div>' +
+                  '<label class="cff-switch">' +
+                    '<input type="checkbox" class="cff-required-toggle">' +
+                    '<span class="cff-slider"></span>' +
+                  '</label>' +
+                '</span>' +
+              '</div>' +
+              '<div class="cff-row-conditional">' +
+                '<span class="cff-tools-toggles">' +
+                  '<div><strong>Conditional Logic</strong></div>' +
+                  '<label class="cff-switch">' +
+                    '<input type="checkbox" class="cff-conditional-enabled">' +
+                    '<span class="cff-slider"></span>' +
+                  '</label>' +
+                '</span>' +
+                '<div class="cff-conditional-config" style="margin-top:8px;display:none;">' +
+                  '<p><label>Field Name</label>' +
+                    '<select class="cff-input cff-conditional-field cff-select2">' +
+                      '<option value="">Select field…</option>' +
+                    '</select>' +
+                  '</p>' +
+                  '<p><label>Operator</label>' +
+                    '<select class="cff-input cff-conditional-operator cff-select2">' +
+                      '<option value="==">is equal to</option>' +
+                      '<option value="!=">is not equal to</option>' +
+                      '<option value="contains">contains</option>' +
+                      '<option value="not_contains">does not contain</option>' +
+                      '<option value="empty">is empty</option>' +
+                      '<option value="not_empty">is not empty</option>' +
+                    '</select>' +
+                  '</p>' +
+                  '<p class="cff-conditional-value-row"><label>Value</label>' +
+                  '<input type="text" class="cff-input cff-conditional-value" placeholder="value"></p>' +
                 '</div>' +
-                '<div class="cff-row-choice-display">' +
-                  '<label>Display</label>' +
-                  '<select class="cff-input cff-choice-display cff-select2">' +
-                    '<option value="select">Select</option>' +
-                    '<option value="checkbox">Checkbox</option>' +
-                    '<option value="radio">Radio Button</option>' +
-                    '<option value="button_group">Button Group</option>' +
-                    '<option value="true_false">True / False</option>' +
-                  '</select>' +
-                '</div>' +
-                '<div class="cff-choices-list"></div>' +
               '</div>' +
             '</div>' +
+          '</div>' +
+          '<div class="cff-field-choice is-hidden">' +
+            '<div class="cff-subhead">' +
+              '<strong>Choices</strong> ' +
+              '<button type="button" class="button cff-add-choice">Add Choice</button>' +
+            '</div>' +
+            '<div class="cff-row-choice-display">' +
+              '<label>Display</label>' +
+              '<select class="cff-input cff-choice-display cff-select2">' +
+                '<option value="select">Select</option>' +
+                '<option value="checkbox">Checkbox</option>' +
+                '<option value="radio">Radio Button</option>' +
+                '<option value="button_group">Button Group</option>' +
+                '<option value="true_false">True / False</option>' +
+              '</select>' +
+            '</div>' +
+            '<div class="cff-row-choice-default">' +
+              '<label>Default Choice</label>' +
+              '<select class="cff-input cff-choice-default cff-select2">' +
+                '<option value="">None</option>' +
+              '</select>' +
+            '</div>' +
+            '<div class="cff-choices-list"></div>' +
+          '</div>' +
+          '<div class="cff-field-relational is-hidden">' +
+            '<div class="cff-subhead">' +
+              '<strong>Relational Settings</strong>' +
+            '</div>' +
+            '<div class="cff-row-relational-type">' +
+              '<label>Relation Type</label>' +
+              '<select class="cff-input cff-relational-type cff-select2">' +
+                '<option value="post">Post Only</option>' +
+                '<option value="page">Page Only</option>' +
+                '<option value="post_and_page">Post & Page</option>' +
+                '<option value="post_type">Custom Post Type</option>' +
+                '<option value="taxonomy">Taxonomy</option>' +
+                '<option value="user">User</option>' +
+              '</select>' +
+            '</div>' +
+            '<div class="cff-row-relational-subtype" style="display:none;">' +
+              '<label>Select Type</label>' +
+              '<select class="cff-input cff-relational-subtype cff-select2"></select>' +
+            '</div>' +
+            '<div class="cff-row-relational-display">' +
+              '<label>Display</label>' +
+              '<select class="cff-input cff-relational-display cff-select2">' +
+                '<option value="select">Select</option>' +
+                '<option value="checkbox">Checkbox</option>' +
+                '<option value="radio">Radio Button</option>' +
+              '</select>' +
+            '</div>' +
+            '<div class="cff-row-relational-multiple">' +
+              '<span class="cff-tools-toggles">' +
+                '<div><strong>Multiple</strong></div>' +
+                '<label class="cff-switch">' +
+                  '<input type="checkbox" class="cff-relational-multiple-toggle">' +
+                  '<span class="cff-slider"></span>' +
+                '</label>' +
+              '</span>' +
+            '</div>' +
+            '<div class="cff-row-relational-archives">' +
+              '<strong>Archive Links</strong>' +
+              '<div class="cff-relational-archive-list"></div>' +
+            '</div>' +
+          '</div>' +
           '<div class="cff-advanced">' +
             '<div class="cff-subbuilder" data-kind="repeater">' +
               '<div class="cff-subhead"><strong>Sub Fields (Repeater)</strong> ' +
@@ -281,20 +358,21 @@
                 '<div class="cff-row-type-main">' +
                   '<label>Type</label>' +
                   '<select class="cff-input cff-stype cff-select2">' +
-                  '<option value="text">Text</option>' +
-                  '<option value="number">Number</option>' +
-                  '<option value="textarea">Textarea</option>' +
+                    '<option value="text">Text</option>' +
+                    '<option value="number">Number</option>' +
+                    '<option value="textarea">Textarea</option>' +
                     '<option value="wysiwyg">WYSIWYG</option>' +
                     '<option value="color">Color</option>' +
-                  '<option value="url">URL</option>' +
-                  '<option value="link">Link</option>' +
-                  '<option value="embed">Embed</option>' +
+                    '<option value="url">URL (Simple)</option>' +
+                    '<option value="link">Link (URL + Label Button)</option>' +
+                    '<option value="embed">Embed</option>' +
                     '<option value="choice">Choice</option>' +
                     '<option value="relational">Relational</option>' +
                     '<option value="date_picker">Date Picker</option>' +
                     '<option value="datetime_picker">Date Time Picker</option>' +
                     '<option value="checkbox">Checkbox</option>' +
                     '<option value="image">Image</option>' +
+                    '<option value="gallery">Gallery</option>' +
                     '<option value="file">File</option>' +
                     '<option value="repeater">Repeater</option>' +
                     '<option value="group">Group</option>' +
@@ -307,11 +385,53 @@
                 '</button>' +
               '</div>' +
             '</div>' +
-              '<div class="cff-field-meta-row">' +
-                '<div class="cff-row-placeholder">' +
-                  '<label>Placeholder</label>' +
-                  '<input type="text" class="cff-input cff-placeholder" placeholder="Placeholder" value="{{placeholder}}">' +
+            '<div class="cff-field-meta-row">' +
+              '<div class="cff-row-placeholder">' +
+                '<label>Placeholder</label>' +
+                '<input type="text" class="cff-input cff-placeholder" placeholder="Placeholder" value="{{placeholder}}">' +
+              '</div>' +
+              '<div class="cff-row-repeater-options">' +
+                '<label>Repeater Layout</label>' +
+                '<select class="cff-input cff-repeater-layout cff-select2">' +
+                  '<option value="default">Default (stacked rows)</option>' +
+                  '<option value="simple">Simple (remove-only header)</option>' +
+                  '<option value="grid">Grid (multi-column)</option>' +
+                  '<option value="row">Row (single horizontal row)</option>' +
+                  '<option value="gallery">Gallery Images</option>' +
+                '</select>' +
+                '<p class="description">Choose how each repeater row is presented while editing.</p>' +
+                '<div class="cff-row-repeater-advanced">' +
+                  '<div class="cff-row-repeater-col">' +
+                    '<label>Min Rows</label>' +
+                    '<input type="number" class="cff-input cff-repeater-min" min="0" step="1" value="0">' +
+                  '</div>' +
+                  '<div class="cff-row-repeater-col">' +
+                    '<label>Max Rows (0 = unlimited)</label>' +
+                    '<input type="number" class="cff-input cff-repeater-max" min="0" step="1" value="0">' +
+                  '</div>' +
                 '</div>' +
+                '<div class="cff-row-repeater-col">' +
+                  '<label>Row Label Field (sub field name)</label>' +
+                  '<input type="text" class="cff-input cff-repeater-row-label" placeholder="title">' +
+                '</div>' +
+                '<span class="cff-tools-toggles cff-row-repeater-collapse">' +
+                  '<div><strong>Collapsed by default</strong></div>' +
+                  '<label class="cff-switch">' +
+                    '<input type="checkbox" class="cff-repeater-collapsed-toggle">' +
+                    '<span class="cff-slider"></span>' +
+                  '</label>' +
+                '</span>' +
+              '</div>' +
+              '<div class="cff-row-datetime-options">' +
+                '<span class="cff-tools-toggles">' +
+                  '<div><strong>Use Time</strong><div class="description">Enable time selector for datetime picker.</div></div>' +
+                  '<label class="cff-switch">' +
+                    '<input type="checkbox" class="cff-datetime-use-time-toggle" checked>' +
+                    '<span class="cff-slider"></span>' +
+                  '</label>' +
+                '</span>' +
+              '</div>' +
+              '<div class="cff-row-rules">' +
                 '<div class="cff-row-required">' +
                   '<span class="cff-tools-toggles">' +
                     '<div>' +
@@ -323,13 +443,41 @@
                     '</label>' +
                   '</span>' +
                 '</div>' +
+                '<div class="cff-row-conditional">' +
+                  '<span class="cff-tools-toggles">' +
+                    '<div><strong>Conditional Logic</strong></div>' +
+                    '<label class="cff-switch">' +
+                      '<input type="checkbox" class="cff-conditional-enabled">' +
+                      '<span class="cff-slider"></span>' +
+                    '</label>' +
+                  '</span>' +
+                  '<div class="cff-conditional-config" style="margin-top:8px;display:none;">' +
+                    '<p><label>Field Name</label>' +
+                      '<select class="cff-input cff-conditional-field cff-select2">' +
+                        '<option value="">Select field…</option>' +
+                      '</select>' +
+                    '</p>' +
+                    '<p><label>Operator</label>' +
+                      '<select class="cff-input cff-conditional-operator cff-select2">' +
+                        '<option value="==">is equal to</option>' +
+                        '<option value="!=">is not equal to</option>' +
+                        '<option value="contains">contains</option>' +
+                        '<option value="not_contains">does not contain</option>' +
+                        '<option value="empty">is empty</option>' +
+                        '<option value="not_empty">is not empty</option>' +
+                      '</select>' +
+                    '</p>' +
+                    '<p class="cff-conditional-value-row"><label>Value</label>' +
+                    '<input type="text" class="cff-input cff-conditional-value" placeholder="value"></p>' +
+                  '</div>' +
+                '</div>' +
               '</div>' +
+            '</div>' +
             '<div class="cff-field-choice is-hidden">' +
               '<div class="cff-subhead">' +
                 '<strong>Choices</strong> ' +
                 '<button type="button" class="button cff-add-choice">Add Choice</button>' +
               '</div>' +
-              '<div class="cff-choices-list"></div>' +
               '<div class="cff-row-choice-display">' +
                 '<label>Display</label>' +
                 '<select class="cff-input cff-choice-display cff-select2">' +
@@ -340,6 +488,13 @@
                   '<option value="true_false">True / False</option>' +
                 '</select>' +
               '</div>' +
+              '<div class="cff-row-choice-default">' +
+                '<label>Default Choice</label>' +
+                '<select class="cff-input cff-choice-default cff-select2">' +
+                  '<option value="">None</option>' +
+                '</select>' +
+              '</div>' +
+              '<div class="cff-choices-list"></div>' +
             '</div>' +
             '<div class="cff-field-relational is-hidden">' +
               '<div class="cff-subhead">' +
@@ -382,10 +537,26 @@
                 '<div class="cff-relational-archive-list"></div>' +
               '</div>' +
             '</div>' +
+          '</div>' +
+          '<div class="cff-subbuilder cff-subrepeater" data-kind="repeater">' +
+            '<div class="cff-subhead">' +
+              '<strong>Sub Fields (Repeater)</strong>' +
+              '<button type="button" class="button cff-add-sub">Add Sub Field</button>' +
             '</div>' +
+            '<div class="cff-subfields"></div>' +
+          '</div>' +
+          '<div class="cff-groupbuilder cff-subgroupbuilder" data-kind="group">' +
+            '<div class="cff-subhead">' +
+              '<strong>Group Fields</strong>' +
+              '<button type="button" class="button cff-add-group-sub">Add Field</button>' +
+            '</div>' +
+            '<div class="cff-group-fields"></div>' +
+          '</div>' +
         '</div>'
       );
-    }    function fallbackLayoutTpl(){
+    }
+
+    function fallbackLayoutTpl(){
       return (
         '<div class="cff-layout" data-li="{{li}}">' +
           '<div class="cff-layout-head">' +
@@ -412,8 +583,10 @@
     }
 
     function save(data){
-      $input.val(JSON.stringify(data || []));
+      var normalized = Array.isArray(data) ? data : [];
+      $input.val(JSON.stringify(normalized));
       $input.trigger('change');
+      refreshSecondaryViews(normalized);
     }
 
     function parseAliasesAttr($el, attrName){
@@ -444,6 +617,9 @@
 
     function toggleBuilders($field){
       var t = $field.find('.cff-type').val();
+      $field.toggleClass('is-repeater', t === 'repeater');
+      $field.toggleClass('is-group', t === 'group');
+      $field.toggleClass('is-flexible', t === 'flexible');
       $field.find('> .cff-advanced > .cff-subbuilder').toggle(t === 'repeater');
       $field.find('> .cff-advanced > .cff-groupbuilder').toggle(t === 'group');
       $field.find('> .cff-advanced > .cff-flexbuilder').toggle(t === 'flexible');
@@ -453,15 +629,49 @@
 
     function togglePlaceholderRow($element, type){
       if (!$element || !$element.length) return;
-      var $row = $element.find('.cff-row-placeholder').first();
+      var $meta = getFieldMetaRow($element);
+      var $row = $meta.children('.cff-row-placeholder').first();
       if (!$row.length) return;
       var allowed = placeholderTypes[String(type || '').trim()];
       $row.toggle(!!allowed);
     }
 
+    function getFieldMetaRow($element){
+      if (!$element || !$element.length) return $();
+
+      var $structure = $element.children('.cff-field-structure').first();
+      if ($structure.length) {
+        return $structure.children('.cff-field-meta-row').first();
+      }
+
+      $structure = $element.children('.cff-subfield-structure').first();
+      if ($structure.length) {
+        return $structure.children('.cff-field-meta-row').first();
+      }
+
+      return $();
+    }
+
+    function getFieldHeadRow($element){
+      if (!$element || !$element.length) return $();
+
+      var $structure = $element.children('.cff-field-structure').first();
+      if ($structure.length) {
+        return $structure.children('.cff-field-head').first();
+      }
+
+      $structure = $element.children('.cff-subfield-structure').first();
+      if ($structure.length) {
+        return $structure.children('.cff-field-head').first();
+      }
+
+      return $();
+    }
+
     function toggleRepeaterOptions($element, type){
       if (!$element || !$element.length) return;
-      var $row = $element.find('.cff-row-repeater-options').first();
+      var $meta = getFieldMetaRow($element);
+      var $row = $meta.children('.cff-row-repeater-options').first();
       if (!$row.length) return;
       var selected = String(type || '').trim();
       if (!selected) {
@@ -472,7 +682,8 @@
 
     function toggleDatetimeOptions($element, type){
       if (!$element || !$element.length) return;
-      var $row = $element.find('.cff-row-datetime-options').first();
+      var $meta = getFieldMetaRow($element);
+      var $row = $meta.children('.cff-row-datetime-options').first();
       if (!$row.length) return;
       var selected = String(type || '').trim();
       if (!selected) {
@@ -481,8 +692,31 @@
       $row.toggle(selected === 'datetime_picker');
     }
 
+    function getFieldRepeaterOptions($element){
+      var $meta = getFieldMetaRow($element);
+      return {
+        layout: $meta.children('.cff-row-repeater-options').find('.cff-repeater-layout').first(),
+        min: $meta.children('.cff-row-repeater-options').find('.cff-repeater-min').first(),
+        max: $meta.children('.cff-row-repeater-options').find('.cff-repeater-max').first(),
+        rowLabel: $meta.children('.cff-row-repeater-options').find('.cff-repeater-row-label').first(),
+        collapsed: $meta.children('.cff-row-repeater-options').find('.cff-repeater-collapsed-toggle').first()
+      };
+    }
+
+    function getSubfieldRepeaterOptions($element){
+      var options = getFieldRepeaterOptions($element);
+      return {
+        layout: options.layout,
+        min: options.min,
+        max: options.max,
+        rowLabel: options.rowLabel,
+        collapsed: options.collapsed
+      };
+    }
+
     function toggleSubGroup($sub){
-      var t = $sub.find('.cff-stype').val();
+      var $head = getFieldHeadRow($sub);
+      var t = $head.find('.cff-stype').first().val();
       var $builder = $sub.children('.cff-groupbuilder').first();
       var $wrap = $sub.find('.cff-handle-wrap');
       if ($wrap.length && !$wrap.find('.cff-sub-acc-toggle').length) {
@@ -515,7 +749,8 @@
     }
 
     function toggleSubRepeater($sub){
-      var t = $sub.find('.cff-stype').val();
+      var $head = getFieldHeadRow($sub);
+      var t = $head.find('.cff-stype').first().val();
       var $builder = $sub.find('> .cff-subbuilder').first();
       if (!$builder.length) return;
       var isRepeater = (t === 'repeater');
@@ -601,11 +836,12 @@
       renderChoicesPanel($el, s);
       toggleChoicePanel($el, s.type);
       var subLayoutValue = s.repeater_layout || 'default';
-      $el.find('.cff-repeater-layout').val(subLayoutValue);
-      $el.find('.cff-repeater-min').val(parseInt(s.min || 0, 10) || 0);
-      $el.find('.cff-repeater-max').val(parseInt(s.max || 0, 10) || 0);
-      $el.find('.cff-repeater-row-label').val(s.repeater_row_label || '');
-      $el.find('.cff-repeater-collapsed-toggle').prop('checked', !!s.repeater_collapsed);
+      var subRepeaterOptions = getSubfieldRepeaterOptions($el);
+      subRepeaterOptions.layout.val(subLayoutValue);
+      subRepeaterOptions.min.val(parseInt(s.min || 0, 10) || 0);
+      subRepeaterOptions.max.val(parseInt(s.max || 0, 10) || 0);
+      subRepeaterOptions.rowLabel.val(s.repeater_row_label || '');
+      subRepeaterOptions.collapsed.prop('checked', !!s.repeater_collapsed);
       toggleRepeaterOptions($el, s.type || 'text');
       $(document).trigger('cff:refresh', $el);
       return $el;
@@ -655,6 +891,41 @@
       if (!$panel.length) return;
       populateChoiceList($panel, data.choices || []);
       $panel.find('.cff-choice-display').val(data.choice_display || 'select');
+      updateChoiceDefaultOptions($panel, data.choice_default || '');
+    }
+
+    function updateChoiceDefaultOptions($panel, forcedSelected){
+      if (!$panel || !$panel.length) return;
+      var $select = $panel.find('.cff-choice-default').first();
+      var $list = $panel.find('.cff-choices-list').first();
+      if (!$select.length) return;
+      var display = String($panel.find('.cff-choice-display').val() || 'select');
+
+      var current = (forcedSelected !== undefined)
+        ? String(forcedSelected || '')
+        : String($select.val() || '');
+
+      var seen = {};
+      $select.empty().append('<option value="">None</option>');
+      if (display === 'true_false') {
+        seen['1'] = true;
+        $select.append('<option value="1">True</option>');
+      }
+      $list.children('.cff-choice-row').each(function(){
+        var $row = $(this);
+        var label = ($row.find('.cff-choice-label').val() || '').trim();
+        var value = ($row.find('.cff-choice-value').val() || '').trim();
+        var resolved = value || label;
+        if (!resolved || seen[resolved]) return;
+        seen[resolved] = true;
+        $select.append($('<option></option>').attr('value', resolved).text(label || resolved));
+      });
+
+      if (current && !seen[current]) {
+        $select.append($('<option></option>').attr('value', current).text(current + ' (missing)'));
+      }
+
+      $select.val(current);
     }
 
     function hasChoiceValues($panel){
@@ -683,45 +954,141 @@
       $config.find('.cff-conditional-value-row').toggle(needsValue);
     }
 
-    function updateConditionalFieldOptions($element, forcedSelected){
+    function getConditionalItemMeta($item){
+      var isField = $item.hasClass('cff-field-row');
+      var keyAttr = isField ? 'data-field-key' : 'data-sub-key';
+      var $scope = isField ? $item : getFieldHeadRow($item);
+      var labelClass = isField ? '.cff-label' : '.cff-slabel';
+      var nameClass = isField ? '.cff-name' : '.cff-sname';
+      var typeClass = isField ? '.cff-type' : '.cff-stype';
+      return {
+        key: CFF.utils.sanitizeName($item.attr(keyAttr) || ''),
+        label: String($scope.find(labelClass).first().val() || '').trim(),
+        name: CFF.utils.sanitizeName($scope.find(nameClass).first().val() || ''),
+        type: String($scope.find(typeClass).first().val() || 'text').trim()
+      };
+    }
+
+    function collectConditionalFieldReferences($items, pathParts, refs, currentKey){
+      $items.each(function(){
+        var $item = $(this);
+        var meta = getConditionalItemMeta($item);
+        if (!meta.key || !meta.name || meta.key === currentKey) return;
+
+        var title = meta.label || meta.name;
+        var nextPath = (pathParts || []).concat([title]);
+        refs.push({
+          key: meta.key,
+          name: meta.name,
+          type: meta.type,
+          label: meta.label,
+          path: nextPath.join(' -> ')
+        });
+
+        if (meta.type === 'group') {
+          collectConditionalFieldReferences(
+            $item.find('> .cff-advanced > .cff-groupbuilder > .cff-group-fields > .cff-subfield, > .cff-groupbuilder > .cff-group-fields > .cff-subfield'),
+            nextPath,
+            refs,
+            currentKey
+          );
+        } else if (meta.type === 'repeater') {
+          collectConditionalFieldReferences(
+            $item.find('> .cff-advanced > .cff-subbuilder > .cff-subfields > .cff-subfield, > .cff-subbuilder > .cff-subfields > .cff-subfield'),
+            nextPath,
+            refs,
+            currentKey
+          );
+        } else if (meta.type === 'flexible') {
+          $item.find('> .cff-advanced > .cff-flexbuilder > .cff-layouts > .cff-layout').each(function(){
+            var $layout = $(this);
+            var layoutLabel = String($layout.find('.cff-llabel').first().val() || $layout.find('.cff-lname').first().val() || 'Layout').trim();
+            collectConditionalFieldReferences(
+              $layout.find('> .cff-layout-body > .cff-layout-fields > .cff-subfield'),
+              nextPath.concat([layoutLabel]),
+              refs,
+              currentKey
+            );
+          });
+        }
+      });
+    }
+
+    function getConditionalFieldReferences($element){
+      var refs = [];
+      var seen = {};
+      var currentKey = CFF.utils.sanitizeName($element.attr('data-field-key') || $element.attr('data-sub-key') || '');
+
+      collectConditionalFieldReferences($root.find('#cff-field-list > .cff-field-row'), [], refs, currentKey);
+
+      return refs.filter(function(ref){
+        if (!ref.key || seen[ref.key]) return false;
+        seen[ref.key] = true;
+        return true;
+      });
+    }
+
+    function updateConditionalFieldOptions($element, forcedSelected, forcedFieldName){
       var $select = $element.find('.cff-conditional-field').first();
       if (!$select.length) return;
 
       var current = (forcedSelected !== undefined)
         ? String(forcedSelected || '')
         : String($select.val() || '');
+      var currentFieldName = (forcedFieldName !== undefined)
+        ? CFF.utils.sanitizeName(forcedFieldName || '')
+        : CFF.utils.sanitizeName($select.find('option:selected').attr('data-field-name') || current);
 
-      var names = [];
-      if ($element.hasClass('cff-field-row')) {
-        $('#cff-field-list .cff-field-row').each(function(){
-          var n = CFF.utils.sanitizeName($(this).find('.cff-name').val() || '');
-          if (n) names.push(n);
-        });
-      } else {
-        var $container = $element.parent();
-        $container.children('.cff-subfield').each(function(){
-          var n = CFF.utils.sanitizeName($(this).find('.cff-sname').val() || '');
-          if (n) names.push(n);
-        });
-      }
-
-      var seen = {};
-      names = names.filter(function(n){
-        if (seen[n]) return false;
-        seen[n] = true;
-        return true;
+      var refs = getConditionalFieldReferences($element);
+      var seenKeys = {};
+      var seenNames = {};
+      refs.forEach(function(ref){
+        seenKeys[ref.key] = true;
+        if (ref.name) seenNames[ref.name] = true;
       });
 
       $select.empty().append('<option value="">Select field…</option>');
-      names.forEach(function(n){
-        $select.append($('<option></option>').attr('value', n).text(n));
+      refs.forEach(function(ref){
+        var text = ref.path;
+        if (ref.name && ref.path !== ref.name) {
+          text += ' [' + ref.name + ']';
+        }
+        $select.append(
+          $('<option></option>')
+            .attr('value', ref.key)
+            .attr('data-field-key', ref.key)
+            .attr('data-field-name', ref.name)
+            .text(text)
+        );
       });
 
-      if (current && !seen[current]) {
-        $select.append($('<option></option>').attr('value', current).text(current + ' (missing)'));
+      if (current && seenKeys[current]) {
+        $select.val(current);
+        return;
       }
 
-      $select.val(current);
+      if (currentFieldName) {
+        var matchedByName = refs.find(function(ref){ return ref.name === currentFieldName; });
+        if (matchedByName) {
+          $select.val(matchedByName.key);
+          return;
+        }
+      }
+
+      if ((current && !seenKeys[current]) || (currentFieldName && !seenNames[currentFieldName])) {
+        var missingValue = current || currentFieldName;
+        var missingLabel = currentFieldName || current || 'Unknown field';
+        $select.append(
+          $('<option></option>')
+            .attr('value', missingValue)
+            .attr('data-field-name', currentFieldName || '')
+            .text(missingLabel + ' (missing)')
+        );
+        $select.val(missingValue);
+        return;
+      }
+
+      $select.val('');
     }
 
     function refreshConditionalFieldDropdowns(){
@@ -739,7 +1106,7 @@
       var enabled = !!(logic && logic.enabled);
       $toggle.prop('checked', enabled);
       $config.toggle(enabled);
-      updateConditionalFieldOptions($element, (logic && logic.field) || '');
+      updateConditionalFieldOptions($element, (logic && (logic.key || logic.field)) || '', (logic && logic.field) || '');
       $config.find('.cff-conditional-operator').val((logic && logic.operator) || '==');
       $config.find('.cff-conditional-value').val((logic && logic.value) || '');
       toggleConditionalValueInput($element);
@@ -750,15 +1117,24 @@
       var $config = $element.find('.cff-conditional-config').first();
       if (!$toggle.length || !$config.length || !$toggle.is(':checked')) return null;
 
-      var field = CFF.utils.sanitizeName($config.find('.cff-conditional-field').val() || '');
+      var $fieldSelect = $config.find('.cff-conditional-field').first();
+      var $selected = $fieldSelect.find('option:selected');
+      var field = CFF.utils.sanitizeName($selected.attr('data-field-name') || $fieldSelect.val() || '');
       if (!field) return null;
 
-      return {
+      var logic = {
         enabled: true,
         field: field,
         operator: $config.find('.cff-conditional-operator').val() || '==',
         value: $config.find('.cff-conditional-value').val() || ''
       };
+
+      var key = CFF.utils.sanitizeName($selected.attr('data-field-key') || '');
+      if (key) {
+        logic.key = key;
+      }
+
+      return logic;
     }
 
     var relationalPostTypesCache = null;
@@ -967,6 +1343,7 @@
         if (type === 'choice') {
           item.choices = readChoices($f.find('.cff-choices-list'));
           item.choice_display = $f.find('.cff-choice-display').val() || 'select';
+          item.choice_default = $f.find('.cff-choice-default').val() || '';
         }
 
         if (type === 'relational') {
@@ -977,15 +1354,16 @@
         }
 
         if (type === 'repeater') {
+          var fieldRepeaterOptions = getFieldRepeaterOptions($f);
           item.sub_fields = readSubfields(
             $f.find('> .cff-advanced > .cff-subbuilder > .cff-subfields').first()
           );
-          item.repeater_layout = $f.find('.cff-repeater-layout').val() || 'default';
-          item.min = Math.max(0, parseInt($f.find('.cff-repeater-min').val() || 0, 10) || 0);
-          item.max = Math.max(0, parseInt($f.find('.cff-repeater-max').val() || 0, 10) || 0);
+          item.repeater_layout = fieldRepeaterOptions.layout.val() || 'default';
+          item.min = Math.max(0, parseInt(fieldRepeaterOptions.min.val() || 0, 10) || 0);
+          item.max = Math.max(0, parseInt(fieldRepeaterOptions.max.val() || 0, 10) || 0);
           if (item.max > 0 && item.max < item.min) item.max = item.min;
-          item.repeater_row_label = CFF.utils.sanitizeName($f.find('.cff-repeater-row-label').val() || '');
-          item.repeater_collapsed = $f.find('.cff-repeater-collapsed-toggle').is(':checked');
+          item.repeater_row_label = CFF.utils.sanitizeName(fieldRepeaterOptions.rowLabel.val() || '');
+          item.repeater_collapsed = fieldRepeaterOptions.collapsed.is(':checked');
         }
 
         if (type === 'group') {
@@ -1073,23 +1451,270 @@
     }
 
     function typeLabel(type){
-      return String(type || 'text').replace(/_/g, ' ').replace(/\b\w/g, function(m){ return m.toUpperCase(); });
+      var key = String(type || 'text').trim();
+      var map = {
+        url: 'URL (Simple)',
+        link: 'Link (URL + Label Button)',
+        gallery: 'Gallery'
+      };
+      if (map[key]) return map[key];
+      return key.replace(/_/g, ' ').replace(/\b\w/g, function(m){ return m.toUpperCase(); });
     }
 
-    function buildMappingRowsRecursive(fields, depth){
+    function repeaterLayoutLabel(layout){
+      var map = {
+        default: 'Default',
+        simple: 'Simple',
+        grid: 'Grid',
+        row: 'Row',
+        gallery: 'Gallery Images'
+      };
+      var key = String(layout || 'default').trim();
+      return map[key] || typeLabel(key);
+    }
+
+    function choiceDisplayLabel(display){
+      var map = {
+        select: 'Select',
+        checkbox: 'Checkbox',
+        radio: 'Radio',
+        button_group: 'Button Group',
+        true_false: 'True / False'
+      };
+      var key = String(display || 'select').trim();
+      return map[key] || typeLabel(key);
+    }
+
+    function relationalTypeLabel(type){
+      var map = {
+        post: 'Post',
+        page: 'Page',
+        post_and_page: 'Post & Page',
+        post_type: 'Custom Post Type',
+        taxonomy: 'Taxonomy',
+        user: 'User'
+      };
+      var key = String(type || 'post').trim();
+      return map[key] || typeLabel(key);
+    }
+
+    function relationalDisplayLabel(display){
+      var map = {
+        select: 'Select',
+        checkbox: 'Checkbox',
+        radio: 'Radio'
+      };
+      var key = String(display || 'select').trim();
+      return map[key] || typeLabel(key);
+    }
+
+    function conditionalOperatorLabel(operator){
+      var map = {
+        '==': 'is',
+        '!=': 'is not',
+        contains: 'contains',
+        not_contains: 'does not contain',
+        empty: 'is empty',
+        not_empty: 'is not empty'
+      };
+      return map[String(operator || '==')] || String(operator || '==');
+    }
+
+    function collectFieldReferenceMap(fields, pathParts, refs){
+      refs = refs || {};
+      (fields || []).forEach(function(field){
+        if (!field || typeof field !== 'object') return;
+        var key = CFF.utils.sanitizeName(field.key || '');
+        var name = CFF.utils.sanitizeName(field.name || '');
+        var title = String(field.label || field.name || '').trim();
+        var nextPath = (pathParts || []).concat([title || name]);
+        var pathLabel = nextPath.join(' -> ');
+
+        if (key) refs['key:' + key] = pathLabel;
+        if (name && !refs['name:' + name]) refs['name:' + name] = pathLabel;
+
+        if ((field.type === 'group' || field.type === 'repeater') && Array.isArray(field.sub_fields)) {
+          collectFieldReferenceMap(field.sub_fields, nextPath, refs);
+        }
+
+        if (field.type === 'flexible' && Array.isArray(field.layouts)) {
+          field.layouts.forEach(function(layout){
+            if (!layout || !Array.isArray(layout.sub_fields)) return;
+            var layoutTitle = String(layout.label || layout.name || 'Layout').trim();
+            collectFieldReferenceMap(layout.sub_fields, nextPath.concat([layoutTitle]), refs);
+          });
+        }
+      });
+      return refs;
+    }
+
+    function mappingBadge(text, kind){
+      var cls = 'cff-field-mapping-badge';
+      if (kind) cls += ' is-' + kind;
+      return '<span class="' + cls + '">' + CFF.utils.escapeHtml(text) + '</span>';
+    }
+
+    function buildMappingBadges(field){
+      var badges = [];
+      if (!field || typeof field !== 'object') return badges;
+
+      if (field.required) {
+        badges.push(mappingBadge('Required', 'required'));
+      }
+
+      if (field.conditional_logic && field.conditional_logic.enabled) {
+        badges.push(mappingBadge('Conditional', 'conditional'));
+      }
+
+      if (field.type === 'choice' && field.choice_default) {
+        badges.push(mappingBadge('Default: ' + field.choice_default, 'default'));
+      }
+
+      if (field.type === 'repeater') {
+        var min = Math.max(0, parseInt(field.min || 0, 10) || 0);
+        var max = Math.max(0, parseInt(field.max || 0, 10) || 0);
+        badges.push(mappingBadge('Min ' + min, 'limit'));
+        badges.push(mappingBadge(max > 0 ? ('Max ' + max) : 'Max unlimited', 'limit'));
+      }
+
+      return badges;
+    }
+
+    function resolveConditionalSourceLabel(field, refs){
+      if (!field || !field.conditional_logic) return '';
+      var logic = field.conditional_logic;
+      var key = CFF.utils.sanitizeName(logic.key || '');
+      var name = CFF.utils.sanitizeName(logic.field || '');
+      if (key && refs['key:' + key]) return refs['key:' + key];
+      if (name && refs['name:' + name]) return refs['name:' + name];
+      return name || key || '';
+    }
+
+    function buildMappingSummary(field, refs){
+      var parts = [];
+      if (!field || typeof field !== 'object') return '';
+
+      if (field.conditional_logic && field.conditional_logic.enabled) {
+        var source = resolveConditionalSourceLabel(field, refs);
+        var operator = field.conditional_logic.operator || '==';
+        var value = field.conditional_logic.value || '';
+        var rule = 'If ' + source + ' ' + conditionalOperatorLabel(operator);
+        if (operator !== 'empty' && operator !== 'not_empty' && value !== '') {
+          rule += ' ' + value;
+        }
+        parts.push(rule);
+      }
+
+      if (field.type === 'choice') {
+        parts.push('Display: ' + choiceDisplayLabel(field.choice_display || 'select'));
+        if (field.choice_default) {
+          parts.push('Default choice: ' + field.choice_default);
+        }
+      }
+
+      if (field.type === 'repeater') {
+        var min = Math.max(0, parseInt(field.min || 0, 10) || 0);
+        var max = Math.max(0, parseInt(field.max || 0, 10) || 0);
+        parts.push('Rows: min ' + min + ', max ' + (max > 0 ? max : 'unlimited'));
+      }
+
+      if (field.type === 'datetime_picker') {
+        parts.push('Time: ' + (field.datetime_use_time === false ? 'off' : 'on'));
+      }
+
+      if (field.type === 'relational') {
+        parts.push('Source: ' + relationalTypeLabel(field.relational_type || 'post'));
+        parts.push('Display: ' + relationalDisplayLabel(field.relational_display || 'select'));
+        parts.push('Multiple: ' + (field.relational_multiple ? 'yes' : 'no'));
+      }
+
+      return parts.join(' • ');
+    }
+
+    function openFieldAncestors($target){
+      if (!$target || !$target.length) return;
+
+      $target.parents('.cff-field-row.is-collapsed').each(function(){
+        var $row = $(this);
+        $row.removeClass('is-collapsed');
+        $row.find('> .cff-handle-wrap > .cff-acc-toggle').attr('aria-expanded', 'true');
+        toggleBuilders($row);
+      });
+
+      $target.parents('.cff-subfield.is-collapsed').each(function(){
+        var $sub = $(this);
+        $sub.removeClass('is-collapsed');
+        $sub.find('> .cff-handle-wrap > .cff-sub-acc-toggle').attr('aria-expanded', 'true');
+        toggleSubGroup($sub);
+        toggleSubRepeater($sub);
+      });
+
+      if ($target.is('.cff-field-row')) {
+        toggleBuilders($target);
+      }
+
+      if ($target.is('.cff-subfield')) {
+        toggleSubGroup($target);
+        toggleSubRepeater($target);
+      }
+    }
+
+    function flashMappingTarget($target){
+      if (!$target || !$target.length) return;
+      $root.find('.is-mapping-highlight').removeClass('is-mapping-highlight');
+      $target.addClass('is-mapping-highlight');
+      window.setTimeout(function(){
+        $target.removeClass('is-mapping-highlight');
+      }, 1800);
+    }
+
+    function jumpToMappedField(fieldKey){
+      var key = CFF.utils.sanitizeName(fieldKey || '');
+      if (!key) return;
+
+      setFieldViewMode('builder');
+
+      var $target = $root.find('.cff-field-row[data-field-key="' + key + '"]').first();
+      if (!$target.length) {
+        $target = $root.find('.cff-subfield[data-sub-key="' + key + '"]').first();
+      }
+      if (!$target.length) return;
+
+      openFieldAncestors($target);
+      $target[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      flashMappingTarget($target);
+    }
+
+    function buildMappingRowsRecursive(fields, depth, refs){
       depth = depth || 0;
       var rows = '';
       (fields || []).forEach(function(f){
         if (!f || typeof f !== 'object') return;
         var label = (f.label || f.name || '').toString();
         var name = (f.name || '').toString();
+        var key = CFF.utils.sanitizeName(f.key || '');
         if (!name) return;
         var type = (f.type || 'text').toString();
+        var typeText = typeLabel(type);
+        if (type === 'repeater') {
+          typeText += ' · ' + repeaterLayoutLabel(f.repeater_layout || 'default');
+        }
         var indent = new Array(depth + 1).join('&nbsp;&nbsp;&nbsp;');
-        rows += '<tr>' +
-          '<td>' + indent + CFF.utils.escapeHtml(label) + '</td>' +
+        var badges = buildMappingBadges(f).join('');
+        var summary = buildMappingSummary(f, refs || {});
+        rows += '<tr' + (key ? ' data-field-key="' + CFF.utils.escapeHtml(key) + '"' : '') + '>' +
+          '<td>' +
+            '<div class="cff-field-mapping-label-row">' +
+              '<div class="cff-field-mapping-label">' + indent + CFF.utils.escapeHtml(label) + '</div>' +
+              (key ? '<button type="button" class="button-link cff-field-mapping-jump" data-field-key="' + CFF.utils.escapeHtml(key) + '">Jump</button>' : '') +
+            '</div>' +
+            (badges ? '<div class="cff-field-mapping-badges">' + badges + '</div>' : '') +
+          '</td>' +
           '<td><code>' + CFF.utils.escapeHtml(name) + '</code></td>' +
-          '<td>' + CFF.utils.escapeHtml(typeLabel(type)) + '</td>' +
+          '<td>' +
+            '<div class="cff-field-mapping-type">' + CFF.utils.escapeHtml(typeText) + '</div>' +
+            (summary ? '<div class="cff-field-mapping-summary">' + CFF.utils.escapeHtml(summary) + '</div>' : '') +
+          '</td>' +
         '</tr>';
 
         if ((type === 'group' || type === 'repeater') && Array.isArray(f.sub_fields) && f.sub_fields.length) {
@@ -1097,7 +1722,7 @@
           rows += '<tr class="cff-field-mapping-section"><td colspan="3">' +
             indent + CFF.utils.escapeHtml(section) +
           '</td></tr>';
-          rows += buildMappingRowsRecursive(f.sub_fields, depth + 1);
+          rows += buildMappingRowsRecursive(f.sub_fields, depth + 1, refs);
         }
 
         if (type === 'flexible' && Array.isArray(f.layouts) && f.layouts.length) {
@@ -1112,7 +1737,7 @@
             rows += '<tr class="cff-field-mapping-section"><td colspan="3">' +
               indent + CFF.utils.escapeHtml('Layout: ' + lLabel + ' (' + lName + ')') +
             '</td></tr>';
-            rows += buildMappingRowsRecursive(layoutFields, depth + 1);
+            rows += buildMappingRowsRecursive(layoutFields, depth + 1, refs);
           });
         }
       });
@@ -1120,7 +1745,8 @@
     }
 
     function buildMappingTable(meta, fields){
-      var rows = buildMappingRowsRecursive(fields, 0);
+      var refs = (meta && meta.refs) ? meta.refs : collectFieldReferenceMap(fields, [], {});
+      var rows = buildMappingRowsRecursive(fields, 0, refs);
       if (!rows) return '';
       var titleText = (meta && meta.title) ? meta.title : 'Fields';
       var contextText = (meta && meta.context) ? meta.context : '';
@@ -1138,7 +1764,9 @@
     }
 
     function buildMappingSections(fields, meta){
-      var html = buildMappingTable(meta, fields);
+      var refs = collectFieldReferenceMap(fields, [], {});
+      var rootMeta = $.extend({}, meta || {}, { refs: refs });
+      var html = buildMappingTable(rootMeta, fields);
       (fields || []).forEach(function(f){
         if (!f || typeof f !== 'object') return;
         var label = (f.label || f.name || '').toString();
@@ -1149,12 +1777,14 @@
         if (type === 'group' && Array.isArray(f.sub_fields) && f.sub_fields.length) {
           html += buildMappingTable({
             title: label + ' | ' + name + ' | ' + typeLabel(type),
-            context: 'Group Fields'
+            context: 'Group Fields',
+            refs: refs
           }, f.sub_fields);
         } else if (type === 'repeater' && Array.isArray(f.sub_fields) && f.sub_fields.length) {
           html += buildMappingTable({
             title: label + ' | ' + name + ' | ' + typeLabel(type),
-            context: 'Sub Fields (Repeater)'
+            context: 'Sub Fields (Repeater)',
+            refs: refs
           }, f.sub_fields);
         } else if (type === 'flexible' && Array.isArray(f.layouts) && f.layouts.length) {
           var hasLayoutFields = f.layouts.some(function(l){
@@ -1163,12 +1793,35 @@
           if (hasLayoutFields) {
             html += buildMappingTable({
               title: label + ' | ' + name + ' | ' + typeLabel(type),
-              context: 'Layouts'
+              context: 'Layouts',
+              refs: refs
             }, [{ label: label, name: name, type: type, layouts: f.layouts }]);
           }
         }
       });
       return html;
+    }
+
+    function refreshMappingView(data){
+      var $mappingView = $root.find('.cff-field-mapping-view').first();
+      if (!$mappingView.length) return;
+
+      var mappingSections = buildMappingSections(data || [], {
+        title: 'Top-level Fields',
+        context: 'Label | Name | Type'
+      });
+
+      if (!mappingSections) {
+        mappingSections = '<p class="cff-field-mapping-empty">No fields available</p>';
+      }
+
+      $mappingView.html(mappingSections);
+    }
+
+    function refreshSecondaryViews(data){
+      if (!$root || !$root.length) return;
+      refreshReorderList();
+      refreshMappingView(data || []);
     }
 
     function render(){
@@ -1251,11 +1904,12 @@
         toggleRelationalPanel($el, f.type);
         togglePlaceholderRow($el, f.type || 'text');
         var layoutValue = f.repeater_layout || 'default';
-        $el.find('.cff-repeater-layout').val(layoutValue);
-        $el.find('.cff-repeater-min').val(parseInt(f.min || 0, 10) || 0);
-        $el.find('.cff-repeater-max').val(parseInt(f.max || 0, 10) || 0);
-        $el.find('.cff-repeater-row-label').val(f.repeater_row_label || '');
-        $el.find('.cff-repeater-collapsed-toggle').prop('checked', !!f.repeater_collapsed);
+        var fieldRepeaterOptions = getFieldRepeaterOptions($el);
+        fieldRepeaterOptions.layout.val(layoutValue);
+        fieldRepeaterOptions.min.val(parseInt(f.min || 0, 10) || 0);
+        fieldRepeaterOptions.max.val(parseInt(f.max || 0, 10) || 0);
+        fieldRepeaterOptions.rowLabel.val(f.repeater_row_label || '');
+        fieldRepeaterOptions.collapsed.prop('checked', !!f.repeater_collapsed);
         toggleRepeaterOptions($el, f.type || 'text');
         toggleDatetimeOptions($el, f.type || 'text');
         $el.find('.cff-placeholder').val(f.placeholder || '');
@@ -1305,12 +1959,21 @@
 
       setFieldViewMode(fieldViewMode);
 
+      $root.find('.cff-field-row').each(function(){
+        var $row = $(this);
+        toggleBuilders($row);
+        toggleChoicePanel($row, $row.find('.cff-type').val() || 'text');
+        toggleRelationalPanel($row, $row.find('.cff-type').val() || 'text');
+      });
+
       $root.find('.cff-subfield').each(function(){
         var $sub = $(this);
         toggleSubGroup($sub);
         toggleSubRepeater($sub);
       });
 
+      refreshConditionalFieldDropdowns();
+      refreshSecondaryViews(data);
       $(document).trigger('cff:refresh', $root);
     }
 
@@ -1331,9 +1994,11 @@
 
       $container.children('.cff-subfield').each(function(){
         var $sub = $(this);
-        var stype = $sub.find('.cff-stype').val() || 'text';
+        var $head = getFieldHeadRow($sub);
+        var $meta = getFieldMetaRow($sub);
+        var stype = $head.find('.cff-stype').first().val() || 'text';
 
-        var rawName = $sub.find('.cff-sname').val() || '';
+        var rawName = $head.find('.cff-sname').first().val() || '';
         var name = CFF.utils.sanitizeName(rawName);
 
         // pakai name kalau ada, kalau kosong pakai tmpkey
@@ -1343,11 +2008,11 @@
         seen.add(key);
 
         var item = {
-          label: $sub.find('.cff-slabel').val() || '',
+          label: $head.find('.cff-slabel').first().val() || '',
           name:  name,                 // boleh kosong sementara
           _tmp:  name ? '' : key,       // simpan tmp id biar stabil
           type:  stype,
-          required: $sub.find('.cff-required-toggle').is(':checked')
+          required: $meta.find('.cff-required-toggle').first().is(':checked')
         };
         item.key = CFF.utils.sanitizeName($sub.attr('data-sub-key') || '');
         if (!item.key) {
@@ -1364,9 +2029,9 @@
         $sub.attr('data-original-name', name);
         setAliasesAttr($sub, 'data-field-aliases', subAliases);
 
-        item.placeholder = $sub.find('.cff-placeholder').val() || '';
+        item.placeholder = $meta.find('.cff-placeholder').first().val() || '';
         if (stype === 'datetime_picker') {
-          item.datetime_use_time = $sub.find('.cff-datetime-use-time-toggle').is(':checked');
+          item.datetime_use_time = $meta.find('.cff-datetime-use-time-toggle').first().is(':checked');
         }
         var conditionalLogic = readConditionalLogic($sub);
         if (conditionalLogic) {
@@ -1374,15 +2039,16 @@
         }
 
         if (stype === 'choice') {
-          item.choices = readChoices($sub.find('.cff-choices-list'));
-          item.choice_display = $sub.find('.cff-choice-display').val() || 'select';
+          item.choices = readChoices($meta.find('.cff-choices-list').first());
+          item.choice_display = $meta.find('.cff-choice-display').first().val() || 'select';
+          item.choice_default = $meta.find('.cff-choice-default').first().val() || '';
         }
 
         if (stype === 'relational') {
-          item.relational_type = $sub.find('.cff-relational-type').val() || 'post';
-          item.relational_subtype = $sub.find('.cff-relational-subtype').val() || '';
-          item.relational_display = $sub.find('.cff-relational-display').val() || 'select';
-          item.relational_multiple = $sub.find('.cff-relational-multiple-toggle').is(':checked');
+          item.relational_type = $meta.find('.cff-relational-type').first().val() || 'post';
+          item.relational_subtype = $meta.find('.cff-relational-subtype').first().val() || '';
+          item.relational_display = $meta.find('.cff-relational-display').first().val() || 'select';
+          item.relational_multiple = $meta.find('.cff-relational-multiple-toggle').first().is(':checked');
         }
 
         if (stype === 'group') {
@@ -1391,15 +2057,16 @@
           );
         }
         if (stype === 'repeater') {
+          var subRepeaterOptions = getSubfieldRepeaterOptions($sub);
           item.sub_fields = readSubfields(
             $sub.find('> .cff-subbuilder > .cff-subfields').first()
           );
-          item.repeater_layout = $sub.find('.cff-repeater-layout').val() || 'default';
-          item.min = Math.max(0, parseInt($sub.find('.cff-repeater-min').val() || 0, 10) || 0);
-          item.max = Math.max(0, parseInt($sub.find('.cff-repeater-max').val() || 0, 10) || 0);
+          item.repeater_layout = subRepeaterOptions.layout.val() || 'default';
+          item.min = Math.max(0, parseInt(subRepeaterOptions.min.val() || 0, 10) || 0);
+          item.max = Math.max(0, parseInt(subRepeaterOptions.max.val() || 0, 10) || 0);
           if (item.max > 0 && item.max < item.min) item.max = item.min;
-          item.repeater_row_label = CFF.utils.sanitizeName($sub.find('.cff-repeater-row-label').val() || '');
-          item.repeater_collapsed = $sub.find('.cff-repeater-collapsed-toggle').is(':checked');
+          item.repeater_row_label = CFF.utils.sanitizeName(subRepeaterOptions.rowLabel.val() || '');
+          item.repeater_collapsed = subRepeaterOptions.collapsed.is(':checked');
         }
 
         subs.push(item);
@@ -1495,6 +2162,7 @@
       // Label -> auto name
       $root.on('input', '.cff-label', function(){
         autoNameFromLabel($(this).closest('.cff-field-row'));
+        refreshConditionalFieldDropdowns();
       });
 
       // Save on blur
@@ -1511,6 +2179,7 @@
 
       $root.on('input', '.cff-slabel', function(){
         autoNameFromSubLabel($(this).closest('.cff-subfield'));
+        refreshConditionalFieldDropdowns();
       });
 
       $root.on('blur', '.cff-slabel, .cff-sname', function(){
@@ -1519,6 +2188,8 @@
 
 
       $root.on('input', '.cff-slabel, .cff-sname, .cff-stype, .cff-placeholder, .cff-choice-label, .cff-choice-value', CFF.utils.debounce(function(){
+        var $panel = $(this).closest('.cff-field-choice');
+        if ($panel.length) updateChoiceDefaultOptions($panel);
         save(readFromDOM());
       }, 150));
 
@@ -1531,19 +2202,39 @@
         if (!$panel.length) return;
         var $row = renderChoiceRow({});
         $panel.find('.cff-choices-list').append($row);
+        updateChoiceDefaultOptions($panel);
         save(readFromDOM());
       });
 
       $root.on('click', '.cff-choice-remove', function(){
+        var $panel = $(this).closest('.cff-field-choice');
         $(this).closest('.cff-choice-row').remove();
+        updateChoiceDefaultOptions($panel);
         save(readFromDOM());
       });
 
       $root.on('change', '.cff-choice-display', function(){
+        var $panel = $(this).closest('.cff-field-choice');
+        updateChoiceDefaultOptions($panel);
+        save(readFromDOM());
+      });
+
+      $root.on('change', '.cff-choice-default', function(){
         save(readFromDOM());
       });
 
       $root.on('change', '.cff-repeater-layout', function(){
+        save(readFromDOM());
+      });
+
+      $root.on('input change', '.cff-repeater-min, .cff-repeater-max, .cff-repeater-row-label', CFF.utils.debounce(function(){
+        if ($(this).hasClass('cff-repeater-row-label')) {
+          $(this).val(CFF.utils.sanitizeName($(this).val()));
+        }
+        save(readFromDOM());
+      }, 150));
+
+      $root.on('change', '.cff-repeater-collapsed-toggle', function(){
         save(readFromDOM());
       });
 
@@ -1589,11 +2280,17 @@
         });
         togglePlaceholderRow($row, $(this).val());
         toggleDatetimeOptions($row, $(this).val());
+        refreshConditionalFieldDropdowns();
         save(readFromDOM());
       });
 
       $root.on('change', '#cff-field-view-mode', function(){
         setFieldViewMode($(this).val());
+      });
+
+      $root.on('click', '.cff-field-mapping-jump', function(e){
+        e.preventDefault();
+        jumpToMappedField($(this).attr('data-field-key') || '');
       });
 
       $root.on('change', '.cff-stype', function(){
@@ -1611,6 +2308,7 @@
         toggleRelationalPanel($sub, $(this).val());
         toggleRepeaterOptions($sub, $(this).val());
         toggleDatetimeOptions($sub, $(this).val());
+        refreshConditionalFieldDropdowns();
         save(readFromDOM());
       });
 
@@ -2351,6 +3049,7 @@
             checkbox('categories','Categories') +
             checkbox('tags','Tags') +
             checkbox('trackbacks','Send Trackbacks') +
+            checkbox('field_actions','Field Actions') +
             checkbox('copy_to_translations','Save + Copy CFF to Translations Button') +
 
           '</div>' +
@@ -2612,10 +3311,13 @@
         }
         var meta = metaParts.join(' ');
         var metaHtml = meta ? ' ' + meta : '';
+        var depth = parseInt(it.depth, 10);
+        if (isNaN(depth) || depth < 0) depth = 0;
+        var itemClass = 'cff-reorder-item' + (depth ? ' is-child' : '');
         $list.append(
-          '<li class="cff-reorder-item" data-id="' + escAttr(String(it.id)) + '">' +
+          '<li class="' + itemClass + '" data-id="' + escAttr(String(it.id)) + '" data-parent="' + escAttr(String(it.parent || 0)) + '" data-depth="' + escAttr(String(depth)) + '">' +
             '<span class="cff-reorder-handle">≡</span>' +
-            '<span class="cff-reorder-title">' + esc(it.title || '') + '</span>' +
+            '<span class="cff-reorder-title" style="padding-left:' + escAttr(String(depth * 20)) + 'px">' + esc(it.title || '') + '</span>' +
             metaHtml +
           '</li>'
         );
@@ -2809,32 +3511,33 @@
     function applyAll(){
       $('[data-cff-conditional-enabled="1"]').each(function(){
         var $target = $(this);
+        var sourceKey = String($target.data('cffConditionalKey') || '');
         var sourceField = String($target.data('cffConditionalField') || '');
         var operator = String($target.data('cffConditionalOperator') || '==');
         var expected = String($target.data('cffConditionalValue') || '');
-        if (!sourceField) return;
+        if (!sourceKey && !sourceField) return;
 
-        var $container = $target.closest('.cff-metabox');
-        if (!$container.length) {
-          $container = $(document.body);
-        }
-
-        var sourceVal = readFieldValue($container, sourceField);
+        var sourceVal = readFieldValue($target, sourceKey, sourceField);
         var visible = compareValue(sourceVal, operator, expected);
         toggleVisibility($target, visible);
       });
     }
 
-    function getNamedInputs($container, baseName){
+    function getNamedInputs($container, fieldName){
+      var baseName = 'cff_values[' + fieldName + ']';
+      var nestedName = '[' + fieldName + ']';
+      var nestedArrayName = nestedName + '[]';
+
       return $container.find(':input').filter(function(){
         var n = this.name || '';
-        return n === baseName || n === (baseName + '[]');
+        return n === baseName
+          || n === (baseName + '[]')
+          || n.slice(-nestedName.length) === nestedName
+          || n.slice(-nestedArrayName.length) === nestedArrayName;
       });
     }
 
-    function readFieldValue($container, fieldName){
-      var baseName = 'cff_values[' + fieldName + ']';
-      var $inputs = getNamedInputs($container, baseName);
+    function readInputValue($inputs){
       if (!$inputs.length) return '';
 
       var isArray = $inputs.filter(function(){ return (this.name || '').slice(-2) === '[]'; }).length > 0;
@@ -2874,6 +3577,79 @@
       if ($selectMulti.length) return ($selectMulti.val() || []).map(String);
 
       return String($inputs.last().val() || '');
+    }
+
+    function mergeConditionalValues(values){
+      if (!values.length) return '';
+      if (values.length === 1) return values[0];
+
+      var merged = [];
+      values.forEach(function(value){
+        if ($.isArray(value)) {
+          value.forEach(function(item){
+            merged.push(String(item));
+          });
+          return;
+        }
+
+        var str = String(value || '');
+        if (str !== '') merged.push(str);
+      });
+
+      return merged;
+    }
+
+    function readFieldValueFromWrappers($container, selector){
+      var values = [];
+      $container.find(selector).each(function(){
+        var $wrapper = $(this);
+        var $inputs = $wrapper.find(':input').filter(function(){
+          return !$(this).closest(selector).not($wrapper).length;
+        });
+        if ($inputs.length) {
+          values.push(readInputValue($inputs));
+        }
+      });
+      return mergeConditionalValues(values);
+    }
+
+    function readFieldValue($target, fieldKey, fieldName){
+      var $container = $target.closest('.cff-metabox');
+      if (!$container.length) {
+        $container = $(document.body);
+      }
+
+      var fieldKeySelector = fieldKey ? '[data-field-key="' + fieldKey + '"]' : '';
+      var wrapperValue = fieldKeySelector ? readFieldValueFromWrappers($container, fieldKeySelector) : '';
+      if (($.isArray(wrapperValue) && wrapperValue.length) || (!$.isArray(wrapperValue) && String(wrapperValue || '') !== '')) {
+        return wrapperValue;
+      }
+
+      if (fieldName) {
+        wrapperValue = readFieldValueFromWrappers($container, '[data-field-name="' + fieldName + '"]');
+        if (($.isArray(wrapperValue) && wrapperValue.length) || (!$.isArray(wrapperValue) && String(wrapperValue || '') !== '')) {
+          return wrapperValue;
+        }
+      }
+
+      if (!fieldName) return '';
+
+      var $inputs = getNamedInputs($container, fieldName);
+      if (!$inputs.length) return '';
+
+      var groups = {};
+      var values = [];
+      $inputs.each(function(){
+        var name = this.name || '';
+        if (!groups[name]) groups[name] = [];
+        groups[name].push(this);
+      });
+
+      Object.keys(groups).forEach(function(name){
+        values.push(readInputValue($(groups[name])));
+      });
+
+      return mergeConditionalValues(values);
     }
 
     function isEmptyValue(value){

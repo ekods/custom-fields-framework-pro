@@ -292,7 +292,10 @@ class Plugin {
     add_action('wp_ajax_cff_reorder_save_groups', [$this, 'ajax_reorder_save_groups']);
     add_action('admin_post_cff_duplicate_post', [$this, 'admin_post_duplicate_post']);
     add_filter('post_row_actions', [$this, 'filter_duplicate_row_action'], 10, 2);
-    add_filter('page_row_actions', [$this, 'filter_duplicate_row_action'], 10, 2);
+    add_filter('post_row_actions', [$this, 'ensure_quick_edit_row_action'], 99, 2);
+    add_filter('page_row_actions', [$this, 'ensure_quick_edit_row_action'], 99, 2);
+    add_filter('quick_edit_enabled_for_post_type', [$this, 'disable_quick_edit_for_groups'], 10, 2);
+    add_filter('bulk_actions-edit-cff_group', [$this, 'filter_group_bulk_actions']);
     add_filter('single_template', [$this, 'filter_slug_based_single_template']);
     add_filter('archive_template', [$this, 'filter_slug_based_archive_template']);
   }
@@ -307,6 +310,21 @@ class Plugin {
     add_submenu_page('cff', __('Reorder','cff'), __('Reorder','cff'), $cap, 'cff-reorder', [$this,'page_reorder']);
     add_submenu_page('cff', __('Export / Import','cff'), __('Export / Import','cff'), $cap, 'cff-tools', [$this,'page_tools']);
     add_submenu_page('cff', __('Documentation','cff'), __('Documentation','cff'), $cap, 'cff-docs', [$this,'page_docs']);
+
+    $page_obj = get_post_type_object('page');
+    if ($page_obj && !empty($page_obj->show_ui)) {
+      $page_label = $page_obj->labels->name ?? __('Pages', 'cff');
+      add_submenu_page(
+        'edit.php?post_type=page',
+        __('Reorder', 'cff'),
+        __('Reorder', 'cff'),
+        $cap,
+        'cff-reorder-page',
+        function() use ($page_label) {
+          $this->page_reorder_post_type('page', $page_label);
+        }
+      );
+    }
 
     $post_types = get_post_types(['show_ui' => true, '_builtin' => false], 'objects');
     foreach ($post_types as $post_type => $obj) {
@@ -688,6 +706,11 @@ PHP;
       ];
       return $schema;
     }
+    if ($type === 'gallery') {
+      $schema['type'] = 'array';
+      $schema['items'] = ['type' => 'integer'];
+      return $schema;
+    }
     if ($type === 'group') {
       $schema['type'] = 'object';
       $schema['properties'] = [];
@@ -773,6 +796,15 @@ PHP;
       }
       return absint($value);
     }
+    if ($type === 'gallery') {
+      if (!is_array($value)) return [];
+      $out = [];
+      foreach ($value as $item) {
+        $id = absint(is_array($item) ? ($item['id'] ?? 0) : $item);
+        if ($id) $out[] = $id;
+      }
+      return array_values(array_unique($out));
+    }
     if ($type === 'repeater') {
       if (is_object($value)) $value = (array) $value;
       if (!is_array($value)) return [];
@@ -785,6 +817,8 @@ PHP;
       foreach ($value as $row) {
         if (!is_array($row)) continue;
         $clean_row = [];
+        $row_id = sanitize_key($row['__cff_row_id'] ?? '');
+        $clean_row['__cff_row_id'] = $row_id ?: ('row_' . substr(md5(uniqid((string) wp_rand(), true)), 0, 12));
         foreach ($sub_map as $sub_name => $sub_field) {
           if (!array_key_exists($sub_name, $row)) continue;
           $clean_row[$sub_name] = $this->sanitize_rest_field_value($sub_field, $row[$sub_name]);
@@ -818,6 +852,7 @@ PHP;
         if (!is_array($row)) continue;
         $layout_name = sanitize_key($row['layout'] ?? '');
         if (!$layout_name || !isset($layout_map[$layout_name])) continue;
+        $row_id = sanitize_key($row['__cff_row_id'] ?? '');
         $row_fields = $row['fields'] ?? [];
         if (is_object($row_fields)) $row_fields = (array) $row_fields;
         if (!is_array($row_fields)) $row_fields = [];
@@ -829,6 +864,7 @@ PHP;
         }
         $rows[] = [
           'layout' => $layout_name,
+          '__cff_row_id' => $row_id ?: ('row_' . substr(md5(uniqid((string) wp_rand(), true)), 0, 12)),
           'fields' => $clean_fields,
         ];
       }
@@ -1241,6 +1277,7 @@ PHP;
             $defs[$key]['slug_i18n'] = array_filter($slug_i18n);
           }
           update_option('cffp_taxonomies', $defs);
+          flush_rewrite_rules();
           add_settings_error('cffp_taxonomies','saved',__('Taxonomy saved','cff'),'updated');
         }
       }
@@ -1252,6 +1289,7 @@ PHP;
           $i=2; while(isset($defs[$new_key])){ $new_key = $key.'_copy'.$i; $i++; }
           $defs[$new_key] = $defs[$key];
           update_option('cffp_taxonomies',$defs);
+          flush_rewrite_rules();
           add_settings_error('cffp_taxonomies','dup',__('Taxonomy duplicated','cff'),'updated');
         }
       }
@@ -1261,6 +1299,7 @@ PHP;
         if ($key && isset($defs[$key])) {
           unset($defs[$key]);
           update_option('cffp_taxonomies', $defs);
+          flush_rewrite_rules();
           add_settings_error('cffp_taxonomies','deleted',__('Taxonomy deleted','cff'),'updated');
         }
       }
@@ -1474,10 +1513,17 @@ PHP;
   public function assets($hook) {
     $screen = function_exists('get_current_screen') ? get_current_screen() : null;
     $is_group = $screen && $screen->post_type === 'cff_group';
+    $is_group_editor = $is_group && in_array($screen->base, ['post', 'post-new'], true);
+    $is_list_screen = $screen && $screen->base === 'edit';
     $is_post_edit = $screen && in_array($screen->base, ['post','post-new'], true);
     $is_term_edit = $screen && in_array($screen->base, ['edit-tags','term'], true);
+    $is_plugin_screen = strpos((string) $hook, 'cff') !== false;
 
-    if ($is_group || strpos($hook, 'cff') !== false) {
+    if ($is_list_screen) {
+      wp_enqueue_style('cff-list', CFFP_URL . 'assets/list.css', [], $this->asset_ver('assets/list.css'));
+    }
+
+    if ($is_group_editor || $is_plugin_screen) {
       wp_enqueue_style('cff-admin', CFFP_URL . 'assets/admin.css', [], $this->asset_ver('assets/admin.css'));
 
       wp_enqueue_style('cff-select2', CFFP_URL . 'assets/vendor/select2/select2.min.css', [], '4.1.0-rc.0');
@@ -1805,12 +1851,21 @@ PHP;
       'no_found_rows' => true,
     ]);
 
+    $post_type_object = get_post_type_object($pt);
+    $is_hierarchical = $post_type_object && !empty($post_type_object->hierarchical);
+
+    if ($is_hierarchical) {
+      $posts = $this->sort_posts_hierarchically($posts);
+    }
+
     $out = [];
     foreach ($posts as $p) {
       $out[] = [
         'id' => $p->ID,
         'title' => $p->post_title ?: '(no title)',
         'status' => $p->post_status,
+        'parent' => (int) $p->post_parent,
+        'depth' => (int) ($p->cffp_depth ?? 0),
       ];
     }
     wp_send_json_success($out);
@@ -1824,8 +1879,31 @@ PHP;
     $order = isset($_POST['order']) && is_array($_POST['order']) ? array_map('absint', $_POST['order']) : [];
     if (!$pt || !post_type_exists($pt) || !$order) wp_send_json_error(['message'=>'Invalid payload'], 400);
 
-    foreach ($order as $i => $id) {
-      if ($id) wp_update_post(['ID' => $id, 'menu_order' => $i]);
+    $posts = get_posts([
+      'post_type' => $pt,
+      'post_status' => 'any',
+      'post__in' => $order,
+      'numberposts' => -1,
+      'orderby' => 'post__in',
+      'no_found_rows' => true,
+    ]);
+
+    $parent_counts = [];
+    foreach ($posts as $post) {
+      $parent_counts[(int) $post->post_parent] = 0;
+    }
+
+    foreach ($order as $id) {
+      $id = absint($id);
+      if (!$id) continue;
+
+      $post = get_post($id);
+      if (!$post || $post->post_type !== $pt) continue;
+
+      $parent_id = (int) $post->post_parent;
+      $menu_order = $parent_counts[$parent_id] ?? 0;
+      wp_update_post(['ID' => $id, 'menu_order' => $menu_order]);
+      $parent_counts[$parent_id] = $menu_order + 1;
     }
 
     $enabled = get_option('cffp_reorder_post_types', []);
@@ -1836,6 +1914,45 @@ PHP;
     }
 
     wp_send_json_success(['count' => count($order)]);
+  }
+
+  private function sort_posts_hierarchically(array $posts) {
+    if (!$posts) return [];
+
+    $children = [];
+    $indexed = [];
+
+    foreach ($posts as $post) {
+      $post_id = (int) $post->ID;
+      $indexed[$post_id] = $post;
+      $parent_id = (int) $post->post_parent;
+      $children[$parent_id][] = $post;
+    }
+
+    $sorted = [];
+    $visited = [];
+    $walk = function($parent_id, $depth) use (&$walk, &$children, &$sorted, &$visited, &$indexed) {
+      if (empty($children[$parent_id])) return;
+      foreach ($children[$parent_id] as $child) {
+        $child_id = (int) $child->ID;
+        if (isset($visited[$child_id])) continue;
+        $visited[$child_id] = true;
+        $child->cffp_depth = $depth;
+        $sorted[] = $child;
+        $walk($child_id, $depth + 1);
+      }
+    };
+
+    $walk(0, 0);
+
+    foreach ($indexed as $post_id => $post) {
+      if (isset($visited[$post_id])) continue;
+      $post->cffp_depth = 0;
+      $sorted[] = $post;
+      $walk($post_id, 1);
+    }
+
+    return $sorted;
   }
 
   public function ajax_reorder_get_terms() {
@@ -2339,6 +2456,7 @@ PHP;
       'categories' => 'Categories',
       'tags' => 'Tags',
       'trackbacks' => 'Send Trackbacks',
+      'field_actions' => 'Field Actions',
       'copy_to_translations' => 'Save + Copy CFF to Translations Button',
     ];
 
@@ -2386,8 +2504,8 @@ PHP;
                   <option value="textarea">Textarea</option>
                   <option value="wysiwyg">WYSIWYG</option>
                   <option value="color">Color</option>
-                  <option value="url">URL</option>
-                  <option value="link">Link</option>
+                  <option value="url">URL (Simple)</option>
+                  <option value="link">Link (URL + Label Button)</option>
                   <option value="embed">Embed</option>
                   <option value="choice">Choice</option>
                   <option value="relational">Relational</option>
@@ -2395,6 +2513,7 @@ PHP;
                   <option value="datetime_picker">Date Time Picker</option>
                   <option value="checkbox">Checkbox</option>
                   <option value="image">Image</option>
+                  <option value="gallery">Gallery</option>
                   <option value="file">File</option>
                   <option value="repeater">Repeater</option>
                   <option value="group">Group</option>
@@ -2423,6 +2542,7 @@ PHP;
                 <option value="simple">Simple (remove-only header)</option>
                 <option value="grid">Grid (multi-column)</option>
                 <option value="row">Row (single horizontal row)</option>
+                <option value="gallery">Gallery Images</option>
               </select>
               <p class="description">Choose how each repeater row is presented while editing.</p>
               <div class="cff-row-repeater-advanced">
@@ -2511,6 +2631,12 @@ PHP;
                 <option value="radio">Radio Button</option>
                 <option value="button_group">Button Group</option>
                 <option value="true_false">True / False</option>
+              </select>
+            </div>
+            <div class="cff-row-choice-default">
+              <label>Default Choice</label>
+              <select class="cff-input cff-choice-default cff-select2">
+                <option value="">None</option>
               </select>
             </div>
             <div class="cff-choices-list"></div>
@@ -2611,8 +2737,8 @@ PHP;
                   <option value="textarea">Textarea</option>
                   <option value="wysiwyg">WYSIWYG</option>
                   <option value="color">Color</option>
-                  <option value="url">URL</option>
-                  <option value="link">Link</option>
+                  <option value="url">URL (Simple)</option>
+                  <option value="link">Link (URL + Label Button)</option>
                   <option value="embed">Embed</option>
                   <option value="choice">Choice</option>
                   <option value="relational">Relational</option>
@@ -2620,6 +2746,7 @@ PHP;
                   <option value="datetime_picker">Date Time Picker</option>
                   <option value="checkbox">Checkbox</option>
                   <option value="image">Image</option>
+                  <option value="gallery">Gallery</option>
                   <option value="file">File</option>
                   <option value="repeater">Repeater</option>
                   <option value="group">Group</option>
@@ -2644,6 +2771,7 @@ PHP;
                 <option value="simple">Simple (remove-only header)</option>
                 <option value="grid">Grid (multi-column)</option>
                 <option value="row">Row (single horizontal row)</option>
+                <option value="gallery">Gallery Images</option>
               </select>
               <p class="description">Choose how each repeater row is presented while editing.</p>
               <div class="cff-row-repeater-advanced">
@@ -2732,6 +2860,12 @@ PHP;
                 <option value="radio">Radio Button</option>
                 <option value="button_group">Button Group</option>
                 <option value="true_false">True / False</option>
+              </select>
+            </div>
+            <div class="cff-row-choice-default">
+              <label>Default Choice</label>
+              <select class="cff-input cff-choice-default cff-select2">
+                <option value="">None</option>
               </select>
             </div>
             <div class="cff-choices-list"></div>
@@ -2936,6 +3070,7 @@ PHP;
       if ($type === 'choice') {
         $item['choices'] = $this->sanitize_choices($f['choices'] ?? []);
         $item['choice_display'] = $this->sanitize_choice_display($f['choice_display'] ?? '');
+        $item['choice_default'] = $this->sanitize_choice_default($f['choice_default'] ?? '', $item['choices'], $item['choice_display']);
       }
       if ($type === 'relational') {
         $item['relational_type'] = $this->sanitize_relational_type($f['relational_type'] ?? 'post');
@@ -2987,7 +3122,7 @@ PHP;
     $allowed_hide = [
       'permalink','editor','excerpt','discussion','comments','revisions','slug',
       'author','format','page_attributes','featured_image','categories','tags','trackbacks',
-      'copy_to_translations'
+      'field_actions','copy_to_translations'
     ];
 
     $hide = [];
@@ -3014,7 +3149,7 @@ PHP;
   }
 
   private function sanitize_repeater_layout($value) {
-    $allowed = ['default','simple','grid','row'];
+    $allowed = ['default','simple','grid','row','gallery'];
     $layout = sanitize_key($value ?? '');
     if (!in_array($layout, $allowed, true)) {
       return 'default';
@@ -3120,6 +3255,7 @@ PHP;
       if ($type === 'choice') {
         $item['choices'] = $this->sanitize_choices($s['choices'] ?? []);
         $item['choice_display'] = $this->sanitize_choice_display($s['choice_display'] ?? '');
+        $item['choice_default'] = $this->sanitize_choice_default($s['choice_default'] ?? '', $item['choices'], $item['choice_display']);
       }
       $out[] = $item;
     }
@@ -3146,8 +3282,9 @@ PHP;
       return [];
     }
 
+    $key = sanitize_key($logic['key'] ?? '');
     $field = sanitize_key($logic['field'] ?? '');
-    if (!$field) return [];
+    if (!$field && !$key) return [];
 
     $allowed = ['==', '!=', 'contains', 'not_contains', 'empty', 'not_empty'];
     $operator = in_array(($logic['operator'] ?? '=='), $allowed, true) ? $logic['operator'] : '==';
@@ -3157,12 +3294,21 @@ PHP;
       $value = '';
     }
 
-    return [
+    $out = [
       'enabled' => true,
-      'field' => $field,
       'operator' => $operator,
       'value' => $value,
     ];
+
+    if ($field) {
+      $out['field'] = $field;
+    }
+
+    if ($key) {
+      $out['key'] = $key;
+    }
+
+    return $out;
   }
 
   private function output_hide_on_screen_css($hide) {
@@ -3183,7 +3329,8 @@ PHP;
       'categories' => '#categorydiv',
       'tags' => '#tagsdiv-post_tag',
       'trackbacks' => '#trackbacksdiv',
-      'copy_to_translations' => '.cff-metabox-actions',
+      'field_actions' => '.cff-field-actions',
+      'copy_to_translations' => '.cff-copy-all-action',
     ];
 
     $selectors = [];
@@ -3283,6 +3430,9 @@ PHP;
           echo '<option value="builder">' . esc_html__('Builder', 'cff') . '</option>';
           echo '<option value="reorder">' . esc_html__('Reorder', 'cff') . '</option>';
           echo '</select>';
+          if ($this->polylang_active()) {
+            echo '<button type="submit" class="button cff-copy-all-action" name="cff_copy_all_to_translations_trigger" value="1">' . esc_html__('Save + Copy All CFF to Translations', 'cff') . '</button>';
+          }
           echo '</div>';
           echo '<div class="cff-metabox-reorder" aria-hidden="true">';
           echo '<p class="cff-metabox-reorder-label">' . esc_html__('Drag the fields below to update their order.', 'cff') . '</p>';
@@ -3292,12 +3442,6 @@ PHP;
           echo '<div class="cff-metabox-fields">';
           foreach ($fields as $f) $this->render_field($post, $f);
           echo '</div>';
-          if ($this->polylang_active()) {
-            echo '<div class="cff-metabox-actions" style="margin-top:12px;padding-top:12px;border-top:1px solid #e2e4e7;">';
-            echo '<button type="submit" class="button" name="cff_copy_to_translations_trigger" value="1">' . esc_html__('Save + Copy CFF to Translations', 'cff') . '</button>';
-            echo '<p class="description" style="margin:8px 0 0;">' . esc_html__('Copy CFF values to all translated posts only when this button is clicked.', 'cff') . '</p>';
-            echo '</div>';
-          }
           echo '</div>';
         },
         $post_type,
@@ -3905,6 +4049,25 @@ PHP;
     return in_array($key, $allowed, true) ? $key : 'select';
   }
 
+  private function sanitize_choice_default($value, $choices, $display) {
+    $display = $this->sanitize_choice_display($display);
+    $value = sanitize_text_field($value ?? '');
+
+    if ($display === 'true_false') {
+      return ($value === '1') ? '1' : '';
+    }
+
+    $allowed = [];
+    foreach ((array) $choices as $choice) {
+      $choice_value = sanitize_text_field($choice['value'] ?? ($choice['label'] ?? ''));
+      if ($choice_value !== '') {
+        $allowed[$choice_value] = true;
+      }
+    }
+
+    return isset($allowed[$value]) ? $value : '';
+  }
+
   private function sanitize_relational_type($type) {
     $allowed = ['post','page','post_and_page','post_type','taxonomy','user'];
     $key = sanitize_key($type ?? '');
@@ -4485,6 +4648,20 @@ PHP;
       if (is_numeric($value)) return intval($value);
       return 0;
     }
+    if ($type === 'gallery') {
+      $out = [];
+      if (is_array($value)) {
+        foreach ($value as $item) {
+          if (is_array($item) && isset($item['ID'])) {
+            $id = intval($item['ID']);
+          } else {
+            $id = is_numeric($item) ? intval($item) : 0;
+          }
+          if ($id) $out[] = $id;
+        }
+      }
+      return array_values(array_unique($out));
+    }
 
     if ($type === 'link') {
       if (is_array($value)) {
@@ -4535,6 +4712,70 @@ PHP;
     );
     $actions['cff_duplicate'] = '<a href="'.esc_url($url).'">' . esc_html__('Duplicate', 'cff') . '</a>';
     return $actions;
+  }
+
+  public function disable_quick_edit_for_groups($enabled, $post_type) {
+    if ($post_type === 'cff_group') {
+      return false;
+    }
+    return $enabled;
+  }
+
+  public function filter_group_bulk_actions($actions) {
+    if (isset($actions['edit'])) {
+      unset($actions['edit']);
+    }
+    return $actions;
+  }
+
+  public function ensure_quick_edit_row_action($actions, $post) {
+    if (!$post || !($post instanceof \WP_Post)) {
+      return $actions;
+    }
+
+    if ($post->post_type === 'cff_group') {
+      return $actions;
+    }
+
+    if (isset($actions['inline hide-if-no-js'])) {
+      return $actions;
+    }
+
+    if (!current_user_can('edit_post', $post->ID)) {
+      return $actions;
+    }
+
+    $post_type_object = get_post_type_object($post->post_type);
+    if (!$post_type_object || empty($post_type_object->show_ui)) {
+      return $actions;
+    }
+
+    $quick_edit_enabled = apply_filters('quick_edit_enabled_for_post_type', true, $post->post_type);
+    if (!$quick_edit_enabled) {
+      return $actions;
+    }
+
+    $title = _draft_or_post_title($post->ID);
+    $quick_edit = sprintf(
+      '<button type="button" class="button-link editinline" aria-label="%1$s" aria-expanded="false">%2$s</button>',
+      esc_attr(sprintf(__('Quick edit &#8220;%s&#8221; inline'), $title)),
+      __('Quick&nbsp;Edit')
+    );
+
+    $updated = [];
+    $inserted = false;
+    foreach ((array) $actions as $key => $markup) {
+      $updated[$key] = $markup;
+      if (!$inserted && in_array((string) $key, ['edit', 'trash'], true)) {
+        $updated['inline hide-if-no-js'] = $quick_edit;
+        $inserted = true;
+      }
+    }
+    if (!$inserted) {
+      $updated['inline hide-if-no-js'] = $quick_edit;
+    }
+
+    return $updated;
   }
 
   public function admin_post_duplicate_post() {
@@ -4618,11 +4859,11 @@ PHP;
   }
 
   public function add_copy_notice_flag_to_redirect($location, $post_id) {
-    if (empty($_POST['cff_copy_to_translations_trigger'])) {
+    if (empty($_POST['cff_copy_all_to_translations_trigger']) && empty($_POST['cff_copy_field_to_translations'])) {
       return $location;
     }
 
-    $status = 'copied';
+    $status = !empty($_POST['cff_copy_field_to_translations']) ? 'copied_field' : 'copied_all';
     if (is_user_logged_in()) {
       $transient_key = 'cff_copy_to_translations_result_' . get_current_user_id();
       $stored_status = get_transient($transient_key);
@@ -4709,7 +4950,12 @@ PHP;
       return;
     }
 
-    echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('CFF values were copied to available translations.', 'cff') . '</p></div>';
+    if ($status === 'copied_field') {
+      echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('The selected CFF field was copied to available translations.', 'cff') . '</p></div>';
+      return;
+    }
+
+    echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('All CFF values were copied to available translations.', 'cff') . '</p></div>';
   }
 
   private function get_post_type_definition($post_type) {
