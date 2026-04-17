@@ -298,6 +298,7 @@ class Plugin {
     add_filter('bulk_actions-edit-cff_group', [$this, 'filter_group_bulk_actions']);
     add_filter('single_template', [$this, 'filter_slug_based_single_template']);
     add_filter('archive_template', [$this, 'filter_slug_based_archive_template']);
+    add_filter('nav_menu_css_class', [$this, 'filter_nav_menu_css_class'], 10, 4);
   }
 
   public function admin_menu() {
@@ -424,93 +425,330 @@ class Plugin {
   public function page_docs() {
     if (!current_user_can('manage_options')) return;
 
-    $frontend_debug_snippet = <<<'PHP'
-$post_id = get_the_ID();
-$order_candidates = ['gallery_1','huge_image','gallery_2_grid','gallery_2','detail_2','gallery_3_1','gallery_3_2','gallery_3_3'];
+    $field_types = [
+      ['text', 'Single line text', 'Text biasa seperti headline, slug, kode pendek.'],
+      ['number', 'Numeric value', 'Harga, jumlah, urutan, rating.'],
+      ['textarea', 'Multi-line text', 'Deskripsi, catatan, ringkasan.'],
+      ['wysiwyg', 'Rich editor', 'Konten HTML/editor lengkap.'],
+      ['color', 'Color picker', 'Kode warna brand, badge, background.'],
+      ['url', 'URL string', 'Link biasa dalam format teks.'],
+      ['link', 'Structured link', 'Menyimpan URL, title, dan target.'],
+      ['embed', 'Embed content', 'YouTube, Vimeo, atau embed lain.'],
+      ['choice', 'Select/radio/checkbox', 'Opsi tunggal atau multiple choice.'],
+      ['relational', 'Relation data', 'Relasi ke post, page, taxonomy, atau user.'],
+      ['date_picker', 'Date only', 'Tanggal publish, event date, deadline.'],
+      ['datetime_picker', 'Date and time', 'Jadwal lengkap dengan jam.'],
+      ['checkbox', 'Boolean', 'Ya/tidak, active/inactive, toggle sederhana.'],
+      ['image', 'Media image', 'Thumbnail, hero, banner.'],
+      ['file', 'File upload', 'PDF, DOC, file download.'],
+      ['repeater', 'Repeatable rows', 'FAQ, features, steps, table-like content.'],
+      ['group', 'Nested object', 'Field yang dikelompokkan dalam satu blok.'],
+      ['flexible', 'Flexible layouts', 'Section builder dengan beberapa layout berbeda.'],
+    ];
 
-if (function_exists('\CFF\cff_get_ordered_field_names')) {
-  echo '<pre>';
-  print_r(\CFF\cff_get_ordered_field_names($post_id, $order_candidates));
-  echo '</pre>';
+    $regular_snippet = <<<'PHP'
+<?php
+use function CFF\cff_get_text;
+use function CFF\cff_get_image_url;
+use function CFF\cff_get_repeater_rows;
+
+$headline = cff_get_text('headline');
+$hero_image = cff_get_image_url('hero_image');
+$faq_items = cff_get_repeater_rows('faq_items');
+
+if ($headline !== '') {
+  echo '<h1>' . esc_html($headline) . '</h1>';
+}
+
+if ($hero_image !== '') {
+  echo '<img src="' . esc_url($hero_image) . '" alt="">';
+}
+
+foreach ($faq_items as $row) {
+  echo '<h3>' . esc_html($row['question'] ?? '') . '</h3>';
+  echo wp_kses_post($row['answer'] ?? '');
 }
 PHP;
 
-    $frontend_render_snippet = <<<'PHP'
-$post_id = get_the_ID();
-$order_candidates = ['gallery_1','huge_image','gallery_2_grid','gallery_2','detail_2','gallery_3_1','gallery_3_2','gallery_3_3'];
-$ordered = function_exists('\CFF\cff_get_ordered_field_names')
-  ? \CFF\cff_get_ordered_field_names($post_id, $order_candidates)
-  : [];
+    $cross_page_snippet = <<<'PHP'
+<?php
+$source_page_id = 42;
+$headline = \CFF\cff_get_text('headline', $source_page_id);
 
-foreach ($ordered as $field_name) {
-  echo '<div class="section section-' . esc_attr($field_name) . '">';
-  // render section for $field_name
-  echo '</div>';
+echo esc_html($headline);
+PHP;
+
+    $image_snippet = <<<'PHP'
+<?php
+$image = get_field('hero_image');
+
+if (!empty($image['url'])) {
+  echo '<img src="' . esc_url($image['url']) . '" alt="">';
 }
 PHP;
 
-    $meta_debug_snippet = <<<'PHP'
+    $repeater_loop_snippet = <<<'PHP'
+<?php
+if (have_rows('faq_items')) {
+  while (have_rows('faq_items')) {
+    the_row();
+    echo '<h3>' . esc_html(get_sub_field('question')) . '</h3>';
+    echo wp_kses_post(get_sub_field('answer'));
+  }
+}
+PHP;
+
+    $reorder_snippet = <<<'PHP'
+<?php
 $post_id = get_the_ID();
-$groups = get_posts([
-  'post_type' => 'cff_group',
-  'post_status' => 'publish',
-  'posts_per_page' => -1,
-  'no_found_rows' => true,
+$ordered = \CFF\cff_get_ordered_field_names($post_id, [
+  'gallery_1',
+  'huge_image',
+  'gallery_2',
+  'detail_2',
 ]);
 
-echo '<pre>';
-foreach ($groups as $group) {
-  $meta = get_post_meta($post_id, '_cff_group_field_order_' . (int)$group->ID, true);
-  echo 'Group ' . $group->ID . ' (' . $group->post_title . ")\n";
-  print_r($meta);
-  echo "\n";
+foreach ($ordered as $field_name) {
+  echo '<section class="section-' . esc_attr($field_name) . '">';
+  // render sesuai mapping template
+  echo '</section>';
 }
-echo '</pre>';
 PHP;
 
+    $shortcode_single_snippet = <<<'TEXT'
+[cff_value name="headline"]
+[cff_item name="subtitle" default="Tidak ada subtitle"]
+[cff_item name="headline" page_id="42" lang="en"]
+TEXT;
+
+    $shortcode_loop_snippet = <<<'TEXT'
+[cff_items group_id="123"]
+  <section class="section-[cff_item key='name']">
+    <h2>[cff_item key='label']</h2>
+    [cff_item]
+  </section>
+[/cff_items]
+TEXT;
+
+    $shortcode_candidates_snippet = <<<'TEXT'
+[cff_items page_id="42" candidates="gallery_1,huge_image,gallery_2,detail_2" lang="current"]
+  <section class="section-[cff_item key='name']">
+    [cff_item]
+  </section>
+[/cff_items]
+TEXT;
+
+    $shortcode_image_snippet = <<<'TEXT'
+[cff_item name="hero_media" class="hero-media" alt="Hero media"]
+
+[cff_items group_id="123" include_empty="id,url"]
+  <figure class="section-[cff_item key='name']">
+    [cff_item class="hero-media" alt="Hero media"]
+  </figure>
+[/cff_items]
+TEXT;
+
+    $shortcode_include_empty_snippet = <<<'TEXT'
+[cff_items group_id="123" include_empty="id,url,link.title,image.url"]
+  <div class="row row-[cff_item key='name']">
+    <strong>[cff_item key='label']</strong>
+    [cff_item default="-"]
+  </div>
+[/cff_items]
+TEXT;
+
+    $shortcode_debug_snippet = <<<'TEXT'
+[cff_debug name="hero_image"]
+
+[cff_items group_id="123"]
+  <div class="debug-block">
+    [cff_item key="label"]
+    [cff_debug]
+    [cff_debug target="item"]
+  </div>
+[/cff_items]
+TEXT;
+
+    $shortcode_video_snippet = <<<'TEXT'
+[cff_item name="hero_media" class="hero-media" controls="1" muted="1" playsinline="1"]
+[cff_item name="promo_media" class="hero-media" controls="1" muted="1" playsinline="1" default="<p>Media tidak tersedia</p>"]
+TEXT;
+
+    $shortcode_relational_snippet = <<<'TEXT'
+[cff_item name="related_post" class="related-link"]
+[cff_item name="contributors" class="related-user"]
+TEXT;
+
     echo '<div class="wrap cff-admin">';
-    echo '<h1>' . esc_html__('CFF Reorder Documentation', 'cff') . '</h1>';
-    echo '<p class="description">' . esc_html__('This page explains how to debug and render Field Group reorder data on the frontend.', 'cff') . '</p>';
+    echo '<h1>' . esc_html__('CFF Documentation', 'cff') . '</h1>';
+    echo '<p class="description">' . esc_html__('Reference for managing Field Groups and rendering CFF values on the frontend. Choose the tab based on the rendering style you use in your project.', 'cff') . '</p>';
 
-    echo '<div class="postbox" style="max-width:980px;margin-top:16px;"><div class="inside">';
-    echo '<h2 style="margin-top:8px;">' . esc_html__('0. Global Settings looks empty?', 'cff') . '</h2>';
-    echo '<p>' . esc_html__('Global Settings will only display fields from Field Groups that match this location rule:', 'cff') . ' <strong>' . esc_html__('Options Page == Global Settings', 'cff') . '</strong>.</p>';
-    echo '<ol style="line-height:1.8;">';
-    echo '<li>' . esc_html__('Open Field Groups and create/edit a group.', 'cff') . '</li>';
-    echo '<li>' . esc_html__('In Location Rules, add: Options Page == Global Settings.', 'cff') . '</li>';
-    echo '<li>' . esc_html__('Save the group, then reopen Global Settings.', 'cff') . '</li>';
-    echo '</ol>';
-    echo '</div></div>';
+    echo '<style>
+      .cff-doc-shell{max-width:1080px;margin-top:18px;background:#f6f7f7;}
+      .cff-doc-tabs{display:flex;gap:0;margin:0;background:#f0f0f1;border-bottom:1px solid #dcdcde;overflow:auto}
+      .cff-doc-tab{margin:0 0 -1px;padding:12px 18px;border:1px solid transparent;border-bottom:none;background:transparent;color:#50575e;cursor:pointer;font-weight:600;white-space:nowrap}
+      .cff-doc-tab:hover{color:#2271b1}
+      .cff-doc-tab.is-active{background:#fff;color:#2271b1;border-color:#dcdcde;border-top-left-radius:6px;border-top-right-radius:6px}
+      .cff-doc-panel{display:none;padding:18px;background:#fff}
+      .cff-doc-panel.is-active{display:block}
+      .cff-doc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin:16px 0}
+      .cff-doc-card{background:#fff;border:1px solid #dcdcde;border-radius:6px;padding:16px}
+      .cff-doc-card h2,.cff-doc-card h3{margin-top:0}
+      .cff-doc-table{width:100%;border-collapse:collapse;background:#fff}
+      .cff-doc-table th,.cff-doc-table td{border:1px solid #dcdcde;padding:10px 12px;text-align:left;vertical-align:top}
+      .cff-doc-table th{background:#f6f7f7}
+      .cff-doc-code{white-space:pre-wrap;background:#f6f7f7;padding:12px;border:1px solid #dcdcde;border-radius:6px}
+      .cff-doc-list{margin:0;padding-left:18px;line-height:1.8}
+      .cff-doc-note{margin-top:12px;padding:12px 14px;background:#f6f7f7;border-left:4px solid #2271b1}
+    </style>';
 
-    echo '<div class="postbox" style="max-width:980px;margin-top:16px;"><div class="inside">';
-    echo '<h2 style="margin-top:8px;">' . esc_html__('1. Save reorder in the editor', 'cff') . '</h2>';
-    echo '<ol style="line-height:1.8;">';
-    echo '<li>' . esc_html__('Open a post/page/custom post that has CFF Field Group metaboxes.', 'cff') . '</li>';
-    echo '<li>' . esc_html__('Switch Type to "Reorder".', 'cff') . '</li>';
-    echo '<li>' . esc_html__('Drag fields into the desired order.', 'cff') . '</li>';
-    echo '<li>' . esc_html__('Click Update/Publish so order is stored in post meta.', 'cff') . '</li>';
-    echo '</ol>';
-    echo '<p><strong>' . esc_html__('Stored meta format:', 'cff') . '</strong> <code>_cff_group_field_order_{group_id}</code></p>';
-    echo '</div></div>';
+    echo '<div class="cff-doc-shell">';
+    echo '<div class="cff-doc-tabs" role="tablist" aria-label="' . esc_attr__('CFF Documentation Tabs', 'cff') . '">';
+    echo '<button type="button" class="cff-doc-tab is-active" data-target="cff-doc-regular">' . esc_html__('Regular', 'cff') . '</button>';
+    echo '<button type="button" class="cff-doc-tab" data-target="cff-doc-shortcode">' . esc_html__('Shortcode', 'cff') . '</button>';
+    echo '</div>';
 
-    echo '<div class="postbox" style="max-width:980px;"><div class="inside">';
-    echo '<h2 style="margin-top:8px;">' . esc_html__('2. Frontend debug (ordered field names)', 'cff') . '</h2>';
-    echo '<p>' . esc_html__('Use this snippet in your template to inspect the final ordered field names.', 'cff') . '</p>';
-    echo '<pre style="white-space:pre-wrap;background:#f6f7f7;padding:12px;border:1px solid #dcdcde;">' . esc_html($frontend_debug_snippet) . '</pre>';
-    echo '</div></div>';
+    echo '<div id="cff-doc-regular" class="cff-doc-panel is-active">';
+    echo '<div class="cff-doc-grid">';
+    echo '<div class="cff-doc-card"><h2>' . esc_html__('How To Manage', 'cff') . '</h2><ol class="cff-doc-list">';
+    echo '<li>' . esc_html__('Create or edit a Field Group from Custom Fields -> Field Groups.', 'cff') . '</li>';
+    echo '<li>' . esc_html__('Add fields and choose the correct field type for the content shape.', 'cff') . '</li>';
+    echo '<li>' . esc_html__('Set Location Rules so the group appears only on the intended post type, page, or options page.', 'cff') . '</li>';
+    echo '<li>' . esc_html__('For global data, use the rule Options Page == Global Settings.', 'cff') . '</li>';
+    echo '<li>' . esc_html__('Save the group, then fill the values in the target editor screen.', 'cff') . '</li>';
+    echo '</ol></div>';
 
-    echo '<div class="postbox" style="max-width:980px;"><div class="inside">';
-    echo '<h2 style="margin-top:8px;">' . esc_html__('3. Debug raw meta per Field Group', 'cff') . '</h2>';
-    echo '<p>' . esc_html__('If the ordered names are empty, inspect raw reorder meta for each group.', 'cff') . '</p>';
-    echo '<pre style="white-space:pre-wrap;background:#f6f7f7;padding:12px;border:1px solid #dcdcde;">' . esc_html($meta_debug_snippet) . '</pre>';
-    echo '</div></div>';
+    echo '<div class="cff-doc-card"><h2>' . esc_html__('When To Use', 'cff') . '</h2><ul class="cff-doc-list">';
+    echo '<li><strong>' . esc_html__('Regular helper:', 'cff') . '</strong> ' . esc_html__('best for theme templates, PHP control, conditional rendering, and complex layouts.', 'cff') . '</li>';
+    echo '<li><strong>' . esc_html__('Repeater / Group / Flexible:', 'cff') . '</strong> ' . esc_html__('use when the content is nested or repeatable.', 'cff') . '</li>';
+    echo '<li><strong>' . esc_html__('Reorder:', 'cff') . '</strong> ' . esc_html__('use when the frontend section order needs to follow editor sorting.', 'cff') . '</li>';
+    echo '<li><strong>' . esc_html__('Cross-page:', 'cff') . '</strong> ' . esc_html__('pass a post or page ID if the source content lives on another page.', 'cff') . '</li>';
+    echo '</ul></div>';
+    echo '</div>';
 
-    echo '<div class="postbox" style="max-width:980px;"><div class="inside">';
-    echo '<h2 style="margin-top:8px;">' . esc_html__('4. Render sections by reorder', 'cff') . '</h2>';
-    echo '<p>' . esc_html__('Use ordered names to drive your section render sequence.', 'cff') . '</p>';
-    echo '<pre style="white-space:pre-wrap;background:#f6f7f7;padding:12px;border:1px solid #dcdcde;">' . esc_html($frontend_render_snippet) . '</pre>';
-    echo '<p><strong>' . esc_html__('Tip:', 'cff') . '</strong> ' . esc_html__('Keep section mapping (field_name => template section) in one place to avoid order bugs.', 'cff') . '</p>';
-    echo '</div></div>';
+    echo '<div class="cff-doc-card" style="max-width:1080px;margin-bottom:16px;">';
+    echo '<h2>' . esc_html__('Supported Field Types', 'cff') . '</h2>';
+    echo '<table class="cff-doc-table"><thead><tr><th>' . esc_html__('Type', 'cff') . '</th><th>' . esc_html__('Output Shape', 'cff') . '</th><th>' . esc_html__('Common Usage', 'cff') . '</th></tr></thead><tbody>';
+    foreach ($field_types as $row) {
+      echo '<tr>';
+      echo '<td><code>' . esc_html($row[0]) . '</code></td>';
+      echo '<td>' . esc_html($row[1]) . '</td>';
+      echo '<td>' . esc_html($row[2]) . '</td>';
+      echo '</tr>';
+    }
+    echo '</tbody></table>';
+    echo '</div>';
+
+    echo '<div class="cff-doc-grid">';
+    echo '<div class="cff-doc-card"><h2>' . esc_html__('Basic Example', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($regular_snippet) . '</pre></div>';
+    echo '<div class="cff-doc-card"><h2>' . esc_html__('Cross Page Example', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($cross_page_snippet) . '</pre><div class="cff-doc-note">' . esc_html__('Use the second parameter on helper functions when the field source is another page or post.', 'cff') . '</div></div>';
+    echo '</div>';
+
+    echo '<div class="cff-doc-grid">';
+    echo '<div class="cff-doc-card"><h2>' . esc_html__('Image Example', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($image_snippet) . '</pre></div>';
+    echo '<div class="cff-doc-card"><h2>' . esc_html__('Loop Example', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($repeater_loop_snippet) . '</pre></div>';
+    echo '</div>';
+
+    echo '<div class="cff-doc-grid">';
+    echo '<div class="cff-doc-card"><h2>' . esc_html__('Reorder Rendering', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($reorder_snippet) . '</pre></div>';
+    echo '<div class="cff-doc-card"><h2>' . esc_html__('Performance Notes', 'cff') . '</h2><ul class="cff-doc-list">';
+    echo '<li>' . esc_html__('For single values, prefer direct helpers such as cff_get_text() or get_field().', 'cff') . '</li>';
+    echo '<li>' . esc_html__('For reorder output, use a known group_id whenever possible.', 'cff') . '</li>';
+    echo '<li>' . esc_html__('Avoid scanning the same group repeatedly in one template. Resolve once, then render.', 'cff') . '</li>';
+    echo '<li>' . esc_html__('CFF already caches key frontend lookups per request for post meta and field group settings.', 'cff') . '</li>';
+    echo '</ul></div>';
+    echo '</div>';
+
+    echo '<div class="cff-doc-card" style="max-width:1080px;margin-bottom:16px;">';
+    echo '<h2>' . esc_html__('Polylang', 'cff') . '</h2>';
+    echo '<ul class="cff-doc-list">';
+    echo '<li>' . esc_html__('If you render from the current post/page, helpers follow the current queried object.', 'cff') . '</li>';
+    echo '<li>' . esc_html__('If you render from another page, pass the translated post/page ID in PHP.', 'cff') . '</li>';
+    echo '<li>' . esc_html__('For Options Page / Global Settings, make sure the location rules are configured correctly per content source.', 'cff') . '</li>';
+    echo '</ul>';
+    echo '</div>';
+    echo '</div>';
+
+    echo '<div id="cff-doc-shortcode" class="cff-doc-panel">';
+    echo '<div class="cff-doc-grid">';
+    echo '<div class="cff-doc-card"><h2>' . esc_html__('Available Shortcodes', 'cff') . '</h2><ul class="cff-doc-list">';
+    echo '<li><code>[cff_value]</code> ' . esc_html__('render one field value directly.', 'cff') . '</li>';
+    echo '<li><code>[cff_field]</code> ' . esc_html__('render one field value or active loop field.', 'cff') . '</li>';
+    echo '<li><code>[cff_item]</code> ' . esc_html__('alias of [cff_field].', 'cff') . '</li>';
+    echo '<li><code>[cff_loop]</code> ' . esc_html__('loop ordered fields.', 'cff') . '</li>';
+    echo '<li><code>[cff_items]</code> ' . esc_html__('alias of [cff_loop].', 'cff') . '</li>';
+    echo '</ul></div>';
+
+    echo '<div class="cff-doc-card"><h2>' . esc_html__('Shortcode Attributes', 'cff') . '</h2><ul class="cff-doc-list">';
+    echo '<li><code>name</code> ' . esc_html__('field name for single render.', 'cff') . '</li>';
+    echo '<li><code>post_id</code> / <code>page_id</code> ' . esc_html__('source content ID for cross-page rendering.', 'cff') . '</li>';
+    echo '<li><code>group_id</code> ' . esc_html__('explicit field group for ordered loop rendering.', 'cff') . '</li>';
+    echo '<li><code>candidates</code> ' . esc_html__('candidate field names for auto-detected reorder sequence.', 'cff') . '</li>';
+    echo '<li><code>lang</code> ' . esc_html__('Polylang language slug such as id or en. Empty means current language.', 'cff') . '</li>';
+    echo '<li><code>key</code> ' . esc_html__('inside a loop, use value, label, name, or type.', 'cff') . '</li>';
+    echo '<li><code>class</code> ' . esc_html__('CSS class for text, image, video, file, or link output.', 'cff') . '</li>';
+    echo '<li><code>img_class</code> / <code>video_class</code> / <code>link_class</code> ' . esc_html__('specific class override for media/link output.', 'cff') . '</li>';
+    echo '<li><code>alt</code> ' . esc_html__('custom alt attribute for image output.', 'cff') . '</li>';
+    echo '<li><code>text</code> ' . esc_html__('custom link/file label.', 'cff') . '</li>';
+    echo '<li><code>controls</code>, <code>autoplay</code>, <code>muted</code>, <code>loop</code>, <code>playsinline</code> ' . esc_html__('video output attributes.', 'cff') . '</li>';
+    echo '</ul></div>';
+    echo '</div>';
+
+    echo '<div class="cff-doc-grid">';
+    echo '<div class="cff-doc-card"><h2>' . esc_html__('Single Item Example', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($shortcode_single_snippet) . '</pre></div>';
+    echo '<div class="cff-doc-card"><h2>' . esc_html__('Loop By Group Example', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($shortcode_loop_snippet) . '</pre></div>';
+    echo '</div>';
+
+    echo '<div class="cff-doc-grid">';
+    echo '<div class="cff-doc-card"><h2>' . esc_html__('Cross Page + Polylang', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($shortcode_candidates_snippet) . '</pre></div>';
+    echo '<div class="cff-doc-card"><h2>' . esc_html__('Image / Video Auto Render', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($shortcode_image_snippet) . '</pre><div class="cff-doc-note">' . esc_html__('Use the same [cff_item] shortcode for image or video fields. CFF detects the media type automatically from the value.', 'cff') . '</div></div>';
+    echo '</div>';
+
+    echo '<div class="cff-doc-grid">';
+    echo '<div class="cff-doc-card"><h2>' . esc_html__('Video Options', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($shortcode_video_snippet) . '</pre><div class="cff-doc-note">' . esc_html__('Use controls, muted, autoplay, loop, and playsinline only when the field may contain video. Image fields ignore those attributes.', 'cff') . '</div></div>';
+    echo '<div class="cff-doc-card"><h2>' . esc_html__('include_empty With Keys', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($shortcode_include_empty_snippet) . '</pre><div class="cff-doc-note">' . esc_html__('Use 1/true to include all empty items, or pass keys like id,url,title to keep items when one of those keys has a value.', 'cff') . '</div></div>';
+    echo '</div>';
+
+    echo '<div class="cff-doc-grid">';
+    echo '<div class="cff-doc-card"><h2>' . esc_html__('Relational Example', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($shortcode_relational_snippet) . '</pre><div class="cff-doc-note">' . esc_html__('Relational values now render as linked post/title, term name, or user display name when possible.', 'cff') . '</div></div>';
+    echo '<div class="cff-doc-card"><h2>' . esc_html__('Debug Value', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($shortcode_debug_snippet) . '</pre><div class="cff-doc-note">' . esc_html__('Use [cff_debug] to inspect the active value in JSON format. Use target="item" to inspect the whole loop item payload.', 'cff') . '</div></div>';
+    echo '</div>';
+
+    echo '<div class="cff-doc-grid">';
+    echo '<div class="cff-doc-card"><h2>' . esc_html__('Shortcode Notes', 'cff') . '</h2><ul class="cff-doc-list">';
+    echo '<li>' . esc_html__('Use shortcode when content needs to stay clean in page builder/editor.', 'cff') . '</li>';
+    echo '<li>' . esc_html__('For one field only, use [cff_value] or [cff_item name="..."].', 'cff') . '</li>';
+    echo '<li>' . esc_html__('Use the same [cff_item] shortcode for image and video. Output type is detected automatically.', 'cff') . '</li>';
+    echo '<li>' . esc_html__('When the value is image, shortcode renders <img>. When the value is video, shortcode renders <video>.', 'cff') . '</li>';
+    echo '<li>' . esc_html__('Relational values render readable labels automatically for posts, terms, and users.', 'cff') . '</li>';
+    echo '<li>' . esc_html__('Use class for both image and video. Use img_class, video_class, or link_class only if you need a specific override.', 'cff') . '</li>';
+    echo '<li>' . esc_html__('Video-only attributes that admin can use: controls="1", muted="1", autoplay="1", loop="1", playsinline="1".', 'cff') . '</li>';
+    echo '<li>' . esc_html__('Use [cff_debug] only while logged in as admin. It is hidden for non-admin users.', 'cff') . '</li>';
+    echo '<li>' . esc_html__('Use [cff_debug name="field_name"] to inspect a single field payload.', 'cff') . '</li>';
+    echo '<li>' . esc_html__('Inside [cff_items], use [cff_debug] for the active value or [cff_debug target="item"] for the full item payload.', 'cff') . '</li>';
+    echo '<li>' . esc_html__('For loop output, group_id is more efficient than auto-detect by candidates.', 'cff') . '</li>';
+    echo '<li>' . esc_html__('include_empty accepts multiple keys separated by comma, including nested keys such as image.url or link.title.', 'cff') . '</li>';
+    echo '<li>' . esc_html__('If Polylang translation for the given page/post exists, shortcode can resolve it via the lang attribute.', 'cff') . '</li>';
+    echo '</ul></div>';
+    echo '</div>';
+    echo '</div>';
+
+    echo '<script>
+      (function(){
+        var tabs = document.querySelectorAll(".cff-doc-tab");
+        var panels = document.querySelectorAll(".cff-doc-panel");
+        tabs.forEach(function(tab){
+          tab.addEventListener("click", function(){
+            var target = tab.getAttribute("data-target");
+            tabs.forEach(function(btn){ btn.classList.remove("is-active"); });
+            panels.forEach(function(panel){ panel.classList.remove("is-active"); });
+            tab.classList.add("is-active");
+            var panel = document.getElementById(target);
+            if (panel) panel.classList.add("is-active");
+          });
+        });
+      })();
+    </script>';
 
     echo '<p style="margin-top:16px;">' . esc_html__('Open this page directly:', 'cff') . ' <code>admin.php?page=cff-docs</code></p>';
     echo '</div>';
@@ -1530,7 +1768,7 @@ PHP;
       wp_enqueue_script('cff-select2', CFFP_URL . 'assets/vendor/select2/select2.min.js', ['jquery'], '4.1.0-rc.0', true);
       wp_enqueue_script('cff-select2-init', plugin_dir_url(__FILE__) . '../assets/js/select2-init.js', ['jquery','cff-select2'], $this->asset_ver('assets/js/select2-init.js'), true);
 
-      wp_enqueue_script('cff-admin', CFFP_URL . 'assets/admin.js', ['jquery','jquery-ui-sortable'], $this->asset_ver('assets/admin.js'), true);
+      wp_enqueue_script('cff-admin', CFFP_URL . 'assets/admin.js', ['jquery','jquery-ui-sortable','jquery-ui-droppable'], $this->asset_ver('assets/admin.js'), true);
       wp_localize_script('cff-admin', 'CFFP', [
         'ajax' => admin_url('admin-ajax.php'),
         'nonce' => wp_create_nonce('cffp'),
@@ -1552,7 +1790,7 @@ PHP;
 
       wp_enqueue_script('cff-select2-init', plugin_dir_url(__FILE__) . '../assets/js/select2-init.js', ['jquery','cff-select2'], $this->asset_ver('assets/js/select2-init.js'), true);
 
-      wp_enqueue_script('cff-admin', CFFP_URL . 'assets/admin.js', ['jquery','jquery-ui-sortable'], $this->asset_ver('assets/admin.js'), true);
+      wp_enqueue_script('cff-admin', CFFP_URL . 'assets/admin.js', ['jquery','jquery-ui-sortable','jquery-ui-droppable'], $this->asset_ver('assets/admin.js'), true);
       wp_localize_script('cff-admin', 'CFFP', [
         'ajax' => admin_url('admin-ajax.php'),
         'nonce' => wp_create_nonce('cffp'),
@@ -1849,6 +2087,8 @@ PHP;
       'order' => 'ASC',
       'numberposts' => -1,
       'no_found_rows' => true,
+      'update_post_meta_cache' => false,
+      'update_post_term_cache' => false,
     ]);
 
     $post_type_object = get_post_type_object($pt);
@@ -1886,7 +2126,14 @@ PHP;
       'numberposts' => -1,
       'orderby' => 'post__in',
       'no_found_rows' => true,
+      'update_post_meta_cache' => false,
+      'update_post_term_cache' => false,
     ]);
+
+    $posts_by_id = [];
+    foreach ($posts as $post) {
+      $posts_by_id[(int) $post->ID] = $post;
+    }
 
     $parent_counts = [];
     foreach ($posts as $post) {
@@ -1897,7 +2144,7 @@ PHP;
       $id = absint($id);
       if (!$id) continue;
 
-      $post = get_post($id);
+      $post = $posts_by_id[$id] ?? null;
       if (!$post || $post->post_type !== $pt) continue;
 
       $parent_id = (int) $post->post_parent;
@@ -1965,12 +2212,18 @@ PHP;
     $terms = get_terms([
       'taxonomy' => $tax,
       'hide_empty' => false,
+      'update_term_meta_cache' => true,
     ]);
     if (is_wp_error($terms)) wp_send_json_error(['message'=>'Failed to load terms'], 500);
 
-    usort($terms, function($a, $b){
-      $oa = (int) get_term_meta($a->term_id, 'cffp_term_order', true);
-      $ob = (int) get_term_meta($b->term_id, 'cffp_term_order', true);
+    $term_orders = [];
+    foreach ($terms as $term) {
+      $term_orders[(int) $term->term_id] = (int) get_term_meta($term->term_id, 'cffp_term_order', true);
+    }
+
+    usort($terms, function($a, $b) use ($term_orders) {
+      $oa = $term_orders[(int) $a->term_id] ?? 0;
+      $ob = $term_orders[(int) $b->term_id] ?? 0;
       if ($oa === $ob) return strcasecmp($a->name, $b->name);
       return ($oa < $ob) ? -1 : 1;
     });
@@ -2185,10 +2438,7 @@ PHP;
       $cat_base = get_option('category_base');
       $cat_base = is_string($cat_base) ? trim($cat_base) : '';
       $use_base = ($cat_base !== '' && $cat_base !== 'category');
-      $terms = get_terms([
-        'taxonomy' => 'category',
-        'hide_empty' => false,
-      ]);
+      $terms = null;
 
       foreach ($langs as $lang) {
         $prefix = ($hide_default && $lang === $default_lang) ? '' : $lang . '/';
@@ -2207,6 +2457,12 @@ PHP;
           continue;
         }
 
+        if ($terms === null) {
+          $terms = get_terms([
+            'taxonomy' => 'category',
+            'hide_empty' => false,
+          ]);
+        }
         if (is_wp_error($terms) || empty($terms)) continue;
         $seen = [];
         foreach ($terms as $t) {
@@ -2576,6 +2832,11 @@ PHP;
                 </label>
               </span>
             </div>
+            <div class="cff-row-media-options">
+              <label>Max Upload Size (MB)</label>
+              <input type="number" class="cff-input cff-max-upload-mb" min="1" step="1" value="2">
+              <p class="description">Default 2 MB. Set a larger value for this image or file field only.</p>
+            </div>
             <div class="cff-row-rules">
               <div class="cff-row-required">
                 <span class="cff-tools-toggles">
@@ -2754,6 +3015,9 @@ PHP;
               </div>
             </div>
             <div class="cff-col cff-actions">
+              <button type="button" class="button cff-icon-button cff-duplicate-sub" aria-label="Duplicate sub field">
+                <span class="dashicons dashicons-admin-page" aria-hidden="true"></span>
+              </button>
               <button type="button" class="button cff-icon-button cff-remove-sub" aria-label="Remove sub field">
                 <span class="dashicons dashicons-trash" aria-hidden="true"></span>
               </button>
@@ -2804,6 +3068,11 @@ PHP;
                   <span class="cff-slider"></span>
                 </label>
               </span>
+            </div>
+            <div class="cff-row-media-options">
+              <label>Max Upload Size (MB)</label>
+              <input type="number" class="cff-input cff-max-upload-mb" min="1" step="1" value="2">
+              <p class="description">Default 2 MB. Set a larger value for this image or file field only.</p>
             </div>
             <div class="cff-row-rules">
               <div class="cff-row-required">
@@ -3039,6 +3308,9 @@ PHP;
         'required' => !empty($f['required']),
         'placeholder' => $this->sanitize_string_value($f['placeholder'] ?? ''),
       ];
+      if ($type === 'image' || $type === 'file') {
+        $item['max_upload_mb'] = $this->sanitize_media_max_upload_mb($f['max_upload_mb'] ?? 2);
+      }
       $aliases = $this->sanitize_field_aliases($f['aliases'] ?? [], $name);
       if ($aliases) {
         $item['aliases'] = $aliases;
@@ -3170,6 +3442,11 @@ PHP;
     return $max;
   }
 
+  private function sanitize_media_max_upload_mb($value) {
+    $size = absint($value);
+    return $size > 0 ? $size : 2;
+  }
+
   private function sanitize_repeater_row_label($value, $sub_fields = []) {
     $label = sanitize_key($value ?? '');
     if (!$label) return '';
@@ -3224,6 +3501,9 @@ PHP;
         'required' => !empty($s['required']),
         'placeholder' => $this->sanitize_string_value($s['placeholder'] ?? ''),
       ];
+      if ($type === 'image' || $type === 'file') {
+        $item['max_upload_mb'] = $this->sanitize_media_max_upload_mb($s['max_upload_mb'] ?? 2);
+      }
       $aliases = $this->sanitize_field_aliases($s['aliases'] ?? [], $name);
       if ($aliases) {
         $item['aliases'] = $aliases;
@@ -4531,45 +4811,100 @@ PHP;
   private function get_posts_for_acf_group($acf_group) {
     $loc = $acf_group['location'] ?? [];
 
-    $post_types = [];
-    if (is_array($loc)) {
-      foreach ($loc as $or_group) {
-        foreach ((array)$or_group as $rule) {
-          if (($rule['param'] ?? '') === 'post_type' && !empty($rule['value'])) {
-            $post_types[] = sanitize_key($rule['value']);
-          }
-        }
-      }
-    }
-
-    $post_types = array_values(array_unique(array_filter($post_types)));
-    if (!$post_types) $post_types = ['post','page'];
-
-    $posts = get_posts([
-      'post_type' => $post_types,
-      'post_status' => 'any',
-      'numberposts' => -1,
-      'no_found_rows' => true,
-    ]);
-
     // konversi rules ACF ke format CFF untuk match_location
     $converted_rules = [];
+    $broad_post_types = [];
+    $specific_post_ids = [];
+    $needs_post_meta = false;
     foreach ((array)$loc as $or_group) {
       $and_rules = [];
+      $group_post_types = [];
+      $group_specific_ids = [];
       foreach ((array)$or_group as $rule) {
         $param = $rule['param'] ?? '';
         $value = $rule['value'] ?? '';
         if ($param === 'post_type') {
-          $and_rules[] = ['param'=>'post_type','operator'=>'==','value'=>sanitize_key($value)];
+          $post_type = sanitize_key($value);
+          if ($post_type !== '') {
+            $and_rules[] = ['param'=>'post_type','operator'=>'==','value'=>$post_type];
+            $group_post_types[] = $post_type;
+          }
         } elseif ($param === 'page_template') {
+          $needs_post_meta = true;
           $and_rules[] = ['param'=>'page_template','operator'=>'==','value'=>sanitize_text_field($value)];
+          $group_post_types[] = 'page';
         } elseif ($param === 'post') {
-          $and_rules[] = ['param'=>'post','operator'=>'==','value'=>intval($value)];
+          $post_id = intval($value);
+          if ($post_id > 0) {
+            $and_rules[] = ['param'=>'post','operator'=>'==','value'=>$post_id];
+            $group_specific_ids[] = $post_id;
+          }
         } elseif ($param === 'page') {
-          $and_rules[] = ['param'=>'page','operator'=>'==','value'=>intval($value)];
+          $page_id = intval($value);
+          if ($page_id > 0) {
+            $and_rules[] = ['param'=>'page','operator'=>'==','value'=>$page_id];
+            $group_specific_ids[] = $page_id;
+            $group_post_types[] = 'page';
+          }
         }
       }
-      if ($and_rules) $converted_rules[] = $and_rules;
+      if (!$and_rules) continue;
+
+      $converted_rules[] = $and_rules;
+
+      if ($group_specific_ids) {
+        $specific_post_ids = array_merge($specific_post_ids, $group_specific_ids);
+        continue;
+      }
+
+      $broad_post_types = array_merge($broad_post_types, $group_post_types);
+    }
+
+    $specific_post_ids = array_values(array_unique(array_filter(array_map('absint', $specific_post_ids))));
+    $broad_post_types = array_values(array_unique(array_filter(array_map('sanitize_key', $broad_post_types))));
+    if (!$broad_post_types && !$specific_post_ids) {
+      $broad_post_types = ['post', 'page'];
+    }
+
+    $posts = [];
+    $seen_posts = [];
+
+    if ($specific_post_ids) {
+      $specific_posts = get_posts([
+        'post_type' => 'any',
+        'post_status' => 'any',
+        'post__in' => $specific_post_ids,
+        'numberposts' => count($specific_post_ids),
+        'orderby' => 'post__in',
+        'no_found_rows' => true,
+        'update_post_meta_cache' => $needs_post_meta,
+        'update_post_term_cache' => false,
+      ]);
+
+      foreach ($specific_posts as $post) {
+        $post_id = (int) $post->ID;
+        if (!$post_id || isset($seen_posts[$post_id])) continue;
+        $seen_posts[$post_id] = true;
+        $posts[] = $post;
+      }
+    }
+
+    if ($broad_post_types) {
+      $queried_posts = get_posts([
+        'post_type' => $broad_post_types,
+        'post_status' => 'any',
+        'numberposts' => -1,
+        'no_found_rows' => true,
+        'update_post_meta_cache' => $needs_post_meta,
+        'update_post_term_cache' => false,
+      ]);
+
+      foreach ($queried_posts as $post) {
+        $post_id = (int) $post->ID;
+        if (!$post_id || isset($seen_posts[$post_id])) continue;
+        $seen_posts[$post_id] = true;
+        $posts[] = $post;
+      }
     }
 
     $out = [];
@@ -4858,6 +5193,18 @@ PHP;
     return $template;
   }
 
+  public function filter_nav_menu_css_class($classes, $item, $args = null, $depth = 0) {
+    $classes = is_array($classes) ? $classes : [];
+
+    if ($this->menu_item_has_current_class($classes) || $this->menu_item_matches_current_slug($item)) {
+      $classes[] = 'current';
+      $classes[] = 'current-menu-item';
+      $classes[] = 'current_page_item';
+    }
+
+    return array_values(array_unique(array_filter($classes)));
+  }
+
   public function add_copy_notice_flag_to_redirect($location, $post_id) {
     if (empty($_POST['cff_copy_all_to_translations_trigger']) && empty($_POST['cff_copy_field_to_translations'])) {
       return $location;
@@ -4964,11 +5311,143 @@ PHP;
     return (array) $defs[$post_type];
   }
 
+  private function get_taxonomy_definition($taxonomy) {
+    $defs = get_option('cffp_taxonomies', []);
+    if (!is_array($defs) || empty($defs[$taxonomy])) return [];
+    return (array) $defs[$taxonomy];
+  }
+
   private function get_post_type_slug_from_definition($definition) {
     $slug = trim($definition['slug'] ?? '');
     if ($slug === '') {
       $slug = trim($definition['plural'] ?? '');
     }
     return sanitize_title($slug ?: '');
+  }
+
+  private function get_post_type_menu_slug($post_type) {
+    $post_type = sanitize_key($post_type);
+    if ($post_type === '') return '';
+
+    $definition = $this->get_post_type_definition($post_type);
+    $slug = $this->get_post_type_slug_from_definition($definition);
+
+    if ($slug === '') {
+      $obj = get_post_type_object($post_type);
+      if ($obj && !empty($obj->rewrite['slug'])) {
+        $slug = (string) $obj->rewrite['slug'];
+      }
+    }
+
+    return $this->translate_registered_slug($slug, $definition, 'slug_i18n');
+  }
+
+  private function get_taxonomy_menu_slug($taxonomy) {
+    $taxonomy = sanitize_key($taxonomy);
+    if ($taxonomy === '') return '';
+
+    $definition = $this->get_taxonomy_definition($taxonomy);
+    $tax_obj = get_taxonomy($taxonomy);
+
+    $slug = trim((string) ($definition['slug'] ?? ''));
+    if ($slug === '' && $tax_obj && !empty($tax_obj->rewrite['slug'])) {
+      $slug = (string) $tax_obj->rewrite['slug'];
+    }
+    if ($slug === '') {
+      $slug = $taxonomy;
+    }
+
+    return $this->translate_registered_slug($slug, $definition, 'slug_i18n');
+  }
+
+  private function translate_registered_slug($slug, $definition, $key) {
+    $slug = sanitize_title($slug);
+    if ($slug === '') return '';
+
+    $lang = $this->current_lang();
+    if ($lang !== '') {
+      $slug = $this->i18n_slug_for_lang($definition, $key, $lang, $slug);
+    }
+
+    return sanitize_title($slug);
+  }
+
+  private function menu_item_has_current_class($classes) {
+    foreach ((array) $classes as $class) {
+      $class = (string) $class;
+      if ($class === 'current' || strpos($class, 'current-') === 0 || strpos($class, 'current_') === 0) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private function menu_item_matches_current_slug($item) {
+    if (!is_object($item)) return false;
+
+    $item_slug = $this->get_menu_item_slug($item);
+    if ($item_slug === '') return false;
+
+    return in_array($item_slug, $this->get_current_menu_match_slugs(), true);
+  }
+
+  private function get_menu_item_slug($item) {
+    if (!is_object($item)) return '';
+
+    if (($item->object ?? '') === 'page') {
+      $page_id = absint($item->object_id ?? 0);
+      if ($page_id) {
+        $page = get_post($page_id);
+        if ($page && $page->post_type === 'page') {
+          return sanitize_title($page->post_name);
+        }
+      }
+    }
+
+    $url = isset($item->url) ? (string) $item->url : '';
+    if ($url === '') return '';
+
+    $path = wp_parse_url($url, PHP_URL_PATH);
+    if (!is_string($path) || $path === '') return '';
+
+    return sanitize_title(basename(trim($path, '/')));
+  }
+
+  private function get_current_menu_match_slugs() {
+    $slugs = [];
+
+    if (is_page()) {
+      $page = get_queried_object();
+      if ($page instanceof \WP_Post && $page->post_type === 'page') {
+        $slugs[] = sanitize_title($page->post_name);
+      }
+    }
+
+    if (is_post_type_archive()) {
+      $post_type = get_query_var('post_type');
+      if (is_array($post_type)) {
+        $post_type = reset($post_type);
+      }
+      if (is_string($post_type) && $post_type !== '') {
+        $slugs[] = $this->get_post_type_menu_slug($post_type);
+      }
+    }
+
+    if (is_singular() && !is_page()) {
+      $post = get_queried_object();
+      if ($post instanceof \WP_Post && !empty($post->post_type)) {
+        $slugs[] = $this->get_post_type_menu_slug($post->post_type);
+      }
+    }
+
+    if (is_tax() || is_category() || is_tag()) {
+      $term = get_queried_object();
+      if ($term instanceof \WP_Term && !empty($term->taxonomy)) {
+        $slugs[] = $this->get_taxonomy_menu_slug($term->taxonomy);
+      }
+    }
+
+    return array_values(array_unique(array_filter(array_map('sanitize_title', $slugs))));
   }
 }

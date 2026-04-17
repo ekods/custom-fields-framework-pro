@@ -179,6 +179,14 @@ Dari `includes/helpers/frontend-helpers.php`:
 - `\CFF\cff_get_repeater_rows($field_name, $post_id = 0)`
 - `\CFF\cff_get_group_value($group_field, $sub_field, $post_id = 0, $default = null)`
 
+Shortcode frontend:
+- `[cff_value name="headline"]`
+- `[cff_field name="headline"]`
+- `[cff_item name="headline"]`
+- `[cff_loop group_id="123"]...[/cff_loop]`
+- `[cff_items group_id="123"]...[/cff_items]`
+- `[cff_loop candidates="gallery_1,huge_image,detail_2"]...[/cff_loop]`
+
 ### 1.7 Contoh Penggunaan (Frontend Helper)
 
 ```php
@@ -209,6 +217,65 @@ $headline = cff_get_text('headline');
 $hero_image = cff_get_image_url('hero_image', 0, 'large');
 $faq_rows = cff_get_repeater_rows('faq_items');
 ```
+
+Contoh shortcode single field:
+
+```text
+[cff_value name="headline"]
+[cff_field name="subtitle" default="Tidak ada subtitle"]
+[cff_item name="subtitle" default="Tidak ada subtitle"]
+```
+
+Contoh shortcode loop untuk render urutan field hasil reorder:
+
+```text
+[cff_items group_id="123"]
+  <section class="section-[cff_item key='name']">
+    <h2>[cff_item key='label']</h2>
+    [cff_item]
+  </section>
+[/cff_items]
+```
+
+Atau tanpa `group_id`, pakai kandidat nama field dari template:
+
+```text
+[cff_items candidates="gallery_1,huge_image,gallery_2_grid,gallery_2,detail_2"]
+  <section class="section-[cff_item key='name']">
+    [cff_item]
+  </section>
+[/cff_items]
+```
+
+Catatan:
+- `[cff_field]` di dalam `[cff_loop]` default mengambil `value`.
+- `[cff_item]` adalah alias yang sama untuk `[cff_field]`.
+- `[cff_items]` adalah alias yang sama untuk `[cff_loop]`.
+- Gunakan `key="label"`, `key="name"`, atau `key="type"` untuk properti field aktif.
+- Untuk cross-page, gunakan `post_id` atau `page_id`.
+- Untuk Polylang, gunakan `lang="en"` atau biarkan kosong agar mengikuti bahasa aktif.
+- `[cff_field name="headline"]`, `[cff_item name="headline"]`, atau `[cff_value name="headline"]` bisa dipakai langsung tanpa loop.
+
+Contoh cross-page + bilingual Polylang:
+
+```text
+[cff_value name="headline" page_id="42"]
+[cff_item name="headline" page_id="42" lang="en"]
+
+[cff_items page_id="42" group_id="123"]
+  <section>[cff_item]</section>
+[/cff_items]
+```
+
+### 1.7.1 Rekomendasi Optimasi Frontend
+
+- Untuk field tunggal, utamakan helper langsung seperti `cff_get_text()` atau shortcode `[cff_value]`; jangan scan semua group jika tidak perlu.
+- Untuk layout yang mengikuti reorder, pakai `[cff_loop group_id="..."]` bila `group_id` sudah diketahui. Ini lebih ringan dibanding auto-detect.
+- Plugin sekarang memakai cache per-request untuk:
+  - post meta `_cff_*`
+  - `_cff_settings` per field group
+  - daftar `cff_group`
+- Hindari memanggil loop reorder berulang untuk post yang sama dalam satu template. Ambil sekali, lalu render.
 
 ### 1.8 REST API (`cff`)
 

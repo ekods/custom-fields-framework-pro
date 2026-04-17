@@ -65,6 +65,27 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     return !($value === null || $value === '');
   }
 
+  function cff_media_field_attrs($field) {
+    $max_upload_mb = absint($field['max_upload_mb'] ?? 2);
+    if ($max_upload_mb < 1) {
+      $max_upload_mb = 2;
+    }
+    return ' data-max-upload-mb="' . esc_attr($max_upload_mb) . '"';
+  }
+
+  function cff_media_limit_label_html($field) {
+    $max_upload_mb = absint($field['max_upload_mb'] ?? 0);
+    if ($max_upload_mb < 1) {
+      return '';
+    }
+
+    return '<div class="cff-media-limit-label">' . sprintf(
+      /* translators: %d: maximum upload size in megabytes */
+      esc_html__('Max upload: %d MB', 'cff'),
+      $max_upload_mb
+    ) . '</div>';
+  }
+
   function cff_generate_row_id($value = '') {
     $value = sanitize_key($value);
     if ($value) return $value;
@@ -354,11 +375,12 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     } elseif ($type === 'image' || $type === 'file') {
       $id = intval($val);
       $url = $id ? wp_get_attachment_url($id) : '';
-      echo '<div class="cff-media" data-type="'.esc_attr($type).'">';
+      echo '<div class="cff-media" data-type="'.esc_attr($type).'"' . cff_media_field_attrs($f) . '>';
       echo '<input type="hidden" class="cff-media-id" name="cff_values['.esc_attr($name).']" value="'.esc_attr($id).'">';
       echo '<input type="hidden" class="cff-media-url" name="cff_values['.esc_attr($name).'_url]" value="'.esc_attr($url).'">';
       echo '<div class="cff-media-preview">' . cff_media_preview_html($type, $id) . '</div>';
       cff_render_media_action_buttons();
+      echo cff_media_limit_label_html($f);
       echo '</div>';
     } elseif ($type === 'gallery') {
       cff_render_gallery_field('cff_values[' . $name . ']', $val);
@@ -673,11 +695,12 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         $id = intval($v);
         $url = $id ? wp_get_attachment_url($id) : '';
         $url_attr = $row_prefix . '[' . $sname . '_url]';
-        echo '<div class="cff-media cff-media-inline" data-type="'.esc_attr($stype).'">';
+        echo '<div class="cff-media cff-media-inline" data-type="'.esc_attr($stype).'"' . cff_media_field_attrs($s) . '>';
         echo '<input type="hidden" class="cff-media-id" name="'.esc_attr($name_attr).'" value="'.esc_attr($id).'">';
         echo '<input type="hidden" class="cff-media-url" name="'.esc_attr($url_attr).'" value="'.esc_attr($url).'">';
         echo '<div class="cff-media-preview">' . cff_media_preview_html($stype, $id) . '</div>';
         cff_render_media_action_buttons();
+        echo cff_media_limit_label_html($s);
         echo '</div>';
       } elseif ($stype === 'gallery') {
         cff_render_gallery_field($name_attr, $v);
@@ -808,11 +831,12 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
         $url = $id ? wp_get_attachment_url($id) : '';
         $url_attr = $parent_prefix . '[' . $sname . '_url]';
 
-        echo '<div class="cff-media cff-media-inline" data-type="'.esc_attr($stype).'">';
+        echo '<div class="cff-media cff-media-inline" data-type="'.esc_attr($stype).'"' . cff_media_field_attrs($s) . '>';
         echo '<input type="hidden" class="cff-media-id" name="'.esc_attr($name_attr).'" value="'.esc_attr($id).'">';
         echo '<input type="hidden" class="cff-media-url" name="'.esc_attr($url_attr).'" value="'.esc_attr($url).'">';
         echo '<div class="cff-media-preview">' . cff_media_preview_html($stype, $id) . '</div>';
         cff_render_media_action_buttons();
+        echo cff_media_limit_label_html($s);
         echo '</div>';
       } elseif ($stype === 'gallery') {
         cff_render_gallery_field($name_attr, $v);
@@ -1075,11 +1099,12 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
           $id = intval($v);
           $url = $id ? wp_get_attachment_url($id) : '';
           $url_attr = 'cff_values['.$parent.']['.$i.'][fields]['.$sname.'_url]';
-          echo '<div class="cff-media cff-media-inline" data-type="'.esc_attr($stype).'">';
+          echo '<div class="cff-media cff-media-inline" data-type="'.esc_attr($stype).'"' . cff_media_field_attrs($sf) . '>';
           echo '<input type="hidden" class="cff-media-id" name="'.esc_attr($name_attr).'" value="'.esc_attr($id).'">';
           echo '<input type="hidden" class="cff-media-url" name="'.esc_attr($url_attr).'" value="'.esc_attr($url).'">';
           echo '<div class="cff-media-preview">' . cff_media_preview_html($stype, $id) . '</div>';
           cff_render_media_action_buttons();
+          echo cff_media_limit_label_html($sf);
           echo '</div>';
         } elseif ($stype === 'gallery') {
           cff_render_gallery_field($name_attr, $v);
@@ -1646,16 +1671,21 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
 
   function cff_get_relational_items($type, $subtype = '') {
     $items = [];
+    $post_args = [
+      'post_status' => 'publish',
+      'posts_per_page' => 200,
+      'orderby' => 'title',
+      'order' => 'ASC',
+      'suppress_filters' => false,
+      'no_found_rows' => true,
+      'update_post_meta_cache' => false,
+      'update_post_term_cache' => false,
+    ];
 
     if ($type === 'post') {
       // Get posts only
-      $args = [
+      $args = $post_args + [
         'post_type' => 'post',
-        'post_status' => 'publish',
-        'posts_per_page' => 200,
-        'orderby' => 'title',
-        'order' => 'ASC',
-        'suppress_filters' => false
       ];
       $posts = get_posts($args);
       if (!empty($posts)) {
@@ -1665,13 +1695,8 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
       }
     } elseif ($type === 'page') {
       // Get pages only
-      $args = [
+      $args = $post_args + [
         'post_type' => 'page',
-        'post_status' => 'publish',
-        'posts_per_page' => 200,
-        'orderby' => 'title',
-        'order' => 'ASC',
-        'suppress_filters' => false
       ];
       $posts = get_posts($args);
       if (!empty($posts)) {
@@ -1682,13 +1707,8 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
     } elseif ($type === 'post_and_page') {
       // Get posts and pages
       $post_types = ['post', 'page'];
-      $args = [
+      $args = $post_args + [
         'post_type' => $post_types,
-        'post_status' => 'publish',
-        'posts_per_page' => 200,
-        'orderby' => 'title',
-        'order' => 'ASC',
-        'suppress_filters' => false
       ];
       $posts = get_posts($args);
       if (!empty($posts)) {
@@ -1698,13 +1718,8 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
       }
     } elseif ($type === 'post_type' && $post_type = cff_normalize_post_type_slug($subtype)) {
       // Get items from specific custom post type
-      $args = [
+      $args = $post_args + [
         'post_type' => $post_type,
-        'post_status' => 'publish',
-        'posts_per_page' => 200,
-        'orderby' => 'title',
-        'order' => 'ASC',
-        'suppress_filters' => false
       ];
       $posts = get_posts($args);
       if (!empty($posts)) {
@@ -1731,6 +1746,7 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
         'orderby' => 'display_name',
         'order' => 'ASC',
         'number' => 200,
+        'fields' => ['ID', 'display_name'],
       ]);
       if (!empty($users)) {
         foreach ($users as $user) {

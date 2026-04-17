@@ -74,6 +74,252 @@ jQuery(function($){
     );
   }
 
+  function getMediaMaxUploadMb($wrap){
+    var value = parseInt($wrap.attr('data-max-upload-mb') || '2', 10) || 0;
+    return value > 0 ? value : 2;
+  }
+
+  function clearMediaNotice($wrap){
+    $wrap.find('.cff-media-notice').remove();
+    $wrap.removeClass('is-error');
+  }
+
+  function setMediaNotice($wrap, message){
+    var text = String(message || '').trim();
+    clearMediaNotice($wrap);
+    if (!text) return;
+    $('<div/>', {
+      'class': 'cff-media-notice',
+      text: text
+    }).appendTo($wrap);
+    $wrap.addClass('is-error');
+  }
+
+  function getAttachmentFilesizeBytes(att){
+    if (!att) return 0;
+    if (typeof att.filesizeInBytes === 'number' && att.filesizeInBytes > 0) return att.filesizeInBytes;
+    if (typeof att.filesizeRaw === 'number' && att.filesizeRaw > 0) return att.filesizeRaw;
+    if (att.filesize && typeof att.filesize === 'object') {
+      if (typeof att.filesize.bytes === 'number' && att.filesize.bytes > 0) return att.filesize.bytes;
+      if (typeof att.filesize.raw === 'number' && att.filesize.raw > 0) return att.filesize.raw;
+    }
+    if (typeof att.filesize === 'number' && att.filesize > 0) return att.filesize;
+    return 0;
+  }
+
+  function formatMegabytes(bytes){
+    return (bytes / (1024 * 1024)).toFixed(2).replace(/\.00$/, '');
+  }
+
+  function updateMediaFrameUploadText(frame, maxUploadMb){
+    if (!frame || !frame.$el) return;
+    var text = 'Maximum upload file size: ' + maxUploadMb + ' MB.';
+    frame.$el.find('.max-upload-size').text(text);
+  }
+
+  function getGlobalUploaderMultipartParams(){
+    if (!window.wp || !wp.Uploader || !wp.Uploader.defaults) return null;
+    if (!wp.Uploader.defaults.multipart_params) {
+      wp.Uploader.defaults.multipart_params = {};
+    }
+    return wp.Uploader.defaults.multipart_params;
+  }
+
+  function getGlobalUploaderFilters(){
+    if (!window.wp || !wp.Uploader || !wp.Uploader.defaults) return null;
+    if (!wp.Uploader.defaults.filters) {
+      wp.Uploader.defaults.filters = {};
+    }
+    return wp.Uploader.defaults.filters;
+  }
+
+  function getMediaViewSettings(){
+    if (!window.wp || !wp.media || !wp.media.view || !wp.media.view.settings) return null;
+    return wp.media.view.settings;
+  }
+
+  function overrideMediaUtilsValidateFileSize(maxUploadMb){
+    if (!window.wp || !wp.mediaUtils || typeof wp.mediaUtils.validateFileSize !== 'function') {
+      return null;
+    }
+
+    var original = wp.mediaUtils.validateFileSize;
+    var overrideBytes = parseInt(maxUploadMb, 10) > 0 ? (parseInt(maxUploadMb, 10) * 1024 * 1024) : 0;
+
+    wp.mediaUtils.validateFileSize = function(file, maxUploadFileSize){
+      var effectiveMax = maxUploadFileSize;
+      if (overrideBytes > 0 && (!effectiveMax || effectiveMax < overrideBytes)) {
+        effectiveMax = overrideBytes;
+      }
+      try {
+        return original.call(this, file, effectiveMax);
+      } catch (error) {
+        if (error && error.code === 'SIZE_ABOVE_LIMIT') {
+          error.message = replaceMaxUploadMessage(error.message, parseInt(maxUploadMb, 10) || 0);
+        }
+        throw error;
+      }
+    };
+
+    return original;
+  }
+
+  function restoreMediaUtilsValidateFileSize(original){
+    if (!original || !window.wp || !wp.mediaUtils) return;
+    wp.mediaUtils.validateFileSize = original;
+  }
+
+  function replaceMaxUploadMessage(message, maxUploadMb){
+    var text = String(message || '');
+    var limit = parseInt(maxUploadMb, 10) || 0;
+    if (!limit) return text;
+
+    var suffix = ' Maximum allowed size: ' + limit + ' MB.';
+    if (text.indexOf('This file exceeds the maximum upload size for this site.') !== -1) {
+      return text.replace('This file exceeds the maximum upload size for this site.', 'This file exceeds the maximum upload size for this site.' + suffix);
+    }
+    return text + suffix;
+  }
+
+  function overridePluploadSizeLimitMessage(maxUploadMb){
+    if (typeof window.pluploadL10n !== 'object' || !window.pluploadL10n) {
+      return null;
+    }
+
+    var original = window.pluploadL10n.file_exceeds_size_limit;
+    var limit = parseInt(maxUploadMb, 10) || 0;
+    if (!limit) {
+      return original;
+    }
+
+    window.pluploadL10n.file_exceeds_size_limit = '%s exceeds the maximum upload size for this site. Maximum allowed size: ' + limit + ' MB.';
+    return original;
+  }
+
+  function restorePluploadSizeLimitMessage(original){
+    if (typeof window.pluploadL10n !== 'object' || !window.pluploadL10n || original == null) {
+      return;
+    }
+    window.pluploadL10n.file_exceeds_size_limit = original;
+  }
+
+  function setMediaFrameUploadLimit(frame, maxUploadMb){
+    var value = String(maxUploadMb || '');
+    var maxFileSize = value ? (value + 'mb') : '';
+    var maxFileBytes = parseInt(value, 10) > 0 ? (parseInt(value, 10) * 1024 * 1024) : 0;
+    var globalParams = getGlobalUploaderMultipartParams();
+    var globalFilters = getGlobalUploaderFilters();
+    var mediaViewSettings = getMediaViewSettings();
+    if (globalParams) {
+      globalParams.tk_upload_limit_mb = value;
+    }
+    if (globalFilters) {
+      globalFilters.max_file_size = maxFileSize;
+    }
+    if (mediaViewSettings && maxFileBytes > 0) {
+      mediaViewSettings.maxUploadFileSize = maxFileBytes;
+    }
+
+    if (!frame || !frame.uploader || !frame.uploader.uploader) return;
+
+    var uploader = frame.uploader.uploader;
+    if (typeof uploader.setOption === 'function') {
+      var current = (typeof uploader.getOption === 'function')
+        ? (uploader.getOption('multipart_params') || {})
+        : {};
+      uploader.setOption('multipart_params', $.extend({}, current, {
+        tk_upload_limit_mb: value
+      }));
+
+      var currentFilters = (typeof uploader.getOption === 'function')
+        ? (uploader.getOption('filters') || {})
+        : {};
+      uploader.setOption('filters', $.extend({}, currentFilters, {
+        max_file_size: maxFileSize
+      }));
+      return;
+    }
+
+    if (uploader.settings) {
+      uploader.settings.multipart_params = $.extend({}, uploader.settings.multipart_params || {}, {
+        tk_upload_limit_mb: value
+      });
+      uploader.settings.filters = $.extend({}, uploader.settings.filters || {}, {
+        max_file_size: maxFileSize
+      });
+    }
+  }
+
+  function restoreMediaFrameUploadLimit(frame, previousValue){
+    var globalParams = getGlobalUploaderMultipartParams();
+    var globalFilters = getGlobalUploaderFilters();
+    var mediaViewSettings = getMediaViewSettings();
+    if (globalParams) {
+      if (previousValue === undefined || previousValue === null || previousValue === '') {
+        delete globalParams.tk_upload_limit_mb;
+      } else {
+        globalParams.tk_upload_limit_mb = previousValue;
+      }
+    }
+    if (globalFilters) {
+      if (previousValue === undefined || previousValue === null || previousValue === '') {
+        delete globalFilters.max_file_size;
+      } else {
+        globalFilters.max_file_size = String(previousValue) + 'mb';
+      }
+    }
+    if (mediaViewSettings) {
+      if (previousValue === undefined || previousValue === null || previousValue === '') {
+        delete mediaViewSettings.maxUploadFileSize;
+      } else {
+        mediaViewSettings.maxUploadFileSize = parseInt(previousValue, 10) * 1024 * 1024;
+      }
+    }
+
+    if (!frame || !frame.uploader || !frame.uploader.uploader) return;
+
+    var uploader = frame.uploader.uploader;
+    var current = {};
+
+    if (typeof uploader.getOption === 'function') {
+      current = uploader.getOption('multipart_params') || {};
+    } else if (uploader.settings && uploader.settings.multipart_params) {
+      current = uploader.settings.multipart_params;
+    }
+
+    current = $.extend({}, current);
+    if (previousValue === undefined || previousValue === null || previousValue === '') {
+      delete current.tk_upload_limit_mb;
+    } else {
+      current.tk_upload_limit_mb = previousValue;
+    }
+
+    var currentFilters = {};
+    if (typeof uploader.getOption === 'function') {
+      currentFilters = uploader.getOption('filters') || {};
+    } else if (uploader.settings && uploader.settings.filters) {
+      currentFilters = uploader.settings.filters;
+    }
+
+    currentFilters = $.extend({}, currentFilters);
+    if (previousValue !== undefined && previousValue !== null && previousValue !== '') {
+      currentFilters.max_file_size = String(previousValue) + 'mb';
+    } else {
+      delete currentFilters.max_file_size;
+    }
+
+    if (typeof uploader.setOption === 'function') {
+      uploader.setOption('multipart_params', current);
+      uploader.setOption('filters', currentFilters);
+      return;
+    }
+
+    if (uploader.settings) {
+      uploader.settings.multipart_params = current;
+      uploader.settings.filters = currentFilters;
+    }
+  }
+
   function galleryItemPreviewHtml(att){
     var id = att && att.id ? att.id : '';
     var imgUrl =
@@ -154,11 +400,66 @@ jQuery(function($){
     var type = $wrap.data('type') || 'file';
     if (!window.wp || !wp.media) return;
 
+    var maxUploadMb = getMediaMaxUploadMb($wrap);
+    var globalParams = getGlobalUploaderMultipartParams();
+    var previousUploadLimit = globalParams && Object.prototype.hasOwnProperty.call(globalParams, 'tk_upload_limit_mb')
+      ? globalParams.tk_upload_limit_mb
+      : '';
+    var globalFilters = getGlobalUploaderFilters();
+    var previousGlobalMaxFileSize = globalFilters && Object.prototype.hasOwnProperty.call(globalFilters, 'max_file_size')
+      ? globalFilters.max_file_size
+      : '';
+    var mediaViewSettings = getMediaViewSettings();
+    var previousMediaViewMaxUploadSize = mediaViewSettings && Object.prototype.hasOwnProperty.call(mediaViewSettings, 'maxUploadFileSize')
+      ? mediaViewSettings.maxUploadFileSize
+      : '';
+    var originalValidateFileSize = overrideMediaUtilsValidateFileSize(maxUploadMb);
+    var originalPluploadSizeLimitMessage = overridePluploadSizeLimitMessage(maxUploadMb);
+
+    // Set uploader defaults before creating the media frame, because the frame
+    // can snapshot plupload settings during construction.
+    setMediaFrameUploadLimit(null, maxUploadMb);
+
     var frame = wp.media({
       title: (type === 'image') ? 'Select media' : 'Select file',
       button: { text: 'Use this' },
       multiple: false,
       library: (type === 'image') ? { type: ['image', 'video'] } : {}
+    });
+
+    frame.on('open', function(){
+      setMediaFrameUploadLimit(frame, maxUploadMb);
+      updateMediaFrameUploadText(frame, maxUploadMb);
+    });
+
+    frame.on('content:render:browse', function(){
+      setMediaFrameUploadLimit(frame, maxUploadMb);
+      updateMediaFrameUploadText(frame, maxUploadMb);
+    });
+
+    frame.on('content:activate', function(){
+      setMediaFrameUploadLimit(frame, maxUploadMb);
+      updateMediaFrameUploadText(frame, maxUploadMb);
+    });
+
+    frame.on('close', function(){
+      restoreMediaFrameUploadLimit(frame, previousUploadLimit);
+      if (globalFilters) {
+        if (previousGlobalMaxFileSize === undefined || previousGlobalMaxFileSize === null || previousGlobalMaxFileSize === '') {
+          delete globalFilters.max_file_size;
+        } else {
+          globalFilters.max_file_size = previousGlobalMaxFileSize;
+        }
+      }
+      if (mediaViewSettings) {
+        if (previousMediaViewMaxUploadSize === undefined || previousMediaViewMaxUploadSize === null || previousMediaViewMaxUploadSize === '') {
+          delete mediaViewSettings.maxUploadFileSize;
+        } else {
+          mediaViewSettings.maxUploadFileSize = previousMediaViewMaxUploadSize;
+        }
+      }
+      restoreMediaUtilsValidateFileSize(originalValidateFileSize);
+      restorePluploadSizeLimitMessage(originalPluploadSizeLimitMessage);
     });
 
     frame.on('select', function(){
@@ -169,6 +470,13 @@ jQuery(function($){
       var att = model.toJSON();
       if (!att || !att.id) return;
 
+      var fileSizeBytes = getAttachmentFilesizeBytes(att);
+      if (fileSizeBytes > (maxUploadMb * 1024 * 1024)) {
+        setMediaNotice($wrap, 'Maximum upload size for this field is ' + maxUploadMb + ' MB. Selected file size is ' + formatMegabytes(fileSizeBytes) + ' MB.');
+        return;
+      }
+
+      clearMediaNotice($wrap);
       $wrap.find('input.cff-media-id').val(att.id).trigger('change');
       $wrap.find('input.cff-media-url').val(att.url || '');
 
@@ -209,7 +517,9 @@ jQuery(function($){
 
   $(document).on('click', '.cff-media-clear', function(e){
     e.preventDefault();
-    renderMedia($(this).closest('.cff-media'), '');
+    var $wrap = $(this).closest('.cff-media');
+    clearMediaNotice($wrap);
+    renderMedia($wrap, '');
   });
 
   $(document).on('click', '.cff-gallery-select', function(e){

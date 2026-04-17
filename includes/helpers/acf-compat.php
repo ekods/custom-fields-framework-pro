@@ -7,11 +7,72 @@ if (!defined('ABSPATH')) exit;
  * Data is stored in post meta keys: _cff_{field_name}
  */
 $GLOBALS['cff_row_stack'] = [];
+$GLOBALS['cff_meta_cache'] = [];
 
 function cff_meta_key($name) { return '_cff_' . sanitize_key($name); }
 function cff_value_not_empty($value) {
   if (is_array($value)) return !empty($value);
   return !($value === null || $value === '');
+}
+
+function cff_get_cached_post_meta($post_id, $meta_key, $single = true) {
+  $post_id = absint($post_id);
+  $meta_key = (string) $meta_key;
+  if (!$post_id || $meta_key === '') {
+    return $single ? '' : [];
+  }
+
+  if (!isset($GLOBALS['cff_meta_cache'][$post_id])) {
+    $GLOBALS['cff_meta_cache'][$post_id] = [];
+  }
+
+  if (!array_key_exists($meta_key, $GLOBALS['cff_meta_cache'][$post_id])) {
+    $GLOBALS['cff_meta_cache'][$post_id][$meta_key] = get_post_meta($post_id, $meta_key, true);
+  }
+
+  if ($single) {
+    return $GLOBALS['cff_meta_cache'][$post_id][$meta_key];
+  }
+
+  $value = $GLOBALS['cff_meta_cache'][$post_id][$meta_key];
+  return $value === '' ? [] : [$value];
+}
+
+function cff_get_cached_group_ids($post_status = ['publish']) {
+  static $cache = [];
+
+  $statuses = array_values(array_filter(array_map('sanitize_key', (array) $post_status)));
+  if (!$statuses) {
+    $statuses = ['publish'];
+  }
+
+  $cache_key = implode('|', $statuses);
+  if (!isset($cache[$cache_key])) {
+    $cache[$cache_key] = array_map('absint', (array) get_posts([
+      'post_type' => 'cff_group',
+      'post_status' => $statuses,
+      'posts_per_page' => -1,
+      'no_found_rows' => true,
+      'fields' => 'ids',
+      'orderby' => 'menu_order title',
+      'order' => 'ASC',
+    ]));
+  }
+
+  return $cache[$cache_key];
+}
+
+function cff_get_cached_group_settings($group_id) {
+  $group_id = absint($group_id);
+  if (!$group_id) return [];
+
+  static $cache = [];
+  if (!array_key_exists($group_id, $cache)) {
+    $settings = cff_get_cached_post_meta($group_id, '_cff_settings', true);
+    $cache[$group_id] = is_array($settings) ? $settings : [];
+  }
+
+  return $cache[$group_id];
 }
 
 function cff_collect_field_aliases($fields, &$map) {
@@ -47,15 +108,9 @@ function cff_get_field_aliases($selector) {
 
   if ($alias_map === null) {
     $alias_map = [];
-    $groups = get_posts([
-      'post_type' => 'cff_group',
-      'post_status' => ['publish', 'draft', 'pending', 'private'],
-      'posts_per_page' => -1,
-      'no_found_rows' => true,
-      'fields' => 'ids',
-    ]);
+    $groups = cff_get_cached_group_ids(['publish', 'draft', 'pending', 'private']);
     foreach ((array) $groups as $group_id) {
-      $settings = get_post_meta((int) $group_id, '_cff_settings', true);
+      $settings = cff_get_cached_group_settings((int) $group_id);
       $fields = isset($settings['fields']) && is_array($settings['fields']) ? $settings['fields'] : [];
       cff_collect_field_aliases($fields, $alias_map);
     }
@@ -116,11 +171,11 @@ if (!function_exists('get_field')) {
     if (!$selector) return null;
     $post_id = $post_id ? $post_id : get_the_ID();
     if (!$post_id) return null;
-    $val = get_post_meta($post_id, cff_meta_key($selector), true);
+    $val = cff_get_cached_post_meta($post_id, cff_meta_key($selector), true);
     if (!cff_value_not_empty($val)) {
       $aliases = cff_get_field_aliases($selector);
       foreach ($aliases as $alias) {
-        $alias_val = get_post_meta($post_id, cff_meta_key($alias), true);
+        $alias_val = cff_get_cached_post_meta($post_id, cff_meta_key($alias), true);
         if (cff_value_not_empty($alias_val)) {
           $val = $alias_val;
           break;
@@ -223,11 +278,11 @@ if (!function_exists(__NAMESPACE__ . '\cff_get_ordered_fields')) {
     $group_id = absint($group_id);
     if (!$post_id || !$group_id) return [];
 
-    $settings = get_post_meta($group_id, '_cff_settings', true);
+    $settings = cff_get_cached_group_settings($group_id);
     $fields = isset($settings['fields']) && is_array($settings['fields']) ? $settings['fields'] : [];
     if (!$fields) return [];
 
-    $saved = get_post_meta($post_id, '_cff_group_field_order_' . $group_id, true);
+    $saved = cff_get_cached_post_meta($post_id, '_cff_group_field_order_' . $group_id, true);
     if (is_string($saved)) {
       $saved = array_filter(array_map('sanitize_key', explode(',', $saved)));
     }
@@ -366,12 +421,7 @@ if (!function_exists(__NAMESPACE__ . '\cff_get_ordered_field_names')) {
 
     $group_id = absint($group_id);
     if (!$group_id) {
-      $groups = get_posts([
-        'post_type' => 'cff_group',
-        'post_status' => 'publish',
-        'posts_per_page' => -1,
-        'no_found_rows' => true,
-      ]);
+      $groups = cff_get_cached_group_ids(['publish']);
 
       // Fast path: pick ONE best saved reorder source (not merged from many groups).
       $best_saved_order = [];
@@ -380,9 +430,9 @@ if (!function_exists(__NAMESPACE__ . '\cff_get_ordered_field_names')) {
       $best_group_by_fields = 0;
       $best_field_score = 0;
 
-      foreach ((array) $groups as $group_post) {
-        $group_id_current = (int) $group_post->ID;
-        $settings = get_post_meta($group_id_current, '_cff_settings', true);
+      foreach ((array) $groups as $group_id_current) {
+        $group_id_current = (int) $group_id_current;
+        $settings = cff_get_cached_group_settings($group_id_current);
         $fields = isset($settings['fields']) && is_array($settings['fields']) ? $settings['fields'] : [];
 
         $field_names = [];
@@ -396,7 +446,7 @@ if (!function_exists(__NAMESPACE__ . '\cff_get_ordered_field_names')) {
           $best_group_by_fields = $group_id_current;
         }
 
-        $saved = get_post_meta($post_id, '_cff_group_field_order_' . $group_id_current, true);
+        $saved = cff_get_cached_post_meta($post_id, '_cff_group_field_order_' . $group_id_current, true);
         if (is_string($saved)) {
           $saved = array_filter(array_map('sanitize_key', explode(',', $saved)));
         } elseif (is_array($saved)) {

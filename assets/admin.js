@@ -207,6 +207,11 @@
                 '</label>' +
               '</span>' +
             '</div>' +
+            '<div class="cff-row-media-options">' +
+              '<label>Max Upload Size (MB)</label>' +
+              '<input type="number" class="cff-input cff-max-upload-mb" min="1" step="1" value="2">' +
+              '<p class="description">Default 2 MB. Set a larger value for this image or file field only.</p>' +
+            '</div>' +
             '<div class="cff-row-rules">' +
               '<div class="cff-row-required">' +
                 '<span class="cff-tools-toggles">' +
@@ -380,6 +385,9 @@
                 '</div>' +
               '</div>' +
               '<div class="cff-col cff-actions">' +
+                '<button type="button" class="button cff-icon-button cff-duplicate-sub" aria-label="Duplicate sub field">' +
+                  '<span class="dashicons dashicons-admin-page" aria-hidden="true"></span>' +
+                '</button>' +
                 '<button type="button" class="button cff-icon-button cff-remove-sub" aria-label="Remove sub field">' +
                   '<span class="dashicons dashicons-trash" aria-hidden="true"></span>' +
                 '</button>' +
@@ -422,16 +430,21 @@
                   '</label>' +
                 '</span>' +
               '</div>' +
-              '<div class="cff-row-datetime-options">' +
-                '<span class="cff-tools-toggles">' +
-                  '<div><strong>Use Time</strong><div class="description">Enable time selector for datetime picker.</div></div>' +
-                  '<label class="cff-switch">' +
-                    '<input type="checkbox" class="cff-datetime-use-time-toggle" checked>' +
-                    '<span class="cff-slider"></span>' +
-                  '</label>' +
-                '</span>' +
-              '</div>' +
-              '<div class="cff-row-rules">' +
+            '<div class="cff-row-datetime-options">' +
+              '<span class="cff-tools-toggles">' +
+                '<div><strong>Use Time</strong><div class="description">Enable time selector for datetime picker.</div></div>' +
+                '<label class="cff-switch">' +
+                  '<input type="checkbox" class="cff-datetime-use-time-toggle" checked>' +
+                  '<span class="cff-slider"></span>' +
+                '</label>' +
+              '</span>' +
+            '</div>' +
+            '<div class="cff-row-media-options">' +
+              '<label>Max Upload Size (MB)</label>' +
+              '<input type="number" class="cff-input cff-max-upload-mb" min="1" step="1" value="2">' +
+              '<p class="description">Default 2 MB. Set a larger value for this image or file field only.</p>' +
+            '</div>' +
+            '<div class="cff-row-rules">' +
                 '<div class="cff-row-required">' +
                   '<span class="cff-tools-toggles">' +
                     '<div>' +
@@ -625,6 +638,7 @@
       $field.find('> .cff-advanced > .cff-flexbuilder').toggle(t === 'flexible');
       toggleRepeaterOptions($field, t);
       toggleDatetimeOptions($field, t);
+      toggleMediaOptions($field, t);
     }
 
     function togglePlaceholderRow($element, type){
@@ -692,6 +706,18 @@
       $row.toggle(selected === 'datetime_picker');
     }
 
+    function toggleMediaOptions($element, type){
+      if (!$element || !$element.length) return;
+      var $meta = getFieldMetaRow($element);
+      var $row = $meta.children('.cff-row-media-options').first();
+      if (!$row.length) return;
+      var selected = String(type || '').trim();
+      if (!selected) {
+        selected = ($element.find('.cff-type').val() || $element.find('.cff-stype').val() || '').trim();
+      }
+      $row.toggle(selected === 'image' || selected === 'file');
+    }
+
     function getFieldRepeaterOptions($element){
       var $meta = getFieldMetaRow($element);
       return {
@@ -712,6 +738,18 @@
         rowLabel: options.rowLabel,
         collapsed: options.collapsed
       };
+    }
+
+    function getMediaOptions($element){
+      var $meta = getFieldMetaRow($element);
+      return {
+        maxUploadMb: $meta.children('.cff-row-media-options').find('.cff-max-upload-mb').first()
+      };
+    }
+
+    function normalizeMediaMaxUploadMb(value){
+      var parsed = parseInt(value, 10) || 0;
+      return parsed > 0 ? parsed : 2;
     }
 
     function toggleSubGroup($sub){
@@ -762,16 +800,160 @@
     }
 
     function sortableSubs($container){
+      if (!$container || !$container.length) return;
+
+      if ($container.hasClass('ui-sortable')) {
+        $container.sortable('destroy');
+      }
+
+      var options = {
+        handle: '.cff-handle',
+        update: function(){ save(readFromDOM()); }
+      };
+
+      if ($container.hasClass('cff-group-fields')) {
+        options.connectWith = '#cff-field-list, .cff-group-fields';
+        options.receive = function(event, ui){
+          if (ui.item.hasClass('cff-field-row')) {
+            var item = readSingleField(ui.item);
+            if (!item) return;
+            if (!canNestInGroup(item.type)) {
+              $(ui.sender).sortable('cancel');
+              return;
+            }
+            var $replacement = renderSub(item, Date.now());
+            ui.item.replaceWith($replacement);
+            save(readFromDOM());
+            refreshReorderList();
+            refreshConditionalFieldDropdowns();
+            $(document).trigger('cff:refresh', $replacement);
+          } else {
+            save(readFromDOM());
+            refreshConditionalFieldDropdowns();
+          }
+        };
+      }
+
+      $container.sortable(options);
+    }
+
+    function canNestInGroup(type){
+      var allowed = {
+        text: true,
+        number: true,
+        textarea: true,
+        wysiwyg: true,
+        color: true,
+        url: true,
+        link: true,
+        embed: true,
+        choice: true,
+        relational: true,
+        date_picker: true,
+        datetime_picker: true,
+        checkbox: true,
+        image: true,
+        gallery: true,
+        file: true,
+        repeater: true,
+        group: true
+      };
+
+      return !!allowed[String(type || '').trim()];
+    }
+
+    function sortableLayouts($container){
+      if (!$container || !$container.length) return;
+      if ($container.hasClass('ui-sortable')) {
+        $container.sortable('destroy');
+      }
       $container.sortable({
         handle: '.cff-handle',
         update: function(){ save(readFromDOM()); }
       });
     }
 
-    function sortableLayouts($container){
-      $container.sortable({
-        handle: '.cff-handle',
-        update: function(){ save(readFromDOM()); }
+    function getOwnGroupFieldsContainer($element){
+      if (!$element || !$element.length) return $();
+
+      if ($element.hasClass('cff-field-row')) {
+        return $element.find('> .cff-advanced > .cff-groupbuilder > .cff-group-fields').first();
+      }
+
+      if ($element.hasClass('cff-subfield')) {
+        return $element.find('> .cff-groupbuilder > .cff-group-fields').first();
+      }
+
+      return $();
+    }
+
+    function ensureGroupDropTargetVisible($group){
+      if (!$group || !$group.length) return;
+
+      if ($group.hasClass('cff-field-row')) {
+        $group.removeClass('is-collapsed');
+        $group.find('> .cff-handle-wrap > .cff-acc-toggle').attr('aria-expanded', 'true');
+      } else if ($group.hasClass('cff-subfield')) {
+        $group.removeClass('is-collapsed');
+        $group.find('> .cff-handle-wrap > .cff-sub-acc-toggle').attr('aria-expanded', 'true');
+      }
+    }
+
+    function moveItemIntoGroup($dragged, $group){
+      if (!$dragged || !$dragged.length || !$group || !$group.length) return false;
+      if ($group.is($dragged) || $group.has($dragged).length) return false;
+
+      var item = $dragged.hasClass('cff-field-row') ? readSingleField($dragged) : readSingleSubfield($dragged);
+      if (!item || !canNestInGroup(item.type)) return false;
+
+      var $target = getOwnGroupFieldsContainer($group);
+      if (!$target.length) return false;
+
+      ensureGroupDropTargetVisible($group);
+
+      var $replacement = renderSub(item, Date.now());
+      $dragged.remove();
+      $target.append($replacement);
+      sortableSubs($target);
+      save(readFromDOM());
+      refreshReorderList();
+      refreshConditionalFieldDropdowns();
+      $(document).trigger('cff:refresh', $replacement);
+      return true;
+    }
+
+    function initGroupDropzones($scope){
+      if (!$.fn.droppable) return;
+
+      var $targets = $scope && $scope.length
+        ? $scope.filter('.cff-field-row.is-group, .cff-subfield.is-group').add($scope.find('.cff-field-row.is-group, .cff-subfield.is-group'))
+        : $root.find('.cff-field-row.is-group, .cff-subfield.is-group');
+
+      $targets.each(function(){
+        var $group = $(this);
+        if ($group.hasClass('ui-droppable')) {
+          $group.droppable('destroy');
+        }
+
+        $group.droppable({
+          accept: '.cff-field-row, .cff-subfield',
+          tolerance: 'pointer',
+          greedy: true,
+          classes: {
+            'ui-droppable-active': 'cff-group-dropzone-active',
+            'ui-droppable-hover': 'cff-group-dropzone-hover'
+          },
+          over: function(){
+            ensureGroupDropTargetVisible($group);
+          },
+          drop: function(event, ui){
+            var $dragged = ui.draggable.closest('.cff-field-row, .cff-subfield');
+            if (!$dragged.length) {
+              $dragged = ui.draggable;
+            }
+            moveItemIntoGroup($dragged, $group);
+          }
+        });
       });
     }
 
@@ -817,9 +999,11 @@
       });
       toggleRelationalPanel($el, s.type || 'text');
       $el.find('.cff-placeholder').val(s.placeholder || '');
+      getMediaOptions($el).maxUploadMb.val(normalizeMediaMaxUploadMb(s.max_upload_mb));
       $el.find('.cff-required-toggle').prop('checked', !!s.required);
       $el.find('.cff-datetime-use-time-toggle').prop('checked', (s.datetime_use_time !== false));
       toggleDatetimeOptions($el, s.type || 'text');
+      toggleMediaOptions($el, s.type || 'text');
       renderConditionalPanel($el, s);
       if (s.type === 'group' && Array.isArray(s.sub_fields)) {
         var $gf = $el.find('> .cff-groupbuilder > .cff-group-fields').first();
@@ -887,7 +1071,7 @@
     }
 
     function renderChoicesPanel($element, data){
-      var $panel = $element.find('.cff-field-choice').first();
+      var $panel = getOwnChoicePanel($element);
       if (!$panel.length) return;
       populateChoiceList($panel, data.choices || []);
       $panel.find('.cff-choice-display').val(data.choice_display || 'select');
@@ -938,8 +1122,24 @@
       return filled > 0;
     }
 
+    function getOwnChoicePanel($element){
+      if (!$element || !$element.length) return $();
+
+      var $structure = $element.children('.cff-field-structure').first();
+      if ($structure.length) {
+        return $structure.children('.cff-field-choice').first();
+      }
+
+      $structure = $element.children('.cff-subfield-structure').first();
+      if ($structure.length) {
+        return $structure.children('.cff-field-choice').first();
+      }
+
+      return $();
+    }
+
     function toggleChoicePanel($element, type){
-      var $panel = $element.find('.cff-field-choice').first();
+      var $panel = getOwnChoicePanel($element);
       if (!$panel.length) return;
       var hasValues = hasChoiceValues($panel);
       var visible = (type === 'choice') || hasValues;
@@ -1183,13 +1383,13 @@
     }
 
     function renderRelationalPanel($element, data){
-      var $panel = $element.find('.cff-field-relational').first();
+      var $panel = getOwnRelationalPanel($element);
       if (!$panel.length) return;
 
-      $panel.find('.cff-relational-type').val(data.relational_type || 'post');
-      $panel.find('.cff-relational-subtype').val(data.relational_subtype || '');
-      $panel.find('.cff-relational-display').val(data.relational_display || 'select');
-      $panel.find('.cff-relational-multiple-toggle').prop('checked', !!data.relational_multiple);
+      $panel.find('.cff-relational-type').first().val(data.relational_type || 'post');
+      $panel.find('.cff-relational-subtype').first().val(data.relational_subtype || '');
+      $panel.find('.cff-relational-display').first().val(data.relational_display || 'select');
+      $panel.find('.cff-relational-multiple-toggle').first().prop('checked', !!data.relational_multiple);
 
       // ✅ simpan di $element (ctx), biar updateRelationalSubtypeOptions bisa baca
       $element.data('cff-relational-subtype', data.relational_subtype || '');
@@ -1199,7 +1399,7 @@
     }
 
     function renderArchiveLinks($element){
-      var $panel = $element.find('.cff-field-relational').first();
+      var $panel = getOwnRelationalPanel($element);
       if (!$panel.length) return;
       var $list = $panel.find('.cff-relational-archive-list').first();
       if (!$list.length) return;
@@ -1225,15 +1425,40 @@
     }
 
     function toggleRelationalPanel($element, type){
-      var $panel = $element.find('.cff-field-relational').first();
+      var $panel = getOwnRelationalPanel($element);
       if (!$panel.length) return;
       $panel.toggleClass('is-hidden', type !== 'relational');
     }
 
+    function getOwnRelationalPanel($element){
+      if (!$element || !$element.length) return $();
+
+      var $structure = $element.children('.cff-field-structure').first();
+      if ($structure.length) {
+        return $structure.children('.cff-field-relational').first();
+      }
+
+      $structure = $element.children('.cff-subfield-structure').first();
+      if ($structure.length) {
+        return $structure.children('.cff-field-relational').first();
+      }
+
+      return $();
+    }
+
+    function getRelationalContext($source){
+      var $ctx = $source.closest('.cff-subfield');
+      if ($ctx.length) return $ctx;
+      return $source.closest('.cff-field-row');
+    }
+
     function updateRelationalSubtypeOptions($ctx) {
-      var type = $ctx.find('.cff-relational-type').val();
-      var $wrap = $ctx.find('.cff-row-relational-subtype');
-      var $select = $ctx.find('.cff-relational-subtype');
+      var $panel = getOwnRelationalPanel($ctx);
+      if (!$panel.length) return;
+
+      var type = $panel.find('.cff-relational-type').first().val();
+      var $wrap = $panel.find('.cff-row-relational-subtype').first();
+      var $select = $panel.find('.cff-relational-subtype').first();
 
       // ✅ ambil dari select dulu, baru fallback ke data ctx
       var currentValue = ($select.val() || '') || ($ctx.data('cff-relational-subtype') || '');
@@ -1308,10 +1533,8 @@
       return list;
     }
 
-    function readFromDOM(){
-      var data = [];
-      $('#cff-field-list .cff-field-row').each(function(){
-        var $f = $(this);
+    function readSingleField($f){
+      if (!$f || !$f.length) return null;
         var label = $f.find('.cff-label').val() || '';
         var name  = CFF.utils.sanitizeName($f.find('.cff-name').val() || '');
         var type  = $f.find('.cff-type').val() || 'text';
@@ -1333,6 +1556,9 @@
         setAliasesAttr($f, 'data-field-aliases', aliases);
         item.required = $f.find('.cff-required-toggle').is(':checked');
         item.placeholder = $f.find('.cff-placeholder').val() || '';
+        if (type === 'image' || type === 'file') {
+          item.max_upload_mb = normalizeMediaMaxUploadMb(getMediaOptions($f).maxUploadMb.val());
+        }
         if (type === 'datetime_picker') {
           item.datetime_use_time = $f.find('.cff-datetime-use-time-toggle').is(':checked');
         }
@@ -1341,16 +1567,18 @@
           item.conditional_logic = conditionalLogic;
         }
         if (type === 'choice') {
-          item.choices = readChoices($f.find('.cff-choices-list'));
-          item.choice_display = $f.find('.cff-choice-display').val() || 'select';
-          item.choice_default = $f.find('.cff-choice-default').val() || '';
+          var $fieldChoicePanel = getOwnChoicePanel($f);
+          item.choices = readChoices($fieldChoicePanel.find('.cff-choices-list').first());
+          item.choice_display = $fieldChoicePanel.find('.cff-choice-display').first().val() || 'select';
+          item.choice_default = $fieldChoicePanel.find('.cff-choice-default').first().val() || '';
         }
 
         if (type === 'relational') {
-          item.relational_type = $f.find('.cff-relational-type').val() || 'post';
-          item.relational_subtype = $f.find('.cff-relational-subtype').val() || '';
-          item.relational_display = $f.find('.cff-relational-display').val() || 'select';
-          item.relational_multiple = $f.find('.cff-relational-multiple-toggle').is(':checked');
+          var $fieldRelPanel = getOwnRelationalPanel($f);
+          item.relational_type = $fieldRelPanel.find('.cff-relational-type').first().val() || 'post';
+          item.relational_subtype = $fieldRelPanel.find('.cff-relational-subtype').first().val() || ($f.data('cff-relational-subtype') || '');
+          item.relational_display = $fieldRelPanel.find('.cff-relational-display').first().val() || 'select';
+          item.relational_multiple = $fieldRelPanel.find('.cff-relational-multiple-toggle').first().is(':checked');
         }
 
         if (type === 'repeater') {
@@ -1389,7 +1617,14 @@
           item.layouts = layouts;
         }
 
-        data.push(item);
+      return item;
+    }
+
+    function readFromDOM(){
+      var data = [];
+      $('#cff-field-list .cff-field-row').each(function(){
+        var item = readSingleField($(this));
+        if (item) data.push(item);
       });
       return data;
     }
@@ -1903,6 +2138,7 @@
         renderRelationalPanel($el, f);
         toggleRelationalPanel($el, f.type);
         togglePlaceholderRow($el, f.type || 'text');
+        getMediaOptions($el).maxUploadMb.val(normalizeMediaMaxUploadMb(f.max_upload_mb));
         var layoutValue = f.repeater_layout || 'default';
         var fieldRepeaterOptions = getFieldRepeaterOptions($el);
         fieldRepeaterOptions.layout.val(layoutValue);
@@ -1912,6 +2148,7 @@
         fieldRepeaterOptions.collapsed.prop('checked', !!f.repeater_collapsed);
         toggleRepeaterOptions($el, f.type || 'text');
         toggleDatetimeOptions($el, f.type || 'text');
+        toggleMediaOptions($el, f.type || 'text');
         $el.find('.cff-placeholder').val(f.placeholder || '');
         $el.find('.cff-required-toggle').prop('checked', !!f.required);
         $el.find('.cff-datetime-use-time-toggle').prop('checked', (f.datetime_use_time !== false));
@@ -1947,8 +2184,25 @@
       refreshReorderList();
 
       $('#cff-field-list').sortable({
+        connectWith: '.cff-group-fields',
         handle: '.cff-handle',
-        update: function(){ save(readFromDOM()); refreshReorderList(); }
+        update: function(){ save(readFromDOM()); refreshReorderList(); },
+        receive: function(event, ui){
+          if (ui.item.hasClass('cff-subfield')) {
+            var item = readSingleSubfield(ui.item);
+            if (!item) return;
+            var $replacement = renderField(item, Date.now());
+            ui.item.replaceWith($replacement);
+            save(readFromDOM());
+            refreshReorderList();
+            refreshConditionalFieldDropdowns();
+            $(document).trigger('cff:refresh', $replacement);
+          } else {
+            save(readFromDOM());
+            refreshReorderList();
+            refreshConditionalFieldDropdowns();
+          }
+        }
       });
 
       var $reorderList = $builderRoot.find('#cff-field-reorder-list');
@@ -1972,28 +2226,86 @@
         toggleSubRepeater($sub);
       });
 
+      initGroupDropzones($root);
       refreshConditionalFieldDropdowns();
       refreshSecondaryViews(data);
       $(document).trigger('cff:refresh', $root);
     }
 
-    function readSubfields($container){
-      if (!$container || !$container.length) return []; 
+    function renderField(f, i){
+      var html = CFF.utils.tmpl(tplField, {
+        i: i,
+        label: CFF.utils.escapeHtml(f.label || ''),
+        name: CFF.utils.escapeHtml(f.name || ''),
+        placeholder: CFF.utils.escapeHtml(f.placeholder || '')
+      });
 
-      var subs = [];
-      var seen = new Set();
+      var $el = $(html);
+      $el.addClass('is-collapsed');
+      $el.find('.cff-type').val(f.type || 'text');
 
-      function getTmpKey($sub){
-        var k = $sub.attr('data-tmpkey');
-        if (!k) {
-          k = 'tmp_' + Date.now() + '_' + Math.random().toString(16).slice(2);
-          $sub.attr('data-tmpkey', k);
-        }
-        return k;
+      toggleBuilders($el);
+      renderChoicesPanel($el, f);
+      toggleChoicePanel($el, f.type);
+      renderRelationalPanel($el, f);
+      toggleRelationalPanel($el, f.type);
+      togglePlaceholderRow($el, f.type || 'text');
+      getMediaOptions($el).maxUploadMb.val(normalizeMediaMaxUploadMb(f.max_upload_mb));
+      var layoutValue = f.repeater_layout || 'default';
+      var fieldRepeaterOptions = getFieldRepeaterOptions($el);
+      fieldRepeaterOptions.layout.val(layoutValue);
+      fieldRepeaterOptions.min.val(parseInt(f.min || 0, 10) || 0);
+      fieldRepeaterOptions.max.val(parseInt(f.max || 0, 10) || 0);
+      fieldRepeaterOptions.rowLabel.val(f.repeater_row_label || '');
+      fieldRepeaterOptions.collapsed.prop('checked', !!f.repeater_collapsed);
+      toggleRepeaterOptions($el, f.type || 'text');
+      toggleDatetimeOptions($el, f.type || 'text');
+      toggleMediaOptions($el, f.type || 'text');
+      $el.find('.cff-placeholder').val(f.placeholder || '');
+      $el.find('.cff-required-toggle').prop('checked', !!f.required);
+      $el.find('.cff-datetime-use-time-toggle').prop('checked', (f.datetime_use_time !== false));
+      renderConditionalPanel($el, f);
+      var fieldKey = CFF.utils.sanitizeName(f.key || '');
+      if (!fieldKey) fieldKey = 'fld_' + Math.random().toString(36).slice(2, 14);
+      $el.attr('data-field-key', fieldKey);
+      $el.data('field-key', fieldKey);
+      $el.attr('data-original-name', CFF.utils.sanitizeName(f.name || ''));
+      setAliasesAttr($el, 'data-field-aliases', Array.isArray(f.aliases) ? f.aliases : []);
+
+      if (f.type === 'repeater' && Array.isArray(f.sub_fields)) {
+        var $sf = $el.find('> .cff-advanced > .cff-subbuilder > .cff-subfields').first();
+        f.sub_fields.forEach(function(s, si){ $sf.append(renderSub(s, si)); });
+        sortableSubs($sf);
       }
 
-      $container.children('.cff-subfield').each(function(){
-        var $sub = $(this);
+      if (f.type === 'group' && Array.isArray(f.sub_fields)) {
+        var $gf = $el.find('> .cff-advanced > .cff-groupbuilder > .cff-group-fields').first();
+        f.sub_fields.forEach(function(s, si){ $gf.append(renderSub(s, si)); });
+        sortableSubs($gf);
+      }
+
+      if (f.type === 'flexible' && Array.isArray(f.layouts)) {
+        var $layouts = $el.find('.cff-layouts');
+        f.layouts.forEach(function(l, li){ $layouts.append(renderLayout(l, li)); });
+        sortableLayouts($layouts);
+      }
+
+      initGroupDropzones($el);
+      return $el;
+    }
+
+    function getTmpSubKey($sub){
+      var k = $sub.attr('data-tmpkey');
+      if (!k) {
+        k = 'tmp_' + Date.now() + '_' + Math.random().toString(16).slice(2);
+        $sub.attr('data-tmpkey', k);
+      }
+      return k;
+    }
+
+    function readSingleSubfield($sub){
+      if (!$sub || !$sub.length) return null;
+
         var $head = getFieldHeadRow($sub);
         var $meta = getFieldMetaRow($sub);
         var stype = $head.find('.cff-stype').first().val() || 'text';
@@ -2002,10 +2314,7 @@
         var name = CFF.utils.sanitizeName(rawName);
 
         // pakai name kalau ada, kalau kosong pakai tmpkey
-        var key = name || getTmpKey($sub);
-
-        if (seen.has(key)) return;
-        seen.add(key);
+        var key = name || getTmpSubKey($sub);
 
         var item = {
           label: $head.find('.cff-slabel').first().val() || '',
@@ -2030,6 +2339,9 @@
         setAliasesAttr($sub, 'data-field-aliases', subAliases);
 
         item.placeholder = $meta.find('.cff-placeholder').first().val() || '';
+        if (stype === 'image' || stype === 'file') {
+          item.max_upload_mb = normalizeMediaMaxUploadMb(getMediaOptions($sub).maxUploadMb.val());
+        }
         if (stype === 'datetime_picker') {
           item.datetime_use_time = $meta.find('.cff-datetime-use-time-toggle').first().is(':checked');
         }
@@ -2039,16 +2351,18 @@
         }
 
         if (stype === 'choice') {
-          item.choices = readChoices($meta.find('.cff-choices-list').first());
-          item.choice_display = $meta.find('.cff-choice-display').first().val() || 'select';
-          item.choice_default = $meta.find('.cff-choice-default').first().val() || '';
+          var $choicePanel = getOwnChoicePanel($sub);
+          item.choices = readChoices($choicePanel.find('.cff-choices-list').first());
+          item.choice_display = $choicePanel.find('.cff-choice-display').first().val() || 'select';
+          item.choice_default = $choicePanel.find('.cff-choice-default').first().val() || '';
         }
 
         if (stype === 'relational') {
-          item.relational_type = $meta.find('.cff-relational-type').first().val() || 'post';
-          item.relational_subtype = $meta.find('.cff-relational-subtype').first().val() || '';
-          item.relational_display = $meta.find('.cff-relational-display').first().val() || 'select';
-          item.relational_multiple = $meta.find('.cff-relational-multiple-toggle').first().is(':checked');
+          var $relPanel = getOwnRelationalPanel($sub);
+          item.relational_type = $relPanel.find('.cff-relational-type').first().val() || 'post';
+          item.relational_subtype = $relPanel.find('.cff-relational-subtype').first().val() || ($sub.data('cff-relational-subtype') || '');
+          item.relational_display = $relPanel.find('.cff-relational-display').first().val() || 'select';
+          item.relational_multiple = $relPanel.find('.cff-relational-multiple-toggle').first().is(':checked');
         }
 
         if (stype === 'group') {
@@ -2069,6 +2383,21 @@
           item.repeater_collapsed = subRepeaterOptions.collapsed.is(':checked');
         }
 
+      return item;
+    }
+
+    function readSubfields($container){
+      if (!$container || !$container.length) return []; 
+
+      var subs = [];
+      var seen = new Set();
+
+      $container.children('.cff-subfield').each(function(){
+        var item = readSingleSubfield($(this));
+        if (!item) return;
+        var key = item.name || item._tmp || item.key || '';
+        if (key && seen.has(key)) return;
+        if (key) seen.add(key);
         subs.push(item);
       });
 
@@ -2131,25 +2460,38 @@
     function bindEvents(){
       // Duplicate
       $root.on('click', '.cff-duplicate', function(){
-        var gi = $(this).closest('.cff-field-row').index();
-        var data = readFromDOM();
-        var item = data[gi] ? JSON.parse(JSON.stringify(data[gi])) : null;
+        var $row = $(this).closest('.cff-field-row');
+        var $list = $('#cff-field-list');
+        var item = readSingleField($row);
+        item = item ? JSON.parse(JSON.stringify(item)) : null;
         if (!item) return;
 
         item.name = '';
+        item.key = '';
         item.label = (item.label ? item.label + ' (Copy)' : '');
-        data.splice(gi + 1, 0, item);
-
-        save(data);
-        render();
+        var $clone = renderField(item, Date.now());
+        $row.after($clone);
+        if ($list.length) {
+          $list.sortable('refresh');
+        }
+        save(readFromDOM());
+        $(document).trigger('cff:refresh', $clone);
       });
 
       // Add field
       $root.on('click', '#cff-add-field', function(){
-        var data = readFromDOM();
-        data.push({ label:'', name:'', type:'text' });
-        save(data);
-        render();
+        var $list = $('#cff-field-list');
+        if (!$list.length) return;
+
+        var $field = renderField({ label:'', name:'', type:'text' }, Date.now());
+        $list.append($field);
+        if ($list.hasClass('ui-sortable')) {
+          $list.sortable('refresh');
+        }
+        save(readFromDOM());
+        refreshReorderList();
+        refreshConditionalFieldDropdowns();
+        $(document).trigger('cff:refresh', $field);
       });
 
       // Name input manual
@@ -2187,7 +2529,7 @@
       });
 
 
-      $root.on('input', '.cff-slabel, .cff-sname, .cff-stype, .cff-placeholder, .cff-choice-label, .cff-choice-value', CFF.utils.debounce(function(){
+      $root.on('input', '.cff-slabel, .cff-sname, .cff-stype, .cff-placeholder, .cff-choice-label, .cff-choice-value, .cff-max-upload-mb', CFF.utils.debounce(function(){
         var $panel = $(this).closest('.cff-field-choice');
         if ($panel.length) updateChoiceDefaultOptions($panel);
         save(readFromDOM());
@@ -2269,17 +2611,19 @@
       // Type change
       $root.on('change', '.cff-type', function(){
         var $row = $(this).closest('.cff-field-row');
+        var $rowRelPanel = getOwnRelationalPanel($row);
         toggleBuilders($row);
         toggleChoicePanel($row, $(this).val());
         toggleRelationalPanel($row, $(this).val());
         renderRelationalPanel($row, {
-          relational_type: $row.find('.cff-relational-type').val() || 'post',
-          relational_subtype: $row.find('.cff-relational-subtype').val() || '',
-          relational_display: $row.find('.cff-relational-display').val() || 'select',
-          relational_multiple: $row.find('.cff-relational-multiple-toggle').is(':checked'),
+          relational_type: $rowRelPanel.find('.cff-relational-type').first().val() || 'post',
+          relational_subtype: $rowRelPanel.find('.cff-relational-subtype').first().val() || '',
+          relational_display: $rowRelPanel.find('.cff-relational-display').first().val() || 'select',
+          relational_multiple: $rowRelPanel.find('.cff-relational-multiple-toggle').first().is(':checked'),
         });
         togglePlaceholderRow($row, $(this).val());
         toggleDatetimeOptions($row, $(this).val());
+        toggleMediaOptions($row, $(this).val());
         refreshConditionalFieldDropdowns();
         save(readFromDOM());
       });
@@ -2295,19 +2639,21 @@
 
       $root.on('change', '.cff-stype', function(){
         var $sub = $(this).closest('.cff-subfield');
+        var $subRelPanel = getOwnRelationalPanel($sub);
         toggleSubGroup($sub);
         toggleSubRepeater($sub);
         toggleChoicePanel($sub, $(this).val());
         togglePlaceholderRow($sub, $(this).val());
         renderRelationalPanel($sub, {
-          relational_type: $sub.find('.cff-relational-type').val() || 'post',
-          relational_subtype: $sub.find('.cff-relational-subtype').val() || '',
-          relational_display: $sub.find('.cff-relational-display').val() || 'select',
-          relational_multiple: $sub.find('.cff-relational-multiple-toggle').is(':checked'),
+          relational_type: $subRelPanel.find('.cff-relational-type').first().val() || 'post',
+          relational_subtype: $subRelPanel.find('.cff-relational-subtype').first().val() || '',
+          relational_display: $subRelPanel.find('.cff-relational-display').first().val() || 'select',
+          relational_multiple: $subRelPanel.find('.cff-relational-multiple-toggle').first().is(':checked'),
         });
         toggleRelationalPanel($sub, $(this).val());
         toggleRepeaterOptions($sub, $(this).val());
         toggleDatetimeOptions($sub, $(this).val());
+        toggleMediaOptions($sub, $(this).val());
         refreshConditionalFieldDropdowns();
         save(readFromDOM());
       });
@@ -2357,6 +2703,26 @@
         $(document).trigger('cff:refresh', $sub);
       });
 
+      $root.on('click', '.cff-duplicate-sub', function(){
+        var $sub = $(this).closest('.cff-subfield');
+        var $container = $sub.parent();
+        if (!$sub.length || !$container.length) return;
+
+        var item = readSingleSubfield($sub);
+        item = item ? JSON.parse(JSON.stringify(item)) : null;
+        if (!item) return;
+
+        item.name = '';
+        item._tmp = '';
+        item.key = '';
+        item.label = item.label ? item.label + ' (Copy)' : '';
+        var $clone = renderSub(item, Date.now());
+        $sub.after($clone);
+        sortableSubs($container);
+        save(readFromDOM());
+        $(document).trigger('cff:refresh', $clone);
+      });
+
       $root.on('click', '.cff-remove-sub', function(){
         if (!window.confirm('Remove this sub field?')) return;
         $(this).closest('.cff-subfield').remove();
@@ -2396,10 +2762,7 @@
 
       // Relational field configuration
       $root.on('change', '.cff-relational-type', function(){
-        var $ctx = $(this).closest('.cff-field-row');
-        if (!$ctx.length) {
-          $ctx = $(this).closest('.cff-subfield');
-        }
+        var $ctx = getRelationalContext($(this));
         updateRelationalSubtypeOptions($ctx);
         save(readFromDOM());
       });
@@ -2408,16 +2771,14 @@
         'change',
         '.cff-relational-subtype, .cff-relational-display, .cff-relational-multiple-toggle',
         function(){
-          var $ctx = $(this).closest('.cff-field-row');
-          if (!$ctx.length) $ctx = $(this).closest('.cff-subfield');
+          var $ctx = getRelationalContext($(this));
           save(readFromDOM());
         }
       );
 
 
       $root.on('change', '.cff-relational-subtype', function(){
-        var $ctx = $(this).closest('.cff-field-row');
-        if (!$ctx.length) $ctx = $(this).closest('.cff-subfield');
+        var $ctx = getRelationalContext($(this));
 
         $ctx.data('cff-relational-subtype', $(this).val() || '');
         save(readFromDOM());
