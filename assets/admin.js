@@ -54,6 +54,82 @@
     }
   };
 
+  CFF.confirm = (function(){
+    var $overlay, $title, $message, $confirm, $cancel;
+    var pendingAction = null;
+
+    function ensure(){
+      if ($overlay && $overlay.length) return;
+
+      $overlay = $(
+        '<div class="cff-confirm-overlay" hidden>' +
+          '<div class="cff-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="cff-confirm-title">' +
+            '<h2 id="cff-confirm-title" class="cff-confirm-title"></h2>' +
+            '<p class="cff-confirm-message"></p>' +
+            '<div class="cff-confirm-actions">' +
+              '<button type="button" class="button button-secondary cff-confirm-cancel"></button>' +
+              '<button type="button" class="button button-primary cff-confirm-accept"></button>' +
+            '</div>' +
+          '</div>' +
+        '</div>'
+      );
+
+      $('body').append($overlay);
+      $title = $overlay.find('.cff-confirm-title');
+      $message = $overlay.find('.cff-confirm-message');
+      $confirm = $overlay.find('.cff-confirm-accept');
+      $cancel = $overlay.find('.cff-confirm-cancel');
+
+      $overlay.on('click', function(e){
+        if (e.target === $overlay[0]) {
+          close();
+        }
+      });
+
+      $cancel.on('click', function(){
+        close();
+      });
+
+      $confirm.on('click', function(){
+        var action = pendingAction;
+        close();
+        if (typeof action === 'function') {
+          action();
+        }
+      });
+
+      $(document).on('keydown.cffConfirm', function(e){
+        if (!$overlay || $overlay.attr('hidden')) return;
+        if (e.key === 'Escape') {
+          close();
+        }
+      });
+    }
+
+    function open(options){
+      ensure();
+      options = options || {};
+      pendingAction = typeof options.onConfirm === 'function' ? options.onConfirm : null;
+      $title.text(options.title || 'Confirm action');
+      $message.text(options.message || 'Are you sure you want to continue?');
+      $cancel.text(options.cancelText || 'Cancel');
+      $confirm.text(options.confirmText || 'Delete');
+      $overlay.removeAttr('hidden');
+      $confirm.trigger('focus');
+    }
+
+    function close(){
+      pendingAction = null;
+      if ($overlay) {
+        $overlay.attr('hidden', 'hidden');
+      }
+    }
+
+    return {
+      open: open
+    };
+  })();
+
   /* -------------------------
    * Tabs
    * ------------------------- */
@@ -208,6 +284,16 @@
               '</span>' +
             '</div>' +
             '<div class="cff-row-media-options">' +
+              '<label>File Library</label>' +
+              '<select class="cff-input cff-file-library cff-select2">' +
+                '<option value="all">All files</option>' +
+                '<option value="pdf">PDF only</option>' +
+                '<option value="excel">Excel only</option>' +
+                '<option value="word">Word only</option>' +
+                '<option value="image">Images only</option>' +
+                '<option value="video">Video only</option>' +
+                '<option value="document">Document bundle</option>' +
+              '</select>' +
               '<label>Max Upload Size (MB)</label>' +
               '<input type="number" class="cff-input cff-max-upload-mb" min="1" step="1" value="2">' +
               '<p class="description">Default 2 MB. Set a larger value for this image or file field only.</p>' +
@@ -323,6 +409,12 @@
               '<div class="cff-subhead"><strong>Sub Fields (Repeater)</strong> ' +
                 '<button type="button" class="button cff-add-sub">Add Sub Field</button>' +
               '</div>' +
+              '<div class="cff-subfields-table-head" aria-hidden="true">' +
+                '<div>Label</div>' +
+                '<div>Name</div>' +
+                '<div>Type</div>' +
+                '<div>Actions</div>' +
+              '</div>' +
               '<div class="cff-subfields"></div>' +
             '</div>' +
             '<div class="cff-groupbuilder" data-kind="group">' +
@@ -406,6 +498,7 @@
                   '<option value="grid">Grid (multi-column)</option>' +
                   '<option value="row">Row (single horizontal row)</option>' +
                   '<option value="gallery">Gallery Images</option>' +
+                  '<option value="table">Table (fill values inline)</option>' +
                 '</select>' +
                 '<p class="description">Choose how each repeater row is presented while editing.</p>' +
                 '<div class="cff-row-repeater-advanced">' +
@@ -440,6 +533,16 @@
               '</span>' +
             '</div>' +
             '<div class="cff-row-media-options">' +
+              '<label>File Library</label>' +
+              '<select class="cff-input cff-file-library cff-select2">' +
+                '<option value="all">All files</option>' +
+                '<option value="pdf">PDF only</option>' +
+                '<option value="excel">Excel only</option>' +
+                '<option value="word">Word only</option>' +
+                '<option value="image">Images only</option>' +
+                '<option value="video">Video only</option>' +
+                '<option value="document">Document bundle</option>' +
+              '</select>' +
               '<label>Max Upload Size (MB)</label>' +
               '<input type="number" class="cff-input cff-max-upload-mb" min="1" step="1" value="2">' +
               '<p class="description">Default 2 MB. Set a larger value for this image or file field only.</p>' +
@@ -551,10 +654,16 @@
               '</div>' +
             '</div>' +
           '</div>' +
-          '<div class="cff-subbuilder cff-subrepeater" data-kind="repeater">' +
-            '<div class="cff-subhead">' +
+            '<div class="cff-subbuilder cff-subrepeater" data-kind="repeater">' +
+              '<div class="cff-subhead">' +
               '<strong>Sub Fields (Repeater)</strong>' +
               '<button type="button" class="button cff-add-sub">Add Sub Field</button>' +
+            '</div>' +
+            '<div class="cff-subfields-table-head" aria-hidden="true">' +
+              '<div>Label</div>' +
+              '<div>Name</div>' +
+              '<div>Type</div>' +
+              '<div>Actions</div>' +
             '</div>' +
             '<div class="cff-subfields"></div>' +
           '</div>' +
@@ -682,6 +791,15 @@
       return $();
     }
 
+    function syncRepeaterBuilderLayout($element){
+      if (!$element || !$element.length) return;
+      var type = String(($element.find('.cff-type').val() || $element.find('.cff-stype').val() || '')).trim();
+      var layout = String(($element.find('.cff-repeater-layout').first().val() || 'default')).trim();
+      var isTable = type === 'repeater' && layout === 'table';
+      $element.toggleClass('cff-repeater-builder-table', isTable);
+      $element.find('> .cff-advanced > .cff-subbuilder, > .cff-subbuilder').toggleClass('is-table-layout', isTable);
+    }
+
     function toggleRepeaterOptions($element, type){
       if (!$element || !$element.length) return;
       var $meta = getFieldMetaRow($element);
@@ -692,6 +810,7 @@
         selected = ($element.find('.cff-type').val() || $element.find('.cff-stype').val() || '').trim();
       }
       $row.toggle(selected === 'repeater');
+      syncRepeaterBuilderLayout($element);
     }
 
     function toggleDatetimeOptions($element, type){
@@ -743,8 +862,15 @@
     function getMediaOptions($element){
       var $meta = getFieldMetaRow($element);
       return {
+        fileLibrary: $meta.children('.cff-row-media-options').find('.cff-file-library').first(),
         maxUploadMb: $meta.children('.cff-row-media-options').find('.cff-max-upload-mb').first()
       };
+    }
+
+    function normalizeFileLibrary(value){
+      var normalized = String(value || '').trim();
+      var allowed = ['all', 'pdf', 'excel', 'word', 'image', 'video', 'document'];
+      return allowed.indexOf(normalized) !== -1 ? normalized : 'document';
     }
 
     function normalizeMediaMaxUploadMb(value){
@@ -999,6 +1125,7 @@
       });
       toggleRelationalPanel($el, s.type || 'text');
       $el.find('.cff-placeholder').val(s.placeholder || '');
+      getMediaOptions($el).fileLibrary.val(normalizeFileLibrary(s.file_library));
       getMediaOptions($el).maxUploadMb.val(normalizeMediaMaxUploadMb(s.max_upload_mb));
       $el.find('.cff-required-toggle').prop('checked', !!s.required);
       $el.find('.cff-datetime-use-time-toggle').prop('checked', (s.datetime_use_time !== false));
@@ -1027,6 +1154,7 @@
       subRepeaterOptions.rowLabel.val(s.repeater_row_label || '');
       subRepeaterOptions.collapsed.prop('checked', !!s.repeater_collapsed);
       toggleRepeaterOptions($el, s.type || 'text');
+      syncRepeaterBuilderLayout($el);
       $(document).trigger('cff:refresh', $el);
       return $el;
     }
@@ -1557,6 +1685,7 @@
         item.required = $f.find('.cff-required-toggle').is(':checked');
         item.placeholder = $f.find('.cff-placeholder').val() || '';
         if (type === 'image' || type === 'file') {
+          item.file_library = normalizeFileLibrary(getMediaOptions($f).fileLibrary.val());
           item.max_upload_mb = normalizeMediaMaxUploadMb(getMediaOptions($f).maxUploadMb.val());
         }
         if (type === 'datetime_picker') {
@@ -1702,7 +1831,8 @@
         simple: 'Simple',
         grid: 'Grid',
         row: 'Row',
-        gallery: 'Gallery Images'
+        gallery: 'Gallery Images',
+        table: 'Table'
       };
       var key = String(layout || 'default').trim();
       return map[key] || typeLabel(key);
@@ -2138,6 +2268,7 @@
         renderRelationalPanel($el, f);
         toggleRelationalPanel($el, f.type);
         togglePlaceholderRow($el, f.type || 'text');
+        getMediaOptions($el).fileLibrary.val(normalizeFileLibrary(f.file_library));
         getMediaOptions($el).maxUploadMb.val(normalizeMediaMaxUploadMb(f.max_upload_mb));
         var layoutValue = f.repeater_layout || 'default';
         var fieldRepeaterOptions = getFieldRepeaterOptions($el);
@@ -2147,6 +2278,7 @@
         fieldRepeaterOptions.rowLabel.val(f.repeater_row_label || '');
         fieldRepeaterOptions.collapsed.prop('checked', !!f.repeater_collapsed);
         toggleRepeaterOptions($el, f.type || 'text');
+        syncRepeaterBuilderLayout($el);
         toggleDatetimeOptions($el, f.type || 'text');
         toggleMediaOptions($el, f.type || 'text');
         $el.find('.cff-placeholder').val(f.placeholder || '');
@@ -2250,6 +2382,7 @@
       renderRelationalPanel($el, f);
       toggleRelationalPanel($el, f.type);
       togglePlaceholderRow($el, f.type || 'text');
+      getMediaOptions($el).fileLibrary.val(normalizeFileLibrary(f.file_library));
       getMediaOptions($el).maxUploadMb.val(normalizeMediaMaxUploadMb(f.max_upload_mb));
       var layoutValue = f.repeater_layout || 'default';
       var fieldRepeaterOptions = getFieldRepeaterOptions($el);
@@ -2259,6 +2392,7 @@
       fieldRepeaterOptions.rowLabel.val(f.repeater_row_label || '');
       fieldRepeaterOptions.collapsed.prop('checked', !!f.repeater_collapsed);
       toggleRepeaterOptions($el, f.type || 'text');
+      syncRepeaterBuilderLayout($el);
       toggleDatetimeOptions($el, f.type || 'text');
       toggleMediaOptions($el, f.type || 'text');
       $el.find('.cff-placeholder').val(f.placeholder || '');
@@ -2340,6 +2474,7 @@
 
         item.placeholder = $meta.find('.cff-placeholder').first().val() || '';
         if (stype === 'image' || stype === 'file') {
+          item.file_library = normalizeFileLibrary(getMediaOptions($sub).fileLibrary.val());
           item.max_upload_mb = normalizeMediaMaxUploadMb(getMediaOptions($sub).maxUploadMb.val());
         }
         if (stype === 'datetime_picker') {
@@ -2566,6 +2701,12 @@
       });
 
       $root.on('change', '.cff-repeater-layout', function(){
+        syncRepeaterBuilderLayout($(this).closest('.cff-field-row, .cff-subfield'));
+        save(readFromDOM());
+      });
+
+      $(document).on('submit', '#post', function(){
+        if (!$root.length || !$input.length) return;
         save(readFromDOM());
       });
 
@@ -2676,9 +2817,15 @@
 
       // Remove field
       $root.on('click', '.cff-remove', function(){
-        if (!window.confirm('Are you sure you want to remove this field?')) return;
-        $(this).closest('.cff-field-row').remove();
-        save(readFromDOM());
+        var $button = $(this);
+        CFF.confirm.open({
+          title: 'Delete field',
+          message: 'Are you sure you want to remove this field?',
+          onConfirm: function(){
+            $button.closest('.cff-field-row').remove();
+            save(readFromDOM());
+          }
+        });
       });
 
       // Repeater add/remove sub
@@ -2724,9 +2871,15 @@
       });
 
       $root.on('click', '.cff-remove-sub', function(){
-        if (!window.confirm('Remove this sub field?')) return;
-        $(this).closest('.cff-subfield').remove();
-        save(readFromDOM());
+        var $button = $(this);
+        CFF.confirm.open({
+          title: 'Delete sub field',
+          message: 'Remove this sub field?',
+          onConfirm: function(){
+            $button.closest('.cff-subfield').remove();
+            save(readFromDOM());
+          }
+        });
       });
 
       // Flexible add/remove layout
@@ -2739,9 +2892,15 @@
       });
 
       $root.on('click', '.cff-remove-layout', function(){
-        if (!window.confirm('Discard this layout?')) return;
-        $(this).closest('.cff-layout').remove();
-        save(readFromDOM());
+        var $button = $(this);
+        CFF.confirm.open({
+          title: 'Delete layout',
+          message: 'Discard this layout?',
+          onConfirm: function(){
+            $button.closest('.cff-layout').remove();
+            save(readFromDOM());
+          }
+        });
       });
 
       $root.on('click', '.cff-toggle-layout', function(){
@@ -3471,7 +3630,6 @@
         if (!$select.length || !$reorder.length || !$list.length) return;
 
         $meta.data('cffMetaboxInit', true);
-        console.log('[CFF.metaboxReorder] init metabox', $meta[0]);
         buildList($list, $meta, 0);
         toggleReorder($meta, $select.val());
 
@@ -3502,7 +3660,6 @@
     }
 
     function buildList($list, $meta, attempt){
-      console.log('[CFF.metaboxReorder] buildList, meta', $meta[0], 'attempt', attempt);
       var $fields = getFields($meta);
       if (!$fields.length) {
         if (attempt < MAX_RETRIES) {
@@ -4135,6 +4292,24 @@
    * Boot
    * ------------------------- */
   $(function(){
+    $(document).on('click', '.cff-requires-confirm', function(e){
+      var $button = $(this);
+      var submit = $button.data('confirmSubmit');
+      if (!submit) return;
+
+      e.preventDefault();
+      CFF.confirm.open({
+        title: $button.data('confirmTitle') || 'Confirm action',
+        message: $button.data('confirmMessage') || 'Are you sure you want to continue?',
+        onConfirm: function(){
+          var form = $button.closest('form');
+          if (form.length) {
+            form.trigger('submit');
+          }
+        }
+      });
+    });
+
     CFF.tabs.init();
     CFF.fieldBuilder.init();
      CFF.locationBuilder.init();

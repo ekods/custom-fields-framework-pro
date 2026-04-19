@@ -11,6 +11,17 @@ jQuery(function($){
     return 'row_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
   }
 
+  function confirmRemoveRow(message){
+    return window.confirm(String(message || 'Delete this row?'));
+  }
+
+  function getRepeaterRowsWrap($rep){
+    if (!$rep || !$rep.length) return $();
+    var $rows = $rep.children('.cff-rep-rows').first();
+    if ($rows.length) return $rows;
+    return $rep.find('> .cff-rep-table > .cff-rep-rows').first();
+  }
+
   /* -------------------------
    * WYSIWYG init/remove (single source of truth)
    * ------------------------- */
@@ -57,12 +68,16 @@ jQuery(function($){
     var $id = $wrap.find('.cff-media-id');
     var $url = $wrap.find('.cff-media-url');
     var $preview = $wrap.find('.cff-media-preview');
+    var $actions = $preview.find('.cff-media-actions').detach();
 
     $id.val(id || '');
     if ($url.length) $url.val('');
 
     if (!id){
       $preview.empty().append($('<span/>', { class: 'cff-muted', text: 'No file selected' }));
+      if ($actions.length) {
+        $preview.append($actions);
+      }
       return;
     }
 
@@ -72,6 +87,9 @@ jQuery(function($){
         $('<strong/>', { text: String(id) })
       )
     );
+    if ($actions.length) {
+      $preview.append($actions);
+    }
   }
 
   function getMediaMaxUploadMb($wrap){
@@ -136,6 +154,26 @@ jQuery(function($){
   function getMediaViewSettings(){
     if (!window.wp || !wp.media || !wp.media.view || !wp.media.view.settings) return null;
     return wp.media.view.settings;
+  }
+
+  function getMediaLibraryTypes($wrap, type){
+    if (type === 'image') {
+      return ['image', 'video'];
+    }
+
+    var raw = String($wrap.attr('data-library-types') || '').trim();
+    if (!raw) return [];
+
+    try {
+      var parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.filter(function(item){
+          return typeof item === 'string' && $.trim(item) !== '';
+        });
+      }
+    } catch (e) {}
+
+    return [];
   }
 
   function overrideMediaUtilsValidateFileSize(maxUploadMb){
@@ -401,6 +439,7 @@ jQuery(function($){
     if (!window.wp || !wp.media) return;
 
     var maxUploadMb = getMediaMaxUploadMb($wrap);
+    var libraryTypes = getMediaLibraryTypes($wrap, type);
     var globalParams = getGlobalUploaderMultipartParams();
     var previousUploadLimit = globalParams && Object.prototype.hasOwnProperty.call(globalParams, 'tk_upload_limit_mb')
       ? globalParams.tk_upload_limit_mb
@@ -424,7 +463,7 @@ jQuery(function($){
       title: (type === 'image') ? 'Select media' : 'Select file',
       button: { text: 'Use this' },
       multiple: false,
-      library: (type === 'image') ? { type: ['image', 'video'] } : {}
+      library: libraryTypes.length ? { type: libraryTypes } : {}
     });
 
     frame.on('open', function(){
@@ -480,13 +519,18 @@ jQuery(function($){
       $wrap.find('input.cff-media-id').val(att.id).trigger('change');
       $wrap.find('input.cff-media-url').val(att.url || '');
 
-      var $preview = $wrap.find('.cff-media-preview').empty();
+      var $preview = $wrap.find('.cff-media-preview');
+      var $actions = $preview.find('.cff-media-actions').detach();
+      $preview.empty();
 
       if (att.type === 'video' || (att.mime && String(att.mime).indexOf('video/') === 0)) {
         if (att.url) {
           var $video = $('<video>', { class: 'cff-media-video', controls: true, preload: 'metadata' });
           $('<source>', { src: att.url, type: att.mime || '' }).appendTo($video);
           $video.appendTo($preview);
+          if ($actions.length) {
+            $preview.append($actions);
+          }
           return;
         }
       }
@@ -500,6 +544,9 @@ jQuery(function($){
         if (imgUrl) {
           $('<img>', { src: imgUrl, class: 'cff-media-thumb', css:{ maxWidth:'150px', height:'auto', display:'block' } })
             .appendTo($preview);
+          if ($actions.length) {
+            $preview.append($actions);
+          }
           return;
         }
       }
@@ -509,6 +556,9 @@ jQuery(function($){
           .appendTo($preview);
       } else {
         $preview.append($('<span/>', { class:'cff-muted', text:'Selected (ID: ' + att.id + ')' }));
+      }
+      if ($actions.length) {
+        $preview.append($actions);
       }
     });
 
@@ -758,7 +808,7 @@ jQuery(function($){
     }
     if (!parent) return;
 
-    var $rowsWrap = $rep.children('.cff-rep-rows').first();
+    var $rowsWrap = getRepeaterRowsWrap($rep);
     $rowsWrap.children('.cff-rep-row').each(function(newIndex){
       var $row = $(this);
 
@@ -852,8 +902,9 @@ jQuery(function($){
   }
 
   function updateRepeaterRowTitles($rep){
+    if (String($rep.data('layout') || '') === 'table') return;
     var rowLabelField = String($rep.data('row-label') || '');
-    $rep.children('.cff-rep-rows').first().children('.cff-rep-row').each(function(index){
+    getRepeaterRowsWrap($rep).children('.cff-rep-row').each(function(index){
       var $row = $(this);
       var title = 'Row ' + (index + 1);
       var labelValue = getRepeaterRowLabelValue($row, rowLabelField);
@@ -868,15 +919,18 @@ jQuery(function($){
     var tpl = $rep.children('.cff-rep-template').first().html();
     if (!tpl) return $();
 
-    var $rows = $rep.children('.cff-rep-rows').first();
+    var $rows = getRepeaterRowsWrap($rep);
     var idx = $rows.children('.cff-rep-row').length;
     tpl = cffReplaceAll(tpl, '__INDEX__', String(idx));
     tpl = cffReplaceAll(tpl, '__ROWID__', generateRowId());
+    var layout = String($rep.data('layout') || '');
     var $new = $(tpl);
+    if (layout === 'table') {
+      $new = $new.find('.cff-rep-row').first();
+    }
 
     var collapseDefault = String($rep.data('collapsed-default') || '') === '1';
-    var layout = String($rep.data('layout') || '');
-    if (collapseDefault && layout !== 'simple' && layout !== 'gallery') {
+    if (collapseDefault && layout !== 'simple' && layout !== 'gallery' && layout !== 'table') {
       $new.addClass('is-collapsed');
     }
 
@@ -907,7 +961,7 @@ jQuery(function($){
       if (!rowId) rowId = generateRowId();
       $row.attr('data-row-id', rowId);
 
-      var $input = $row.find('> .cff-rep-row-body > .cff-row-id, > .cff-row-id').first();
+      var $input = $row.find('.cff-row-id').first();
       if (!$input.length) {
         return;
       }
@@ -1046,7 +1100,7 @@ jQuery(function($){
 
   function ensureRepeaterMinRows($rep){
     var limits = getRepeaterMinMax($rep);
-    var $rows = $rep.children('.cff-rep-rows').first();
+    var $rows = getRepeaterRowsWrap($rep);
     var guard = 0;
     while ($rows.children('.cff-rep-row').length < limits.min && guard < 100) {
       createRepeaterRowFromTemplate($rep);
@@ -1056,7 +1110,7 @@ jQuery(function($){
 
 
   function updateRepeaterControls($rep){
-    var $rowsWrap = $rep.children('.cff-rep-rows').first();
+    var $rowsWrap = getRepeaterRowsWrap($rep);
     var count = $rowsWrap.children('.cff-rep-row').length;
     var limits = getRepeaterMinMax($rep);
     var min = limits.min;
@@ -1130,7 +1184,7 @@ jQuery(function($){
 
       var $rep = $(this).closest('.cff-repeater');
       var limits = getRepeaterMinMax($rep);
-      var count = $rep.children('.cff-rep-rows').first().children('.cff-rep-row').length;
+      var count = getRepeaterRowsWrap($rep).children('.cff-rep-row').length;
       if (limits.max > 0 && count >= limits.max) return;
 
       createRepeaterRowFromTemplate($rep);
@@ -1148,8 +1202,9 @@ jQuery(function($){
       var $rep = $(this).closest('.cff-repeater');
       var $row = $(this).closest('.cff-rep-row');
       var limits = getRepeaterMinMax($rep);
-      var count = $rep.children('.cff-rep-rows').first().children('.cff-rep-row').length;
+      var count = getRepeaterRowsWrap($rep).children('.cff-rep-row').length;
       if (count <= limits.min) return;
+      if (!confirmRemoveRow('Delete this row?')) return;
 
       window.cffRemoveWysiwyg($row);
       $row.remove();
@@ -1168,7 +1223,7 @@ jQuery(function($){
       var $rep = $(this).closest('.cff-repeater');
       var $source = $(this).closest('.cff-rep-row');
       var limits = getRepeaterMinMax($rep);
-      var count = $rep.children('.cff-rep-rows').first().children('.cff-rep-row').length;
+      var count = getRepeaterRowsWrap($rep).children('.cff-rep-row').length;
       if (limits.max > 0 && count >= limits.max) return;
 
       var $new = createRepeaterRowFromTemplate($rep);
@@ -1176,7 +1231,7 @@ jQuery(function($){
         copyRepeaterRowValues($source, $new);
         var newRowId = generateRowId();
         $new.attr('data-row-id', newRowId);
-        $new.find('> .cff-rep-row-body > .cff-row-id, > .cff-row-id').first().val(newRowId);
+        $new.find('.cff-row-id').first().val(newRowId);
       }
       updateRepeaterRowTitles($rep);
       updateRepeaterControls($rep);
@@ -1205,6 +1260,7 @@ jQuery(function($){
       e.preventDefault();
       var $flex = $(this).closest('.cff-flexible');
       var $row = $(this).closest('.cff-flex-row');
+      if (!confirmRemoveRow('Delete this layout row?')) return;
       window.cffRemoveWysiwyg($row);
       $row.remove();
       reindexFlexible($flex);

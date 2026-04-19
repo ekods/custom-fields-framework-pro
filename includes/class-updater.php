@@ -2,6 +2,9 @@
 if (!defined('ABSPATH')) exit;
 
 class CFF_Github_Public_Updater {
+  const RELEASE_TRANSIENT_KEY = 'cffp_github_release_latest';
+  const RELEASE_TRANSIENT_TTL = 1800;
+
   private $plugin_file;
   private $plugin_basename;
   private $plugin_slug;
@@ -33,6 +36,12 @@ class CFF_Github_Public_Updater {
   }
 
   private function gh($url){
+    $cache_key = self::RELEASE_TRANSIENT_KEY . '_' . md5($url);
+    $cached = get_site_transient($cache_key);
+    if (is_array($cached)) {
+      return $cached;
+    }
+
     $res = wp_remote_get($url, [
       'timeout' => 20,
       'headers' => [
@@ -40,12 +49,23 @@ class CFF_Github_Public_Updater {
         'Accept'     => 'application/vnd.github+json',
       ],
     ]);
-    if (is_wp_error($res)) return null;
+    if (is_wp_error($res)) {
+      return null;
+    }
 
     $code = wp_remote_retrieve_response_code($res);
-    if ($code < 200 || $code >= 300) return null;
+    if ($code < 200 || $code >= 300) {
+      return null;
+    }
 
-    return json_decode(wp_remote_retrieve_body($res), true);
+    $body = json_decode(wp_remote_retrieve_body($res), true);
+    if (!is_array($body)) {
+      return null;
+    }
+
+    set_site_transient($cache_key, $body, self::RELEASE_TRANSIENT_TTL);
+
+    return $body;
   }
 
   public function inject_update($transient){

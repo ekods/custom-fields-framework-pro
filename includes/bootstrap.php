@@ -5,6 +5,8 @@ if (!defined('ABSPATH')) exit;
 require_once __DIR__ . '/class-activation.php';
 require_once __DIR__ . '/class-deactivation.php';
 require_once __DIR__ . '/class-plugin.php';
+require_once __DIR__ . '/class-rest-fields.php';
+require_once __DIR__ . '/class-tools-page.php';
 require_once __DIR__ . '/helpers/acf-compat.php';
 require_once __DIR__ . '/helpers/frontend-helpers.php';
 require_once __DIR__ . '/helpers/frontend-shortcodes.php';

@@ -129,6 +129,8 @@ Kemampuan utama:
 
 Plugin juga membuat submenu reorder per post type secara dinamis.
 
+Pada panel **Editor UI Settings**, Anda juga bisa menentukan apakah data CFF tetap disimpan atau dihapus saat plugin di-uninstall.
+
 ### 1.4 Instalasi
 
 1. Upload plugin ke `wp-content/plugins/custom-fields-framework-pro`.
@@ -187,6 +189,11 @@ Shortcode frontend:
 - `[cff_items group_id="123"]...[/cff_items]`
 - `[cff_loop candidates="gallery_1,huge_image,detail_2"]...[/cff_loop]`
 
+Shortcode di frontend PHP:
+- `echo do_shortcode('[cff_value name="headline"]');`
+- `echo do_shortcode('[cff_item name="hero_media" class="hero-media" alt="Hero media"]');`
+- `echo do_shortcode('[cff_items group_id="123"]<section>[cff_item]</section>[/cff_items]');`
+
 ### 1.7 Contoh Penggunaan (Frontend Helper)
 
 ```php
@@ -226,6 +233,24 @@ Contoh shortcode single field:
 [cff_item name="subtitle" default="Tidak ada subtitle"]
 ```
 
+Contoh shortcode jika dipanggil dari file PHP frontend:
+
+```php
+<?php
+echo do_shortcode('[cff_value name="headline"]');
+
+echo do_shortcode('[cff_item name="hero_media" class="hero-media" alt="Hero media"]');
+
+echo do_shortcode(
+  '[cff_items group_id="123"]' .
+    '<section class="section-[cff_item key=\'name\']">' .
+      '<h2>[cff_item key=\'label\']</h2>' .
+      '[cff_item]' .
+    '</section>' .
+  '[/cff_items]'
+);
+```
+
 Contoh shortcode loop untuk render urutan field hasil reorder:
 
 ```text
@@ -251,6 +276,7 @@ Catatan:
 - `[cff_field]` di dalam `[cff_loop]` default mengambil `value`.
 - `[cff_item]` adalah alias yang sama untuk `[cff_field]`.
 - `[cff_items]` adalah alias yang sama untuk `[cff_loop]`.
+- Di file PHP frontend, gunakan `do_shortcode()` untuk menjalankan shortcode yang sama.
 - Gunakan `key="label"`, `key="name"`, atau `key="type"` untuk properti field aktif.
 - Untuk cross-page, gunakan `post_id` atau `page_id`.
 - Untuk Polylang, gunakan `lang="en"` atau biarkan kosong agar mengikuti bahasa aktif.

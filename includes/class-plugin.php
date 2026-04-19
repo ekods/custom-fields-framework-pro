@@ -4,10 +4,26 @@ if (!defined('ABSPATH')) exit;
 
 class Plugin {
   private static $instance = null;
+  private $tools_page = null;
+  private $rest_fields = null;
 
   public static function instance() {
     if (self::$instance === null) self::$instance = new self();
     return self::$instance;
+  }
+
+  private function tools_page() {
+    if ($this->tools_page === null) {
+      $this->tools_page = new Tools_Page($this);
+    }
+    return $this->tools_page;
+  }
+
+  private function rest_fields() {
+    if ($this->rest_fields === null) {
+      $this->rest_fields = new Rest_Fields($this);
+    }
+    return $this->rest_fields;
   }
 
   public static function register_cpt() {
@@ -538,6 +554,22 @@ TEXT;
 [/cff_items]
 TEXT;
 
+    $shortcode_php_snippet = <<<'PHP'
+<?php
+echo do_shortcode('[cff_value name="headline"]');
+
+echo do_shortcode('[cff_item name="hero_media" class="hero-media" alt="Hero media"]');
+
+echo do_shortcode('
+  [cff_items group_id="123"]
+    <section class="section-[cff_item key="name"]">
+      <h2>[cff_item key="label"]</h2>
+      [cff_item]
+    </section>
+  [/cff_items]
+');
+PHP;
+
     $shortcode_image_snippet = <<<'TEXT'
 [cff_item name="hero_media" class="hero-media" alt="Hero media"]
 
@@ -700,7 +732,11 @@ TEXT;
     echo '</div>';
 
     echo '<div class="cff-doc-grid">';
+    echo '<div class="cff-doc-card"><h2>' . esc_html__('Use Shortcode In PHP', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($shortcode_php_snippet) . '</pre><div class="cff-doc-note">' . esc_html__('Use do_shortcode() when you need the same shortcode output inside theme files, template parts, or custom frontend PHP.', 'cff') . '</div></div>';
     echo '<div class="cff-doc-card"><h2>' . esc_html__('Cross Page + Polylang', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($shortcode_candidates_snippet) . '</pre></div>';
+    echo '</div>';
+
+    echo '<div class="cff-doc-grid">';
     echo '<div class="cff-doc-card"><h2>' . esc_html__('Image / Video Auto Render', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($shortcode_image_snippet) . '</pre><div class="cff-doc-note">' . esc_html__('Use the same [cff_item] shortcode for image or video fields. CFF detects the media type automatically from the value.', 'cff') . '</div></div>';
     echo '</div>';
 
@@ -718,6 +754,7 @@ TEXT;
     echo '<div class="cff-doc-card"><h2>' . esc_html__('Shortcode Notes', 'cff') . '</h2><ul class="cff-doc-list">';
     echo '<li>' . esc_html__('Use shortcode when content needs to stay clean in page builder/editor.', 'cff') . '</li>';
     echo '<li>' . esc_html__('For one field only, use [cff_value] or [cff_item name="..."].', 'cff') . '</li>';
+    echo '<li>' . esc_html__('Inside PHP templates, call the same shortcode with do_shortcode().', 'cff') . '</li>';
     echo '<li>' . esc_html__('Use the same [cff_item] shortcode for image and video. Output type is detected automatically.', 'cff') . '</li>';
     echo '<li>' . esc_html__('When the value is image, shortcode renders <img>. When the value is video, shortcode renders <video>.', 'cff') . '</li>';
     echo '<li>' . esc_html__('Relational values render readable labels automatically for posts, terms, and users.', 'cff') . '</li>';
@@ -755,365 +792,14 @@ TEXT;
   }
 
   public function register_rest_fields() {
-    $post_types = get_post_types(['show_in_rest' => true], 'names');
-    if (!is_array($post_types) || !$post_types) return;
-
-    foreach ($post_types as $post_type) {
-      $post_type = sanitize_key($post_type);
-      if (!$post_type) continue;
-      if (in_array($post_type, ['cff_group', 'cff_options', 'revision'], true)) continue;
-
-      $writable = (bool) apply_filters('cff_rest_fields_writable', true, $post_type);
-      $schema_properties = $this->build_rest_schema_properties_for_post_type($post_type);
-
-      register_rest_field($post_type, 'cff', [
-        'get_callback' => function($object) use ($post_type) {
-          $post_id = absint($object['id'] ?? 0);
-          if (!$post_id) return [];
-          return $this->get_rest_cff_payload($post_id, $post_type);
-        },
-        'update_callback' => $writable ? function($value, $object) use ($post_type) {
-          $post_id = absint($object->ID ?? 0);
-          if (!$post_id) return new \WP_Error('cff_rest_invalid_post', __('Invalid post object.', 'cff'), ['status' => 400]);
-          return $this->update_rest_cff_payload($post_id, $post_type, $value);
-        } : null,
-        'schema' => [
-          'description' => __('Custom Fields Framework values.', 'cff'),
-          'type' => 'object',
-          'context' => ['view', 'edit'],
-          'readonly' => !$writable,
-          'properties' => $schema_properties,
-          'additionalProperties' => true,
-        ],
-      ]);
-    }
+    $this->rest_fields()->register();
   }
-
-  private function get_rest_cff_payload($post_id, $post_type) {
-    $post = get_post($post_id);
-    if (!$post || $post->post_type !== $post_type) return [];
-
-    $definitions = $this->get_field_definitions_for_post($post);
-    if (!$definitions) {
-      $definitions = $this->get_field_definitions_for_post_type($post_type);
-    }
-
-    $format_value = (bool) apply_filters('cff_rest_fields_format_value', true, $post_type, $post_id);
-    $out = [];
-    foreach ($definitions as $name => $field) {
-      $name = sanitize_key($name);
-      if (!$name) continue;
-
-      if ($format_value && function_exists(__NAMESPACE__ . '\get_field')) {
-        $out[$name] = get_field($name, $post_id, true);
-      } else {
-        $out[$name] = get_post_meta($post_id, $this->meta_key($name), true);
-      }
-    }
-    return $out;
-  }
-
-  private function update_rest_cff_payload($post_id, $post_type, $value) {
-    if (is_object($value)) {
-      $value = (array) $value;
-    }
-    if (!is_array($value)) {
-      return new \WP_Error('cff_rest_invalid_payload', __('CFF payload must be an object.', 'cff'), ['status' => 400]);
-    }
-    if (!current_user_can('edit_post', $post_id)) {
-      return new \WP_Error('cff_rest_forbidden', __('You are not allowed to edit this post.', 'cff'), ['status' => 403]);
-    }
-
-    $post = get_post($post_id);
-    if (!$post || $post->post_type !== $post_type) {
-      return new \WP_Error('cff_rest_invalid_post_type', __('Post type mismatch.', 'cff'), ['status' => 400]);
-    }
-
-    $definitions = $this->get_field_definitions_for_post($post);
-    if (!$definitions) {
-      $definitions = $this->get_field_definitions_for_post_type($post_type);
-    }
-    if (!$definitions) return true;
-
-    $readonly_fields = array_values(array_filter(array_map('sanitize_key', (array) apply_filters('cff_rest_fields_readonly', [], $post_type, $post_id))));
-    $readonly_map = array_fill_keys($readonly_fields, true);
-
-    foreach ($value as $field_name => $raw_field_value) {
-      $field_name = sanitize_key($field_name);
-      if (!$field_name || !isset($definitions[$field_name])) continue;
-      if (isset($readonly_map[$field_name])) continue;
-
-      $sanitized = $this->sanitize_rest_field_value($definitions[$field_name], $raw_field_value);
-      $meta_key = $this->meta_key($field_name);
-      if ($sanitized === null || $sanitized === '' || (is_array($sanitized) && empty($sanitized))) {
-        delete_post_meta($post_id, $meta_key);
-      } else {
-        update_post_meta($post_id, $meta_key, $sanitized);
-      }
-    }
-
-    return true;
-  }
-
-  private function get_field_definitions_for_post_type($post_type) {
-    $post_type = sanitize_key($post_type);
-    if (!$post_type) return [];
-
-    $probe = (object) [
-      'ID' => 0,
-      'post_type' => $post_type,
-    ];
-
-    $groups = get_posts([
-      'post_type' => 'cff_group',
-      'post_status' => 'publish',
-      'numberposts' => -1,
-      'no_found_rows' => true,
-    ]);
-
-    $definitions = [];
-    foreach ($groups as $group) {
-      $settings = get_post_meta($group->ID, '_cff_settings', true);
-      $location = is_array($settings['location'] ?? null) ? $settings['location'] : [];
-      if (!$this->match_location($probe, $location)) continue;
-      foreach ((array) ($settings['fields'] ?? []) as $field) {
-        $name = sanitize_key($field['name'] ?? '');
-        if ($name) $definitions[$name] = $field;
-      }
-    }
-    return $definitions;
-  }
-
-  private function build_rest_schema_properties_for_post_type($post_type) {
-    $definitions = $this->get_field_definitions_for_post_type($post_type);
-    $properties = [];
-    foreach ($definitions as $name => $field) {
-      $name = sanitize_key($name);
-      if (!$name) continue;
-      $properties[$name] = $this->build_rest_schema_for_field($field);
-    }
-    return $properties;
-  }
-
-  private function build_rest_schema_for_field($field) {
-    $type = sanitize_key($field['type'] ?? 'text');
-    $schema = [
-      'description' => sanitize_text_field($field['label'] ?? $field['name'] ?? $type),
-    ];
-
-    if ($type === 'number') {
-      $schema['type'] = 'number';
-      return $schema;
-    }
-    if ($type === 'checkbox') {
-      $schema['type'] = 'boolean';
-      return $schema;
-    }
-    if ($type === 'choice') {
-      $display = sanitize_key($field['choice_display'] ?? 'select');
-      $choices = [];
-      foreach ((array) ($field['choices'] ?? []) as $choice) {
-        $value = sanitize_text_field($choice['value'] ?? ($choice['label'] ?? ''));
-        if ($value !== '') $choices[] = $value;
-      }
-      $choices = array_values(array_unique($choices));
-      if ($display === 'checkbox') {
-        $schema['type'] = 'array';
-        $schema['items'] = ['type' => 'string'];
-        if ($choices) $schema['items']['enum'] = $choices;
-      } else {
-        $schema['type'] = 'string';
-        if ($choices) $schema['enum'] = $choices;
-      }
-      return $schema;
-    }
-    if ($type === 'link') {
-      $schema['type'] = 'object';
-      $schema['properties'] = [
-        'url' => ['type' => 'string'],
-        'title' => ['type' => 'string'],
-        'target' => ['type' => 'string'],
-      ];
-      return $schema;
-    }
-    if ($type === 'image' || $type === 'file') {
-      $schema['type'] = 'object';
-      $schema['properties'] = [
-        'id' => ['type' => 'integer'],
-        'url' => ['type' => 'string'],
-      ];
-      return $schema;
-    }
-    if ($type === 'gallery') {
-      $schema['type'] = 'array';
-      $schema['items'] = ['type' => 'integer'];
-      return $schema;
-    }
-    if ($type === 'group') {
-      $schema['type'] = 'object';
-      $schema['properties'] = [];
-      foreach ((array) ($field['sub_fields'] ?? []) as $sub) {
-        $sub_name = sanitize_key($sub['name'] ?? '');
-        if (!$sub_name) continue;
-        $schema['properties'][$sub_name] = $this->build_rest_schema_for_field($sub);
-      }
-      return $schema;
-    }
-    if ($type === 'repeater') {
-      $schema['type'] = 'array';
-      $item_schema = ['type' => 'object', 'properties' => []];
-      foreach ((array) ($field['sub_fields'] ?? []) as $sub) {
-        $sub_name = sanitize_key($sub['name'] ?? '');
-        if (!$sub_name) continue;
-        $item_schema['properties'][$sub_name] = $this->build_rest_schema_for_field($sub);
-      }
-      $schema['items'] = $item_schema;
-      $min = max(0, intval($field['min'] ?? 0));
-      $max = max(0, intval($field['max'] ?? 0));
-      if ($min > 0) $schema['minItems'] = $min;
-      if ($max > 0) $schema['maxItems'] = $max;
-      return $schema;
-    }
-    if ($type === 'flexible') {
-      $schema['type'] = 'array';
-      $schema['items'] = [
-        'type' => 'object',
-        'properties' => [
-          'layout' => ['type' => 'string'],
-          'fields' => ['type' => 'object'],
-        ],
-      ];
-      return $schema;
-    }
-
-    $schema['type'] = 'string';
-    return $schema;
-  }
-
-  private function sanitize_rest_field_value($field, $value) {
-    if (is_object($value)) {
-      $value = (array) $value;
-    }
-    $type = sanitize_key($field['type'] ?? 'text');
-
-    if ($type === 'number') {
-      if ($value === '' || $value === null) return null;
-      return is_numeric($value) ? 0 + $value : null;
-    }
-    if ($type === 'checkbox') {
-      return !empty($value) ? '1' : '0';
-    }
-    if ($type === 'choice') {
-      $display = sanitize_key($field['choice_display'] ?? 'select');
-      if ($display === 'checkbox') {
-        if (!is_array($value)) return [];
-        $out = [];
-        foreach ($value as $item) {
-          $item = sanitize_text_field($item);
-          if ($item !== '') $out[] = $item;
-        }
-        return array_values(array_unique($out));
-      }
-      return sanitize_text_field(is_scalar($value) ? (string) $value : '');
-    }
-    if ($type === 'url') {
-      return is_scalar($value) ? esc_url_raw((string) $value) : '';
-    }
-    if ($type === 'link') {
-      if (!is_array($value)) return null;
-      return [
-        'url' => esc_url_raw($value['url'] ?? ''),
-        'title' => sanitize_text_field($value['title'] ?? ''),
-        'target' => sanitize_text_field($value['target'] ?? ''),
-      ];
-    }
-    if ($type === 'image' || $type === 'file') {
-      if (is_array($value)) {
-        if (isset($value['id'])) return absint($value['id']);
-        return null;
-      }
-      return absint($value);
-    }
-    if ($type === 'gallery') {
-      if (!is_array($value)) return [];
-      $out = [];
-      foreach ($value as $item) {
-        $id = absint(is_array($item) ? ($item['id'] ?? 0) : $item);
-        if ($id) $out[] = $id;
-      }
-      return array_values(array_unique($out));
-    }
-    if ($type === 'repeater') {
-      if (is_object($value)) $value = (array) $value;
-      if (!is_array($value)) return [];
-      $rows = [];
-      $sub_map = [];
-      foreach ((array) ($field['sub_fields'] ?? []) as $sub) {
-        $sub_name = sanitize_key($sub['name'] ?? '');
-        if ($sub_name) $sub_map[$sub_name] = $sub;
-      }
-      foreach ($value as $row) {
-        if (!is_array($row)) continue;
-        $clean_row = [];
-        $row_id = sanitize_key($row['__cff_row_id'] ?? '');
-        $clean_row['__cff_row_id'] = $row_id ?: ('row_' . substr(md5(uniqid((string) wp_rand(), true)), 0, 12));
-        foreach ($sub_map as $sub_name => $sub_field) {
-          if (!array_key_exists($sub_name, $row)) continue;
-          $clean_row[$sub_name] = $this->sanitize_rest_field_value($sub_field, $row[$sub_name]);
-        }
-        if ($clean_row) $rows[] = $clean_row;
-      }
-      return $rows;
-    }
-    if ($type === 'group') {
-      if (is_object($value)) $value = (array) $value;
-      if (!is_array($value)) return [];
-      $clean = [];
-      foreach ((array) ($field['sub_fields'] ?? []) as $sub) {
-        $sub_name = sanitize_key($sub['name'] ?? '');
-        if (!$sub_name || !array_key_exists($sub_name, $value)) continue;
-        $clean[$sub_name] = $this->sanitize_rest_field_value($sub, $value[$sub_name]);
-      }
-      return $clean;
-    }
-    if ($type === 'flexible') {
-      if (is_object($value)) $value = (array) $value;
-      if (!is_array($value)) return [];
-      $layout_map = [];
-      foreach ((array) ($field['layouts'] ?? []) as $layout) {
-        $layout_name = sanitize_key($layout['name'] ?? '');
-        if ($layout_name) $layout_map[$layout_name] = $layout;
-      }
-      $rows = [];
-      foreach ($value as $row) {
-        if (is_object($row)) $row = (array) $row;
-        if (!is_array($row)) continue;
-        $layout_name = sanitize_key($row['layout'] ?? '');
-        if (!$layout_name || !isset($layout_map[$layout_name])) continue;
-        $row_id = sanitize_key($row['__cff_row_id'] ?? '');
-        $row_fields = $row['fields'] ?? [];
-        if (is_object($row_fields)) $row_fields = (array) $row_fields;
-        if (!is_array($row_fields)) $row_fields = [];
-        $clean_fields = [];
-        foreach ((array) ($layout_map[$layout_name]['sub_fields'] ?? []) as $sub) {
-          $sub_name = sanitize_key($sub['name'] ?? '');
-          if (!$sub_name || !array_key_exists($sub_name, $row_fields)) continue;
-          $clean_fields[$sub_name] = $this->sanitize_rest_field_value($sub, $row_fields[$sub_name]);
-        }
-        $rows[] = [
-          'layout' => $layout_name,
-          '__cff_row_id' => $row_id ?: ('row_' . substr(md5(uniqid((string) wp_rand(), true)), 0, 12)),
-          'fields' => $clean_fields,
-        ];
-      }
-      return $rows;
-    }
-
-    if ($type === 'wysiwyg' || $type === 'embed') {
-      return wp_kses_post(is_scalar($value) ? (string) $value : '');
-    }
-    return sanitize_text_field(is_scalar($value) ? (string) $value : '');
-  }
+  public function rest_get_payload($post_id, $post_type) { return $this->rest_fields()->get_payload($post_id, $post_type); }
+  public function rest_update_payload($post_id, $post_type, $value) { return $this->rest_fields()->update_payload($post_id, $post_type, $value); }
+  public function rest_get_definitions_for_post_type($post_type) { return $this->rest_fields()->get_definitions_for_post_type($post_type); }
+  public function rest_build_schema_properties_for_post_type($post_type) { return $this->rest_fields()->build_schema_properties_for_post_type($post_type); }
+  public function rest_build_schema_for_field($field) { return $this->rest_fields()->build_schema_for_field($field); }
+  public function rest_sanitize_field_value($field, $value) { return $this->rest_fields()->sanitize_field_value($field, $value); }
 
   public function page_post_types() {
     if (!current_user_can('manage_options')) return;
@@ -1337,7 +1023,7 @@ TEXT;
         echo '<button class="cff-cpt-action" name="cffp_action" value="duplicate" title="'.esc_attr__('Duplicate','cff').' '.esc_attr($label).'">';
         echo '<span class="dashicons dashicons-admin-page" aria-hidden="true"></span><span class="screen-reader-text">'.esc_html__('Duplicate','cff').'</span>';
         echo '</button>';
-        echo '<button class="cff-cpt-action cff-cpt-action-destructive" name="cffp_action" value="delete" onclick="return confirm('.wp_json_encode(__('Delete CPT?','cff')).')" title="'.esc_attr__('Delete','cff').' '.esc_attr($label).'">';
+        echo '<button class="cff-cpt-action cff-cpt-action-destructive cff-requires-confirm" name="cffp_action" value="delete" data-confirm-title="'.esc_attr__('Delete Post Type', 'cff').'" data-confirm-message="'.esc_attr(sprintf(__('Delete the post type "%s"? This only removes the CFF definition and does not delete existing posts.', 'cff'), wp_strip_all_tags($label))).'" data-confirm-submit="1" title="'.esc_attr__('Delete','cff').' '.esc_attr($label).'">';
         echo '<span class="dashicons dashicons-trash" aria-hidden="true"></span><span class="screen-reader-text">'.esc_html__('Delete','cff').'</span>';
         echo '</button>';
         echo '</form>';
@@ -1571,7 +1257,7 @@ TEXT;
         echo wp_nonce_field('cffp_tax_nonce','cffp_tax_nonce',true,false);
         echo '<input type="hidden" name="tax_key" value="'.esc_attr($key).'">';
         echo '<button class="button" name="cffp_tax_action" value="duplicate">Duplicate</button> ';
-        echo '<button class="button button-link-delete" name="cffp_tax_action" value="delete" onclick="return confirm(\'Delete taxonomy?\')">Delete</button>';
+        echo '<button class="button button-link-delete cff-requires-confirm" name="cffp_tax_action" value="delete" data-confirm-title="'.esc_attr__('Delete Taxonomy', 'cff').'" data-confirm-message="'.esc_attr(sprintf(__('Delete the taxonomy "%s"? This only removes the CFF definition and does not delete existing terms.', 'cff'), $def['plural'] ?? $key)).'" data-confirm-submit="1">Delete</button>';
         echo '</form>';
         echo '</td>';
         echo '</tr>';
@@ -2576,12 +2262,35 @@ TEXT;
     wp_nonce_field('cff_global_ui_settings_save', 'cff_global_ui_settings_nonce');
 
     $enabled = !empty(get_option('cffp_block_sidebar_enabled', 0));
+    $keep_data = !empty(get_option('cffp_keep_data_on_uninstall', 1));
 
-    echo '<p><label>';
-    echo '<input type="checkbox" name="cffp_block_sidebar_enabled" value="1" ' . checked($enabled, true, false) . '> ';
-    echo esc_html__('Enable CFF panels in Gutenberg document sidebar.', 'cff');
-    echo '</label></p>';
-    echo '<p class="description">' . esc_html__('When enabled, CFF metabox groups are moved into Gutenberg sidebar panels. You can still override behavior via filter: cff_block_sidebar_enabled.', 'cff') . '</p>';
+    echo '<div class="cff-global-settings-stack">';
+
+    echo '<section class="cff-setting-card">';
+    echo '<div class="cff-setting-copy">';
+    echo '<h3>' . esc_html__('Gutenberg Sidebar Panels', 'cff') . '</h3>';
+    echo '<p>' . esc_html__('Move matching CFF metabox groups into document sidebar panels when editing posts in the block editor.', 'cff') . '</p>';
+    echo '<p class="description">' . esc_html__('You can still override this behavior in code via the `cff_block_sidebar_enabled` filter.', 'cff') . '</p>';
+    echo '</div>';
+    echo '<label class="cff-switch" aria-label="' . esc_attr__('Enable CFF panels in Gutenberg document sidebar.', 'cff') . '">';
+    echo '<input type="checkbox" name="cffp_block_sidebar_enabled" value="1" ' . checked($enabled, true, false) . '>';
+    echo '<span class="cff-slider"></span>';
+    echo '</label>';
+    echo '</section>';
+
+    echo '<section class="cff-setting-card is-warning">';
+    echo '<div class="cff-setting-copy">';
+    echo '<h3>' . esc_html__('Uninstall Data Policy', 'cff') . '</h3>';
+    echo '<p>' . esc_html__('Keep all CFF configuration and saved field values when the plugin is removed.', 'cff') . '</p>';
+    echo '<p class="description">' . esc_html__('Recommended. Disable this only if uninstall should permanently delete field groups, settings, reorder data, and saved `_cff_*` values.', 'cff') . '</p>';
+    echo '</div>';
+    echo '<label class="cff-switch" aria-label="' . esc_attr__('Keep CFF data when the plugin is uninstalled.', 'cff') . '">';
+    echo '<input type="checkbox" name="cffp_keep_data_on_uninstall" value="1" ' . checked($keep_data, true, false) . '>';
+    echo '<span class="cff-slider"></span>';
+    echo '</label>';
+    echo '</section>';
+
+    echo '</div>';
   }
 
   public function save_global_ui_settings($post_id, $post) {
@@ -2591,7 +2300,10 @@ TEXT;
     if (!current_user_can('edit_post', $post_id)) return;
 
     $enabled = !empty($_POST['cffp_block_sidebar_enabled']) ? 1 : 0;
+    $keep_data = !empty($_POST['cffp_keep_data_on_uninstall']) ? 1 : 0;
+
     update_option('cffp_block_sidebar_enabled', $enabled);
+    update_option('cffp_keep_data_on_uninstall', $keep_data);
   }
 
   public function render_group_settings($post) {
@@ -2799,6 +2511,7 @@ TEXT;
                 <option value="grid">Grid (multi-column)</option>
                 <option value="row">Row (single horizontal row)</option>
                 <option value="gallery">Gallery Images</option>
+                <option value="table">Table (fill values inline)</option>
               </select>
               <p class="description">Choose how each repeater row is presented while editing.</p>
               <div class="cff-row-repeater-advanced">
@@ -2833,6 +2546,16 @@ TEXT;
               </span>
             </div>
             <div class="cff-row-media-options">
+              <label>File Library</label>
+              <select class="cff-input cff-file-library cff-select2">
+                <option value="all">All files</option>
+                <option value="pdf">PDF only</option>
+                <option value="excel">Excel only</option>
+                <option value="word">Word only</option>
+                <option value="image">Images only</option>
+                <option value="video">Video only</option>
+                <option value="document">Document bundle</option>
+              </select>
               <label>Max Upload Size (MB)</label>
               <input type="number" class="cff-input cff-max-upload-mb" min="1" step="1" value="2">
               <p class="description">Default 2 MB. Set a larger value for this image or file field only.</p>
@@ -2951,6 +2674,12 @@ TEXT;
               <strong>Sub Fields (Repeater)</strong>
               <button type="button" class="button cff-add-sub">Add Sub Field</button>
             </div>
+            <div class="cff-subfields-table-head" aria-hidden="true">
+              <div>Label</div>
+              <div>Name</div>
+              <div>Type</div>
+              <div>Actions</div>
+            </div>
             <div class="cff-subfields"></div>
           </div>
 
@@ -3036,6 +2765,7 @@ TEXT;
                 <option value="grid">Grid (multi-column)</option>
                 <option value="row">Row (single horizontal row)</option>
                 <option value="gallery">Gallery Images</option>
+                <option value="table">Table (fill values inline)</option>
               </select>
               <p class="description">Choose how each repeater row is presented while editing.</p>
               <div class="cff-row-repeater-advanced">
@@ -3070,6 +2800,16 @@ TEXT;
               </span>
             </div>
             <div class="cff-row-media-options">
+              <label>File Library</label>
+              <select class="cff-input cff-file-library cff-select2">
+                <option value="all">All files</option>
+                <option value="pdf">PDF only</option>
+                <option value="excel">Excel only</option>
+                <option value="word">Word only</option>
+                <option value="image">Images only</option>
+                <option value="video">Video only</option>
+                <option value="document">Document bundle</option>
+              </select>
               <label>Max Upload Size (MB)</label>
               <input type="number" class="cff-input cff-max-upload-mb" min="1" step="1" value="2">
               <p class="description">Default 2 MB. Set a larger value for this image or file field only.</p>
@@ -3185,6 +2925,12 @@ TEXT;
           <div class="cff-subhead">
             <strong>Sub Fields (Repeater)</strong>
             <button type="button" class="button cff-add-sub">Add Sub Field</button>
+          </div>
+          <div class="cff-subfields-table-head" aria-hidden="true">
+            <div>Label</div>
+            <div>Name</div>
+            <div>Type</div>
+            <div>Actions</div>
           </div>
           <div class="cff-subfields"></div>
         </div>
@@ -3309,6 +3055,7 @@ TEXT;
         'placeholder' => $this->sanitize_string_value($f['placeholder'] ?? ''),
       ];
       if ($type === 'image' || $type === 'file') {
+        $item['file_library'] = $this->sanitize_file_library($f['file_library'] ?? 'document');
         $item['max_upload_mb'] = $this->sanitize_media_max_upload_mb($f['max_upload_mb'] ?? 2);
       }
       $aliases = $this->sanitize_field_aliases($f['aliases'] ?? [], $name);
@@ -3421,7 +3168,7 @@ TEXT;
   }
 
   private function sanitize_repeater_layout($value) {
-    $allowed = ['default','simple','grid','row','gallery'];
+    $allowed = ['default','simple','grid','row','gallery','table'];
     $layout = sanitize_key($value ?? '');
     if (!in_array($layout, $allowed, true)) {
       return 'default';
@@ -3445,6 +3192,12 @@ TEXT;
   private function sanitize_media_max_upload_mb($value) {
     $size = absint($value);
     return $size > 0 ? $size : 2;
+  }
+
+  private function sanitize_file_library($value) {
+    $allowed = ['document', 'all', 'pdf', 'excel', 'word', 'image', 'video'];
+    $library = sanitize_key($value ?? '');
+    return in_array($library, $allowed, true) ? $library : 'document';
   }
 
   private function sanitize_repeater_row_label($value, $sub_fields = []) {
@@ -3502,6 +3255,7 @@ TEXT;
         'placeholder' => $this->sanitize_string_value($s['placeholder'] ?? ''),
       ];
       if ($type === 'image' || $type === 'file') {
+        $item['file_library'] = $this->sanitize_file_library($s['file_library'] ?? 'document');
         $item['max_upload_mb'] = $this->sanitize_media_max_upload_mb($s['max_upload_mb'] ?? 2);
       }
       $aliases = $this->sanitize_field_aliases($s['aliases'] ?? [], $name);
@@ -3705,8 +3459,12 @@ TEXT;
           wp_nonce_field('cff_content_save', 'cff_content_nonce');
           echo '<div class="cff-metabox">';
           echo '<div class="cff-field-view-controls cff-metabox-view">';
-          echo '<label>' . esc_html__('Type', 'cff') . '</label>';
-          echo '<select class="cff-field-view-mode cff-field-view-mode--metabox">';
+          echo '<div class="cff-field-view-copy">';
+          echo '<label for="cff-field-view-mode-' . intval($g->ID) . '">' . esc_html__('Field View', 'cff') . '</label>';
+          echo '<p>' . esc_html__('Switch between the field editor and manual ordering for this group.', 'cff') . '</p>';
+          echo '</div>';
+          echo '<div class="cff-field-view-actions">';
+          echo '<select id="cff-field-view-mode-' . intval($g->ID) . '" class="cff-field-view-mode cff-field-view-mode--metabox">';
           echo '<option value="builder">' . esc_html__('Builder', 'cff') . '</option>';
           echo '<option value="reorder">' . esc_html__('Reorder', 'cff') . '</option>';
           echo '</select>';
@@ -3714,8 +3472,10 @@ TEXT;
             echo '<button type="submit" class="button cff-copy-all-action" name="cff_copy_all_to_translations_trigger" value="1">' . esc_html__('Save + Copy All CFF to Translations', 'cff') . '</button>';
           }
           echo '</div>';
+          echo '</div>';
           echo '<div class="cff-metabox-reorder" aria-hidden="true">';
           echo '<p class="cff-metabox-reorder-label">' . esc_html__('Drag the fields below to update their order.', 'cff') . '</p>';
+          echo '<p class="cff-metabox-reorder-note">' . esc_html__('This only changes the sequence inside this field group for the current post.', 'cff') . '</p>';
           echo '<ul class="cff-metabox-reorder-list"></ul>';
           echo '<input type="hidden" class="cff-metabox-order-input" name="cff_group_field_order[' . intval($g->ID) . ']" value="' . esc_attr(implode(',', $field_order)) . '">';
           echo '</div>';
@@ -3869,6 +3629,10 @@ TEXT;
 
   public function ajax_search_posts() {
     check_ajax_referer('cffp', 'nonce');
+    if (!current_user_can('edit_posts')) {
+      wp_send_json_error(['message' => __('Forbidden', 'cff')], 403);
+    }
+
     $q = isset($_POST['q']) ? sanitize_text_field(wp_unslash($_POST['q'])) : '';
     $type = sanitize_key($_POST['post_type'] ?? 'post');
     $exclude = isset($_POST['exclude']) ? sanitize_text_field(wp_unslash($_POST['exclude'])) : '';
@@ -3899,6 +3663,9 @@ TEXT;
 
   public function ajax_get_templates() {
     check_ajax_referer('cffp', 'nonce');
+    if (!current_user_can('edit_theme_options')) {
+      wp_send_json_error(['message' => __('Forbidden', 'cff')], 403);
+    }
 
     $t = wp_get_theme();
     $templates = $t->get_page_templates();
@@ -3918,6 +3685,9 @@ TEXT;
 
   public function ajax_get_post_types() {
     check_ajax_referer('cffp', 'nonce');
+    if (!current_user_can('edit_posts')) {
+      wp_send_json_error(['message' => __('Forbidden', 'cff')], 403);
+    }
 
     $pts = get_post_types(['show_ui' => true], 'objects');
 
@@ -3933,297 +3703,30 @@ TEXT;
    * Tools: Export / Import / Migration
    * ========================= */
   public function page_tools() {
-    if (!current_user_can('manage_options')) return;
-
-    if (!empty($_POST['cff_tools_action']) && check_admin_referer('cff_tools_nonce','cff_tools_nonce')) {
-      if ($_POST['cff_tools_action'] === 'import' && !empty($_FILES['cff_json']['tmp_name'])) {
-        $raw = file_get_contents($_FILES['cff_json']['tmp_name']);
-        $data = json_decode($raw, true);
-
-        if (is_array($data)) {
-          if (isset($data['post_types'])) {
-            $import_post_types = $this->sanitize_import_post_types((array)$data['post_types']);
-            $existing_post_types = get_option('cffp_post_types', []);
-            if (!is_array($existing_post_types)) $existing_post_types = [];
-            foreach ($import_post_types as $key => $definition) {
-              $existing_post_types[$key] = $definition;
-            }
-            update_option('cffp_post_types', $existing_post_types);
-          }
-          if (isset($data['taxonomies'])) {
-            $import_taxonomies = $this->sanitize_import_taxonomies((array)$data['taxonomies']);
-            $existing_taxonomies = get_option('cffp_taxonomies', []);
-            if (!is_array($existing_taxonomies)) $existing_taxonomies = [];
-            foreach ($import_taxonomies as $key => $definition) {
-              $existing_taxonomies[$key] = $definition;
-            }
-            update_option('cffp_taxonomies', $existing_taxonomies);
-          }
-          if (isset($data['field_groups'])) {
-            $this->import_field_groups((array)$data['field_groups']);
-          } elseif ($this->looks_like_acf_json($data)) {
-            $this->import_acf_json($data);
-          }
-          add_settings_error('cff_tools','imported',__('Import completed. If you changed CPT/Taxonomies, re-save permalinks.','cff'),'updated');
-        } else {
-          add_settings_error('cff_tools','badjson',__('Invalid JSON file.','cff'),'error');
-        }
-      }
-
-      if ($_POST['cff_tools_action'] === 'migrate_acf') {
-        $migrated = $this->migrate_from_acf();
-        add_settings_error('cff_tools','migrated',sprintf(__('ACF migration finished. Imported %d field groups.','cff'), intval($migrated)),'updated');
-      }
-    }
-
-    settings_errors('cff_tools');
-
-    $export_url = admin_url('admin.php?page=cff-tools&cff_export=1');
-    $export_groups = get_posts([
-      'post_type' => 'cff_group',
-      'post_status' => 'any',
-      'numberposts' => -1,
-      'no_found_rows' => true,
-    ]);
-    $export_post_types = get_option('cffp_post_types', []);
-    if (!is_array($export_post_types)) $export_post_types = [];
-    $export_taxonomies = get_option('cffp_taxonomies', []);
-    if (!is_array($export_taxonomies)) $export_taxonomies = [];
-
-    echo '<div class="wrap cff-admin"><h1>Export / Import</h1><div class="cff-tools-grid">';
-
-    echo '<div class="cff-tools-card">';
-    echo '<h2>Export</h2><p class="description">Download JSON export of Field Groups, Post Types, and Taxonomies.</p>';
-    echo '<form method="post" action="'.esc_url($export_url).'">';
-    echo wp_nonce_field('cff_export_nonce','cff_export_nonce',true,false);
-    echo '<input type="hidden" name="cff_export" value="1">';
-    echo '<p><label><input type="checkbox" class="cff-export-toggle" data-target=".cff-export-post-types-list" name="cff_export_post_types" checked> Post Types</label></p>';
-    echo '<div class="cff-tools-field cff-export-post-types-list">';
-    echo '<input type="hidden" name="cff_export_post_types_filter" value="1">';
-    if ($export_post_types) {
-      echo '<div class="cff-export-checklist">';
-      foreach ($export_post_types as $pt_key => $pt_def) {
-        $label = trim((string)($pt_def['plural'] ?? $pt_def['singular'] ?? $pt_key));
-        if ($label === '') $label = $pt_key;
-        echo '<label><input type="checkbox" name="cff_export_post_types_keys[]" value="' . esc_attr($pt_key) . '" checked> ' . esc_html($label) . ' <code>' . esc_html($pt_key) . '</code></label>';
-      }
-      echo '</div>';
-      echo '<p class="description">Uncheck to exclude specific post types.</p>';
-    } else {
-      echo '<p class="description">No custom post types found.</p>';
-    }
-    echo '</div>';
-
-    echo '<p><label><input type="checkbox" class="cff-export-toggle" data-target=".cff-export-taxonomies-list" name="cff_export_taxonomies" checked> Taxonomies</label></p>';
-    echo '<div class="cff-tools-field cff-export-taxonomies-list">';
-    echo '<input type="hidden" name="cff_export_taxonomies_filter" value="1">';
-    if ($export_taxonomies) {
-      echo '<div class="cff-export-checklist">';
-      foreach ($export_taxonomies as $tax_key => $tax_def) {
-        $label = trim((string)($tax_def['plural'] ?? $tax_def['singular'] ?? $tax_key));
-        if ($label === '') $label = $tax_key;
-        echo '<label><input type="checkbox" name="cff_export_taxonomies_keys[]" value="' . esc_attr($tax_key) . '" checked> ' . esc_html($label) . ' <code>' . esc_html($tax_key) . '</code></label>';
-      }
-      echo '</div>';
-      echo '<p class="description">Uncheck to exclude specific taxonomies.</p>';
-    } else {
-      echo '<p class="description">No custom taxonomies found.</p>';
-    }
-    echo '</div>';
-
-    echo '<p><label><input type="checkbox" class="cff-export-toggle" data-target=".cff-export-field-groups-list" name="cff_export_field_groups" checked> Field Groups</label></p>';
-    echo '<div class="cff-tools-field cff-export-field-groups-list">';
-    echo '<input type="hidden" name="cff_export_field_groups_filter" value="1">';
-    if ($export_groups) {
-      echo '<div class="cff-export-checklist">';
-      foreach ($export_groups as $group) {
-        echo '<label><input type="checkbox" name="cff_export_groups[]" value="' . esc_attr($group->ID) . '" checked> ' . esc_html($group->post_title) . '</label>';
-      }
-      echo '</div>';
-      echo '<p class="description">Uncheck to exclude specific field groups.</p>';
-    } else {
-      echo '<p class="description">No field groups found.</p>';
-    }
-    echo '</div>';
-    echo '<p><button class="button button-primary">Download Export JSON</button></p>';
-    echo '</form>';
-    echo '<script>
-    document.addEventListener("DOMContentLoaded", function () {
-      var toggles = document.querySelectorAll(".cff-export-toggle");
-      function syncToggle(toggle) {
-        var target = toggle.getAttribute("data-target");
-        if (!target) return;
-        var panel = document.querySelector(target);
-        if (!panel) return;
-        var show = !!toggle.checked;
-        panel.style.display = show ? "" : "none";
-        var inputs = panel.querySelectorAll("input, select, textarea, button");
-        inputs.forEach(function (el) { el.disabled = !show; });
-      }
-      toggles.forEach(function (toggle) {
-        syncToggle(toggle);
-        toggle.addEventListener("change", function () { syncToggle(toggle); });
-      });
-    });
-    </script>';
-    echo '</div>';
-
-    echo '<div class="cff-tools-card">';
-    echo '<h2>' . esc_html__('Export ACF Values', 'cff') . '</h2>';
-    echo '<p class="description">' . esc_html__('Generate SQL that copies ACF post meta into the `_cff_` meta keys so it can be imported by CFF without losing existing content.', 'cff') . '</p>';
-    echo '<form method="post">';
-    echo wp_nonce_field('cff_export_acf_data', 'cff_export_acf_nonce', true, false);
-    echo '<input type="hidden" name="cff_export_acf_data" value="1">';
-    echo '<p><button class="button button-primary">' . esc_html__('Download ACF to CFF SQL', 'cff') . '</button></p>';
-    echo '<p class="description">' . esc_html__('ACF must be active so the exporter can read the existing values.', 'cff') . '</p>';
-    echo '</form>';
-    echo '</div>';
-
-    echo '<div class="cff-tools-card">';
-    echo '<h2>Import</h2><p class="description">Import JSON exported from this plugin.</p>';
-    echo '<form method="post" enctype="multipart/form-data">';
-    echo wp_nonce_field('cff_tools_nonce','cff_tools_nonce',true,false);
-    echo '<input type="hidden" name="cff_tools_action" value="import">';
-    echo '<input type="file" name="cff_json" accept="application/json" required>';
-    echo '<p><button class="button button-primary">Import JSON</button></p>';
-    echo '</form>';
-    echo '</div>';
-
-    echo '<div class="cff-tools-card">';
-    echo '<h2>Migrate from ACF</h2><p class="description">If ACF is installed, import its field groups into CFF (basic mapping).</p>';
-    echo '<form method="post">';
-    echo wp_nonce_field('cff_tools_nonce','cff_tools_nonce',true,false);
-    echo '<input type="hidden" name="cff_tools_action" value="migrate_acf">';
-    echo '<p><button class="button">Run ACF Migration</button></p>';
-    echo '</form>';
-    echo '</div>';
-
-    echo '</div></div>';
+    return $this->tools_page()->page_tools();
   }
 
   public function handle_export_group() {
-    if (!current_user_can('manage_options')) return;
-    if (empty($_GET['cff_export_group'])) return;
-
-    $group_id = absint($_GET['cff_export_group']);
-    if (!$group_id) return;
-
-    if (!check_admin_referer('cff_export_group_' . $group_id)) return;
-
-    $group = get_post($group_id);
-    if (!$group || $group->post_type !== 'cff_group') return;
-
-    $payload = [
-      'version' => defined('CFFP_VERSION') ? CFFP_VERSION : '0.0.0',
-      'exported_at' => gmdate('c'),
-      'post_types' => [],
-      'taxonomies' => [],
-      'field_groups' => $this->export_field_groups($group_id),
-    ];
-
-    $json = wp_json_encode($payload, JSON_PRETTY_PRINT);
-    $slug = $group->post_name ?: ('group-' . $group_id);
-    $filename = 'cff-group-' . sanitize_file_name($slug) . '-' . date('Ymd-His') . '.json';
-
-    header('Content-Type: application/json; charset=utf-8');
-    header('Content-Disposition: attachment; filename="' . $filename . '"');
-    echo $json;
-    exit;
+    return $this->tools_page()->handle_export_group();
   }
 
   public function handle_export_tools() {
-    if (!current_user_can('manage_options')) return;
-    if (empty($_GET['cff_export']) && empty($_POST['cff_export'])) return;
-
-    if (!check_admin_referer('cff_export_nonce', 'cff_export_nonce')) return;
-
-    $include_post_types = !empty($_REQUEST['cff_export_post_types']);
-    $include_taxonomies = !empty($_REQUEST['cff_export_taxonomies']);
-    $include_field_groups = !empty($_REQUEST['cff_export_field_groups']);
-
-    $all_post_types = get_option('cffp_post_types', []);
-    if (!is_array($all_post_types)) $all_post_types = [];
-    $post_types_payload = [];
-    if ($include_post_types) {
-      $has_pt_filter = !empty($_REQUEST['cff_export_post_types_filter']);
-      if ($has_pt_filter) {
-        $pt_keys = isset($_REQUEST['cff_export_post_types_keys']) ? array_map('sanitize_key', (array) $_REQUEST['cff_export_post_types_keys']) : [];
-        foreach ($pt_keys as $pt_key) {
-          if (isset($all_post_types[$pt_key])) {
-            $post_types_payload[$pt_key] = $all_post_types[$pt_key];
-          }
-        }
-      } else {
-        $post_types_payload = $all_post_types;
-      }
-    }
-
-    $all_taxonomies = get_option('cffp_taxonomies', []);
-    if (!is_array($all_taxonomies)) $all_taxonomies = [];
-    $taxonomies_payload = [];
-    if ($include_taxonomies) {
-      $has_tax_filter = !empty($_REQUEST['cff_export_taxonomies_filter']);
-      if ($has_tax_filter) {
-        $tax_keys = isset($_REQUEST['cff_export_taxonomies_keys']) ? array_map('sanitize_key', (array) $_REQUEST['cff_export_taxonomies_keys']) : [];
-        foreach ($tax_keys as $tax_key) {
-          if (isset($all_taxonomies[$tax_key])) {
-            $taxonomies_payload[$tax_key] = $all_taxonomies[$tax_key];
-          }
-        }
-      } else {
-        $taxonomies_payload = $all_taxonomies;
-      }
-    }
-
-    $field_groups_payload = [];
-    if ($include_field_groups) {
-      $has_group_filter = !empty($_REQUEST['cff_export_field_groups_filter']);
-      if ($has_group_filter) {
-        $group_ids = isset($_REQUEST['cff_export_groups']) ? array_filter(array_map('absint', (array) $_REQUEST['cff_export_groups'])) : [];
-        $field_groups_payload = $group_ids ? $this->export_field_groups($group_ids) : [];
-      } else {
-        $field_groups_payload = $this->export_field_groups();
-      }
-    }
-
-    $payload = [
-      'version' => defined('CFFP_VERSION') ? CFFP_VERSION : '0.0.0',
-      'exported_at' => gmdate('c'),
-      'post_types' => $post_types_payload,
-      'taxonomies' => $taxonomies_payload,
-      'field_groups' => $field_groups_payload,
-    ];
-
-    $json = wp_json_encode($payload, JSON_PRETTY_PRINT);
-
-    header('Content-Type: application/json; charset=utf-8');
-    header('Content-Disposition: attachment; filename="cff-export-' . date('Ymd-His') . '.json"');
-    echo $json;
-    exit;
+    return $this->tools_page()->handle_export_tools();
   }
 
   public function handle_export_acf_data() {
-    if (!current_user_can('manage_options')) return;
-    if (empty($_POST['cff_export_acf_data'])) return;
-    if (!check_admin_referer('cff_export_acf_data','cff_export_acf_nonce')) return;
-
-    if (!function_exists('acf_get_field_groups')) {
-      add_settings_error('cff_tools','acf_export_no_acf',__('ACF is not active or available for export.','cff'),'error');
-      return;
-    }
-
-    $sql = $this->build_acf_data_export_sql();
-    if (!$sql) {
-      add_settings_error('cff_tools','acf_export_empty',__('No eligible ACF values were found for export.','cff'),'error');
-      return;
-    }
-
-    $filename = 'cff-acf-data-' . gmdate('Ymd-His') . '.sql';
-    header('Content-Type: application/sql; charset=utf-8');
-    header('Content-Disposition: attachment; filename="' . $filename . '"');
-    echo $sql;
-    exit;
+    return $this->tools_page()->handle_export_acf_data();
   }
+
+  public function tools_export_field_groups($group_id = 0) { return $this->export_field_groups($group_id); }
+  public function tools_sanitize_import_post_types($defs) { return $this->sanitize_import_post_types($defs); }
+  public function tools_sanitize_import_taxonomies($defs) { return $this->sanitize_import_taxonomies($defs); }
+  public function tools_import_field_groups($groups) { $this->import_field_groups($groups); }
+  public function tools_looks_like_acf_json($data) { return $this->looks_like_acf_json($data); }
+  public function tools_import_acf_json($groups) { $this->import_acf_json($groups); }
+  public function tools_migrate_from_acf() { return $this->migrate_from_acf(); }
+  public function tools_build_acf_data_export_sql() { return $this->build_acf_data_export_sql(); }
+  public function rest_match_location($post, $groups) { return $this->match_location($post, $groups); }
 
   private function export_field_groups($group_id = 0) {
     $args = [
