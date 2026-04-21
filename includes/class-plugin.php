@@ -2033,6 +2033,42 @@ TEXT;
     return $out;
   }
 
+  private function should_skip_duplicate_meta_key($key) {
+    $key = is_string($key) ? $key : '';
+    if ($key === '') return true;
+
+    $blocked = [
+      '_edit_lock',
+      'language_id',
+      '_language_id',
+      '_pll_language',
+      '_pll_tr_lang',
+      '_translations',
+      '_post_translations',
+    ];
+
+    if (in_array($key, $blocked, true)) {
+      return true;
+    }
+
+    if (strpos($key, '_pll_') === 0) {
+      return true;
+    }
+
+    if (strpos($key, 'pll_') === 0) {
+      return true;
+    }
+
+    return false;
+  }
+
+  private function should_skip_duplicate_taxonomy($taxonomy) {
+    $taxonomy = is_string($taxonomy) ? $taxonomy : '';
+    if ($taxonomy === '') return true;
+
+    return in_array($taxonomy, ['language', 'post_translations'], true);
+  }
+
   private function i18n_value($def, $key, $fallback) {
     $lang = $this->current_lang();
     if (!$lang) return $fallback;
@@ -4643,7 +4679,7 @@ TEXT;
 
     $meta = get_post_meta($post_id);
     foreach ($meta as $key => $values) {
-      if ($key === '_edit_lock') continue;
+      if ($this->should_skip_duplicate_meta_key($key)) continue;
       foreach ((array)$values as $value) {
         add_post_meta($new_post_id, $key, maybe_unserialize($value));
       }
@@ -4651,9 +4687,17 @@ TEXT;
 
     $taxonomies = get_object_taxonomies($post->post_type);
     foreach ($taxonomies as $taxonomy) {
+      if ($this->should_skip_duplicate_taxonomy($taxonomy)) continue;
       $terms = wp_get_object_terms($post_id, $taxonomy, ['fields' => 'ids']);
       if (!is_wp_error($terms)) {
         wp_set_object_terms($new_post_id, $terms, $taxonomy);
+      }
+    }
+
+    if (function_exists('pll_get_post_language') && function_exists('pll_set_post_language')) {
+      $source_lang = pll_get_post_language($post_id, 'slug');
+      if (is_string($source_lang) && $source_lang !== '') {
+        pll_set_post_language($new_post_id, $source_lang);
       }
     }
 

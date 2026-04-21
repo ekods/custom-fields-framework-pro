@@ -114,6 +114,7 @@
       $message.text(options.message || 'Are you sure you want to continue?');
       $cancel.text(options.cancelText || 'Cancel');
       $confirm.text(options.confirmText || 'Delete');
+      $cancel.toggle(!options.hideCancel);
       $overlay.removeAttr('hidden');
       $confirm.trigger('focus');
     }
@@ -129,6 +130,17 @@
       open: open
     };
   })();
+
+  CFF.alert = function(options){
+    options = options || {};
+    CFF.confirm.open({
+      title: options.title || 'Notice',
+      message: options.message || '',
+      confirmText: options.confirmText || 'OK',
+      hideCancel: true,
+      onConfirm: options.onConfirm
+    });
+  };
 
   /* -------------------------
    * Tabs
@@ -3858,9 +3870,9 @@
       });
       $.post(CFFP.ajax, { action:'cff_reorder_save_posts', nonce:CFFP.nonce, post_type:postType, order:order }, function(res){
         if (!res || !res.success) {
-          alert('Failed to save order.');
+          CFF.alert({ title: 'Save order', message: 'Failed to save order.' });
         } else {
-          alert('Order saved.');
+          CFF.alert({ title: 'Save order', message: 'Order saved.' });
         }
       });
     }
@@ -3881,9 +3893,9 @@
       });
       $.post(CFFP.ajax, { action:'cff_reorder_save_terms', nonce:CFFP.nonce, taxonomy:taxonomy, order:order }, function(res){
         if (!res || !res.success) {
-          alert('Failed to save order.');
+          CFF.alert({ title: 'Save order', message: 'Failed to save order.' });
         } else {
-          alert('Order saved.');
+          CFF.alert({ title: 'Save order', message: 'Order saved.' });
         }
       });
     }
@@ -3902,9 +3914,9 @@
       });
       $.post(CFFP.ajax, { action:'cff_reorder_save_groups', nonce:CFFP.nonce, order:order }, function(res){
         if (!res || !res.success) {
-          alert('Failed to save order.');
+          CFF.alert({ title: 'Save order', message: 'Failed to save order.' });
         } else {
-          alert('Order saved.');
+          CFF.alert({ title: 'Save order', message: 'Order saved.' });
         }
       });
     }

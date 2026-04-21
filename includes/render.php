@@ -118,6 +118,18 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     return $attrs;
   }
 
+  function cff_build_editor_id($name_attr, $prefix = 'cff_wys') {
+    $base = preg_replace('/[^A-Za-z0-9_]+/', '_', (string) $name_attr);
+    $base = preg_replace('/_+/', '_', (string) $base);
+    $base = trim((string) $base, '_');
+
+    if ($base === '') {
+      $base = 'editor';
+    }
+
+    return sanitize_key($prefix . '_' . $base);
+  }
+
   function cff_media_limit_label_html($field) {
     $max_upload_mb = absint($field['max_upload_mb'] ?? 0);
     $field_type = sanitize_key($field['type'] ?? '');
@@ -445,7 +457,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     } elseif ($type === 'link') {
       render_link_field('cff_values[' . $name . ']', $val);
     } elseif ($type === 'wysiwyg') {
-      $editor_id = 'cff_wys_' . $name . '_' . $post->ID;
+      $editor_id = cff_build_editor_id('cff_values[' . $name . ']');
       ob_start();
       wp_editor((string)$val, $editor_id, [
         'textarea_name' => 'cff_values['.esc_attr($name).']',
@@ -778,7 +790,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         } elseif ($stype === 'link') {
           render_link_field($name_attr, $v);
         } elseif ($stype === 'wysiwyg') {
-          $editor_id = 'cff_wys_rep_' . sanitize_key($parent) . '_' . sanitize_key($sname) . '_' . $post_id . '_' . $i;
+          $editor_id = cff_build_editor_id($name_attr);
           echo '<textarea id="' . esc_attr($editor_id) . '" class="widefat cff-wysiwyg" name="' . esc_attr($name_attr) . '"'.$required_attr.' rows="8">' . esc_textarea($v) . '</textarea>';
           echo '<input type="hidden" class="cff-wysiwyg-settings" data-editor-id="' . esc_attr($editor_id) . '" value="' . esc_attr(wp_json_encode([
             'tinymce' => [
@@ -937,7 +949,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       } elseif ($stype === 'link') {
         render_link_field($name_attr, $v);
       } elseif ($stype === 'wysiwyg') {
-        $editor_id = 'cff_wys_rep_' . sanitize_key($parent) . '_' . sanitize_key($sname) . '_' . $post_id . '_' . $i;
+        $editor_id = cff_build_editor_id($name_attr);
 
         echo '<textarea
           id="' . esc_attr($editor_id) . '"
@@ -1088,7 +1100,7 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
       } elseif ($stype === 'link') {
         render_link_field($name_attr, $v);
       } elseif ($stype === 'wysiwyg') {
-        $editor_id = 'cff_wys_group_' . sanitize_key($parent_prefix) . '_' . sanitize_key($sname) . '_' . $post_id;
+        $editor_id = cff_build_editor_id($name_attr);
 
         echo '<textarea
           id="' . esc_attr($editor_id) . '"
@@ -1378,7 +1390,7 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
       } elseif ($stype === 'link') {
         render_link_field($name_attr, $v);
         } elseif ($stype === 'wysiwyg') {
-          $editor_id = 'cff_wys_flex_' . sanitize_key($parent) . '_' . sanitize_key($layout) . '_' . sanitize_key($sname) . '_' . $post_id . '_' . $i;
+          $editor_id = cff_build_editor_id($name_attr);
 
           echo '<textarea'
             . ' id="' . esc_attr($editor_id) . '"'

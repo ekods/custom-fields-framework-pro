@@ -11,8 +11,111 @@ jQuery(function($){
     return 'row_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
   }
 
-  function confirmRemoveRow(message){
-    return window.confirm(String(message || 'Delete this row?'));
+  function buildEditorIdFromName(name){
+    var base = String(name || '')
+      .replace(/[^A-Za-z0-9_]+/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_+|_+$/g, '');
+    return (base ? 'cff_wys_' + base : '');
+  }
+
+  function syncWysiwygIds($scope){
+    ($scope && $scope.length ? $scope : $(document)).find('textarea.cff-wysiwyg[name]').each(function(){
+      var nextId = buildEditorIdFromName($(this).attr('name'));
+      if (!nextId) return;
+
+      var oldId = this.id || '';
+      this.id = nextId;
+
+      var $cfg = $(this).siblings('.cff-wysiwyg-settings').first();
+      if (!$cfg.length && oldId) {
+        $cfg = $(this)
+          .closest('.cff-field, .cff-subfield-input, .cff-rep-row, .cff-flex-row')
+          .find('.cff-wysiwyg-settings[data-editor-id="' + oldId + '"]')
+          .first();
+      }
+      if ($cfg.length) {
+        $cfg.attr('data-editor-id', nextId);
+      }
+    });
+  }
+
+  var cffPostConfirm = (function(){
+    var $overlay, $title, $message, $confirm, $cancel;
+    var pendingAction = null;
+
+    function ensure(){
+      if ($overlay && $overlay.length) return;
+
+      $overlay = $(
+        '<div class="cff-confirm-overlay" hidden>' +
+          '<div class="cff-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="cff-post-confirm-title">' +
+            '<h2 id="cff-post-confirm-title" class="cff-confirm-title"></h2>' +
+            '<p class="cff-confirm-message"></p>' +
+            '<div class="cff-confirm-actions">' +
+              '<button type="button" class="button button-secondary cff-confirm-cancel">Cancel</button>' +
+              '<button type="button" class="button button-primary cff-confirm-accept">Delete</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>'
+      );
+
+      $('body').append($overlay);
+      $title = $overlay.find('.cff-confirm-title');
+      $message = $overlay.find('.cff-confirm-message');
+      $confirm = $overlay.find('.cff-confirm-accept');
+      $cancel = $overlay.find('.cff-confirm-cancel');
+
+      $overlay.on('click', function(e){
+        if (e.target === $overlay[0]) {
+          close();
+        }
+      });
+
+      $cancel.on('click', close);
+
+      $confirm.on('click', function(){
+        var action = pendingAction;
+        close();
+        if (typeof action === 'function') {
+          action();
+        }
+      });
+
+      $(document).on('keydown.cffPostConfirm', function(e){
+        if (!$overlay || $overlay.attr('hidden')) return;
+        if (e.key === 'Escape') {
+          close();
+        }
+      });
+    }
+
+    function open(options){
+      ensure();
+      options = options || {};
+      pendingAction = typeof options.onConfirm === 'function' ? options.onConfirm : null;
+      $title.text(options.title || 'Confirm action');
+      $message.text(options.message || 'Are you sure you want to continue?');
+      $cancel.text(options.cancelText || 'Cancel');
+      $confirm.text(options.confirmText || 'Delete');
+      $overlay.removeAttr('hidden');
+      $confirm.trigger('focus');
+    }
+
+    function close(){
+      pendingAction = null;
+      if ($overlay) {
+        $overlay.attr('hidden', 'hidden');
+      }
+    }
+
+    return {
+      open: open
+    };
+  })();
+
+  function confirmRemoveRow(options){
+    cffPostConfirm.open(options || {});
   }
 
   function getRepeaterRowsWrap($rep){
@@ -27,6 +130,7 @@ jQuery(function($){
    * ------------------------- */
   window.cffInitWysiwyg = function($scope){
     if (!window.wp || !wp.editor || !wp.editor.initialize) return;
+    syncWysiwygIds($scope);
 
     var defaults = (wp.editor.getDefaultSettings)
       ? wp.editor.getDefaultSettings()
@@ -835,19 +939,7 @@ jQuery(function($){
         });
       }
 
-      // update editor id: pakai pola yang lebih niat
-      // contoh: cff_wysiwyg_xxx__INDEX -> cff_wysiwyg_xxx_0 dst
-      $row.find('textarea.cff-wysiwyg[id]').each(function(){
-        // ganti hanya angka index paling akhir
-        this.id = this.id.replace(/(_)(\d+)$/, '$1' + newIndex);
-      });
-
-      // sync data-editor-id di settings hidden
-      $row.find('.cff-wysiwyg-settings[data-editor-id]').each(function(){
-        var cur = $(this).attr('data-editor-id');
-        if (!cur) return;
-        $(this).attr('data-editor-id', cur.replace(/(_)(\d+)$/, '$1' + newIndex));
-      });
+      syncWysiwygIds($row);
 
       // hidupkan lagi editor
       window.cffInitWysiwyg($row);
@@ -1026,15 +1118,7 @@ jQuery(function($){
         });
       }
 
-      $row.find('textarea.cff-wysiwyg[id]').each(function(){
-        this.id = this.id.replace(/(_)(\d+)$/, '$1' + newIndex);
-      });
-
-      $row.find('.cff-wysiwyg-settings[data-editor-id]').each(function(){
-        var cur = $(this).attr('data-editor-id');
-        if (!cur) return;
-        $(this).attr('data-editor-id', cur.replace(/(_)(\d+)$/, '$1' + newIndex));
-      });
+      syncWysiwygIds($row);
 
       window.cffInitWysiwyg($row);
     });
@@ -1204,16 +1288,17 @@ jQuery(function($){
       var limits = getRepeaterMinMax($rep);
       var count = getRepeaterRowsWrap($rep).children('.cff-rep-row').length;
       if (count <= limits.min) return;
-      if (!confirmRemoveRow('Delete this row?')) return;
-
-      window.cffRemoveWysiwyg($row);
-      $row.remove();
-
-      reindexRepeater($rep);
-
-      updateRepeaterControls($rep);
-
-      $rep.closest('form').trigger('change');
+      confirmRemoveRow({
+        title: 'Delete row',
+        message: 'Delete this row?',
+        onConfirm: function(){
+          window.cffRemoveWysiwyg($row);
+          $row.remove();
+          reindexRepeater($rep);
+          updateRepeaterControls($rep);
+          $rep.closest('form').trigger('change');
+        }
+      });
     });
 
   $(document)
@@ -1260,10 +1345,15 @@ jQuery(function($){
       e.preventDefault();
       var $flex = $(this).closest('.cff-flexible');
       var $row = $(this).closest('.cff-flex-row');
-      if (!confirmRemoveRow('Delete this layout row?')) return;
-      window.cffRemoveWysiwyg($row);
-      $row.remove();
-      reindexFlexible($flex);
+      confirmRemoveRow({
+        title: 'Delete layout row',
+        message: 'Delete this layout row?',
+        onConfirm: function(){
+          window.cffRemoveWysiwyg($row);
+          $row.remove();
+          reindexFlexible($flex);
+        }
+      });
     });
 
   /* -------------------------

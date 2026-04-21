@@ -432,6 +432,9 @@
   padding:20px;
   background:rgba(15,23,42,.42);
 }
+.cff-confirm-overlay[hidden]{
+  display:none;
+}
 .cff-confirm-dialog{
   width:min(100%, 420px);
   padding:20px;
