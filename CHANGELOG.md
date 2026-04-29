@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.4.1
+
+### Fixed
+- Fixed missing `tk-header-branding` styles on native WordPress admin pages.
+- Suppressed `Tool Kits` license notification inside CFF admin screens to maintain a clean UI.
+
 ## 2.4.0
 
 ### Added

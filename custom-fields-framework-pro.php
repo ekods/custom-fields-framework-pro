@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Custom Fields Framework Pro
  * Description: Custom fields with Field Groups, Repeater, Flexible Content, Location rules, and CFF-compatible frontend helpers.
- * Version: 2.4.0
+ * Version: 2.4.1
  * Author: Eko Dwi Saputro
  * Text Domain: cff
  * Domain Path: /languages
@@ -10,7 +10,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('CFFP_VERSION', '2.4.0');
+define('CFFP_VERSION', '2.4.1');
 define('CFFP_FILE', __FILE__);
 define('CFFP_DIR', plugin_dir_path(__FILE__));
 define('CFFP_URL', plugin_dir_url(__FILE__));
