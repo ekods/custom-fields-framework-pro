@@ -11,6 +11,7 @@ require_once __DIR__ . '/helpers/acf-compat.php';
 require_once __DIR__ . '/helpers/frontend-helpers.php';
 require_once __DIR__ . '/helpers/frontend-shortcodes.php';
 require_once __DIR__ . '/helpers/field-group-columns.php';
+require_once __DIR__ . '/helpers/admin-ui.php';
 
 
 add_action('admin_init', function(){
@@ -43,6 +44,18 @@ add_action('admin_init', function(){
         break;
     }
   }, 10, 2);
+});
+
+add_action('in_admin_header', function() {
+  if (!function_exists('get_current_screen')) return;
+  $screen = get_current_screen();
+  if (!$screen) return;
+  
+  if ($screen->id === 'edit-cff_group' || $screen->id === 'cff_group' || $screen->id === 'cff_options') {
+    echo '<div class="wrap tk-wrap" style="margin-top: 20px;">';
+    \CFF\cff_render_header_branding();
+    echo '</div>';
+  }
 });
 
 

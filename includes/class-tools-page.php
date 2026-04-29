@@ -30,15 +30,17 @@ class Tools_Page {
     $export_taxonomies = get_option('cffp_taxonomies', []);
     if (!is_array($export_taxonomies)) $export_taxonomies = [];
 
-    echo '<div class="wrap cff-admin cff-tools-page">';
-    echo '<div class="cff-page-header">';
-    echo '<h1>' . esc_html__('Export / Import', 'cff') . '</h1>';
-    echo '<p>' . esc_html__('Move CFF structures between sites, migrate ACF data, and keep content models versionable.', 'cff') . '</p>';
-    echo '</div>';
+    echo '<div class="wrap tk-wrap cff-admin cff-tools-page">';
+    cff_render_header_branding();
+    cff_render_page_hero(
+      __('Export / Import', 'cff'),
+      __('Move CFF structures between sites, migrate ACF data, and keep content models versionable.', 'cff'),
+      'dashicons-update-alt'
+    );
 
-    echo '<div class="cff-tools-grid">';
+    echo '<div class="tk-grid tk-grid-2">';
 
-    echo '<section class="cff-tools-card cff-tools-card--feature">';
+    echo '<div class="tk-card tk-card--feature" style="grid-column: 1 / -1; margin-bottom: 8px;">';
     echo '<h2>' . esc_html__('Export Configuration', 'cff') . '</h2>';
     echo '<p class="description">' . esc_html__('Download a JSON package containing field groups, post types, and taxonomies.', 'cff') . '</p>';
     echo '<form method="post" action="' . esc_url($export_url) . '">';
@@ -83,9 +85,9 @@ class Tools_Page {
 
     echo '<div class="cff-tools-actions"><button class="button button-primary">' . esc_html__('Download Export JSON', 'cff') . '</button></div>';
     echo '</form>';
-    echo '</section>';
+    echo '</div>'; // end feature card
 
-    echo '<section class="cff-tools-card">';
+    echo '<div class="tk-card">';
     echo '<h2>' . esc_html__('Export ACF Values', 'cff') . '</h2>';
     echo '<p class="description">' . esc_html__('Generate SQL that copies ACF post meta into the `_cff_` keys used by CFF.', 'cff') . '</p>';
     echo '<form method="post">';
@@ -94,9 +96,9 @@ class Tools_Page {
     echo '<div class="cff-tools-actions"><button class="button button-primary">' . esc_html__('Download ACF to CFF SQL', 'cff') . '</button></div>';
     echo '<p class="cff-tools-note">' . esc_html__('ACF must be active so the exporter can read the existing values.', 'cff') . '</p>';
     echo '</form>';
-    echo '</section>';
+    echo '</div>';
 
-    echo '<section class="cff-tools-card">';
+    echo '<div class="tk-card">';
     echo '<h2>' . esc_html__('Import Configuration', 'cff') . '</h2>';
     echo '<p class="description">' . esc_html__('Import a JSON package exported from this plugin or basic ACF JSON group definitions.', 'cff') . '</p>';
     echo '<form method="post" enctype="multipart/form-data">';
@@ -105,9 +107,9 @@ class Tools_Page {
     echo '<input class="cff-file-input" type="file" name="cff_json" accept="application/json" required>';
     echo '<div class="cff-tools-actions"><button class="button button-primary">' . esc_html__('Import JSON', 'cff') . '</button></div>';
     echo '</form>';
-    echo '</section>';
+    echo '</div>';
 
-    echo '<section class="cff-tools-card">';
+    echo '<div class="tk-card">';
     echo '<h2>' . esc_html__('Migrate from ACF', 'cff') . '</h2>';
     echo '<p class="description">' . esc_html__('Import ACF field groups into CFF using the current basic field mapping.', 'cff') . '</p>';
     echo '<form method="post">';
@@ -116,7 +118,7 @@ class Tools_Page {
     echo '<div class="cff-tools-actions"><button class="button">' . esc_html__('Run ACF Migration', 'cff') . '</button></div>';
     echo '<p class="cff-tools-note">' . esc_html__('Review imported groups before using them in production templates.', 'cff') . '</p>';
     echo '</form>';
-    echo '</section>';
+    echo '</div>';
 
     echo '</div>';
     $this->render_tools_script();

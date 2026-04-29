@@ -362,25 +362,32 @@ class Plugin {
   }
 
   public function page_dashboard() {
-    echo '<div class="wrap cff-admin"><h1>Custom Fields Framework Pro</h1>';
-    echo '<p>Version: <strong>' . esc_html(CFFP_VERSION) . '</strong></p>';
-    echo '<p>Manage field groups at <a href="'.esc_url(admin_url('edit.php?post_type=cff_group')).'">Field Groups</a>.</p>';
+    echo '<div class="wrap tk-wrap cff-admin">';
+    cff_render_header_branding();
+    cff_render_page_hero(
+      __('Custom Fields Framework', 'cff'),
+      __('Manage your dynamic content structure, create field groups, and explore the advanced custom field types.', 'cff'),
+      'dashicons-feedback',
+      '<a href="'.esc_url(admin_url('edit.php?post_type=cff_group')).'" class="button button-primary button-hero" style="color: #fff; border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); backdrop-filter: blur(10px);">'.__('Manage Field Groups', 'cff').'</a>'
+    );
 
     $pts = get_post_types(['public'=>true], 'objects');
-    echo '<hr><h2>All Post Types</h2>';
+    echo '<div class="tk-card">';
+    echo '<h2>All Post Types</h2>';
     echo '<p class="description">Reference list (built-in + your CPT). Use these keys in Location Rules (Post Type).</p>';
-    echo '<table class="widefat striped"><thead><tr><th>Key</th><th>Label</th><th>Menu</th><th>REST</th><th>Archive</th></tr></thead><tbody>';
+    echo '<div class="tk-table-scroll"><table class="tk-table tk-pairs-table"><thead><tr><th>Key</th><th>Label</th><th>Menu</th><th>REST</th><th>Archive</th></tr></thead><tbody>';
     foreach ($pts as $pt) {
       $menu = $pt->show_ui ? '<a href="'.esc_url(admin_url('edit.php?post_type='.$pt->name)).'">Open</a>' : '—';
       echo '<tr>';
       echo '<td><code>'.esc_html($pt->name).'</code></td>';
       echo '<td>'.esc_html($pt->labels->name).'</td>';
       echo '<td>'.$menu.'</td>';
-      echo '<td>'.($pt->show_in_rest ? 'Yes' : 'No').'</td>';
-      echo '<td>'.($pt->has_archive ? 'Yes' : 'No').'</td>';
+      echo '<td>'.($pt->show_in_rest ? '<span class="tk-badge tk-on">Yes</span>' : '<span class="tk-badge">No</span>').'</td>';
+      echo '<td>'.($pt->has_archive ? '<span class="tk-badge tk-on">Yes</span>' : '<span class="tk-badge">No</span>').'</td>';
       echo '</tr>';
     }
-    echo '</tbody></table>';
+    echo '</tbody></table></div>';
+    echo '</div>';
     echo '</div>';
   }
 
@@ -611,38 +618,23 @@ TEXT;
 [cff_item name="contributors" class="related-user"]
 TEXT;
 
-    echo '<div class="wrap cff-admin">';
-    echo '<h1>' . esc_html__('CFF Documentation', 'cff') . '</h1>';
-    echo '<p class="description">' . esc_html__('Reference for managing Field Groups and rendering CFF values on the frontend. Choose the tab based on the rendering style you use in your project.', 'cff') . '</p>';
+    echo '<div class="wrap tk-wrap cff-admin">';
+    cff_render_header_branding();
+    cff_render_page_hero(
+      __('CFF Documentation', 'cff'),
+      __('Reference for managing Field Groups and rendering CFF values on the frontend. Choose the tab based on the rendering style you use in your project.', 'cff'),
+      'dashicons-book-alt'
+    );
 
-    echo '<style>
-      .cff-doc-shell{max-width:1080px;margin-top:18px;background:#f6f7f7;}
-      .cff-doc-tabs{display:flex;gap:0;margin:0;background:#f0f0f1;border-bottom:1px solid #dcdcde;overflow:auto}
-      .cff-doc-tab{margin:0 0 -1px;padding:12px 18px;border:1px solid transparent;border-bottom:none;background:transparent;color:#50575e;cursor:pointer;font-weight:600;white-space:nowrap}
-      .cff-doc-tab:hover{color:#2271b1}
-      .cff-doc-tab.is-active{background:#fff;color:#2271b1;border-color:#dcdcde;border-top-left-radius:6px;border-top-right-radius:6px}
-      .cff-doc-panel{display:none;padding:18px;background:#fff}
-      .cff-doc-panel.is-active{display:block}
-      .cff-doc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin:16px 0}
-      .cff-doc-card{background:#fff;border:1px solid #dcdcde;border-radius:6px;padding:16px}
-      .cff-doc-card h2,.cff-doc-card h3{margin-top:0}
-      .cff-doc-table{width:100%;border-collapse:collapse;background:#fff}
-      .cff-doc-table th,.cff-doc-table td{border:1px solid #dcdcde;padding:10px 12px;text-align:left;vertical-align:top}
-      .cff-doc-table th{background:#f6f7f7}
-      .cff-doc-code{white-space:pre-wrap;background:#f6f7f7;padding:12px;border:1px solid #dcdcde;border-radius:6px}
-      .cff-doc-list{margin:0;padding-left:18px;line-height:1.8}
-      .cff-doc-note{margin-top:12px;padding:12px 14px;background:#f6f7f7;border-left:4px solid #2271b1}
-    </style>';
-
-    echo '<div class="cff-doc-shell">';
-    echo '<div class="cff-doc-tabs" role="tablist" aria-label="' . esc_attr__('CFF Documentation Tabs', 'cff') . '">';
-    echo '<button type="button" class="cff-doc-tab is-active" data-target="cff-doc-regular">' . esc_html__('Regular', 'cff') . '</button>';
-    echo '<button type="button" class="cff-doc-tab" data-target="cff-doc-shortcode">' . esc_html__('Shortcode', 'cff') . '</button>';
+    echo '<div class="cff-doc-shell tk-tabs" style="max-width: 1080px; margin-top: 18px;">';
+    echo '<div class="tk-tabs-nav" role="tablist" aria-label="' . esc_attr__('CFF Documentation Tabs', 'cff') . '">';
+    echo '<button type="button" class="tk-tabs-nav-button cff-doc-tab is-active" data-target="cff-doc-regular">' . esc_html__('Regular', 'cff') . '</button>';
+    echo '<button type="button" class="tk-tabs-nav-button cff-doc-tab" data-target="cff-doc-shortcode">' . esc_html__('Shortcode', 'cff') . '</button>';
     echo '</div>';
 
-    echo '<div id="cff-doc-regular" class="cff-doc-panel is-active">';
-    echo '<div class="cff-doc-grid">';
-    echo '<div class="cff-doc-card"><h2>' . esc_html__('How To Manage', 'cff') . '</h2><ol class="cff-doc-list">';
+    echo '<div id="cff-doc-regular" class="cff-doc-panel tk-tabs-content is-active">';
+    echo '<div class="tk-grid tk-grid-2">';
+    echo '<div class="tk-card tk-card--feature"><h2>' . esc_html__('How To Manage', 'cff') . '</h2><ol class="tk-list">';
     echo '<li>' . esc_html__('Create or edit a Field Group from Custom Fields -> Field Groups.', 'cff') . '</li>';
     echo '<li>' . esc_html__('Add fields and choose the correct field type for the content shape.', 'cff') . '</li>';
     echo '<li>' . esc_html__('Set Location Rules so the group appears only on the intended post type, page, or options page.', 'cff') . '</li>';
@@ -650,7 +642,7 @@ TEXT;
     echo '<li>' . esc_html__('Save the group, then fill the values in the target editor screen.', 'cff') . '</li>';
     echo '</ol></div>';
 
-    echo '<div class="cff-doc-card"><h2>' . esc_html__('When To Use', 'cff') . '</h2><ul class="cff-doc-list">';
+    echo '<div class="tk-card tk-card--feature"><h2>' . esc_html__('When To Use', 'cff') . '</h2><ul class="tk-list">';
     echo '<li><strong>' . esc_html__('Regular helper:', 'cff') . '</strong> ' . esc_html__('best for theme templates, PHP control, conditional rendering, and complex layouts.', 'cff') . '</li>';
     echo '<li><strong>' . esc_html__('Repeater / Group / Flexible:', 'cff') . '</strong> ' . esc_html__('use when the content is nested or repeatable.', 'cff') . '</li>';
     echo '<li><strong>' . esc_html__('Reorder:', 'cff') . '</strong> ' . esc_html__('use when the frontend section order needs to follow editor sorting.', 'cff') . '</li>';
@@ -658,9 +650,9 @@ TEXT;
     echo '</ul></div>';
     echo '</div>';
 
-    echo '<div class="cff-doc-card" style="max-width:1080px;margin-bottom:16px;">';
+    echo '<div class="tk-card tk-card--feature" style="max-width:1080px;margin-top:16px;margin-bottom:16px;">';
     echo '<h2>' . esc_html__('Supported Field Types', 'cff') . '</h2>';
-    echo '<table class="cff-doc-table"><thead><tr><th>' . esc_html__('Type', 'cff') . '</th><th>' . esc_html__('Output Shape', 'cff') . '</th><th>' . esc_html__('Common Usage', 'cff') . '</th></tr></thead><tbody>';
+    echo '<div class="tk-table-scroll"><table class="tk-table tk-pairs-table"><thead><tr><th>' . esc_html__('Type', 'cff') . '</th><th>' . esc_html__('Output Shape', 'cff') . '</th><th>' . esc_html__('Common Usage', 'cff') . '</th></tr></thead><tbody>';
     foreach ($field_types as $row) {
       echo '<tr>';
       echo '<td><code>' . esc_html($row[0]) . '</code></td>';
@@ -668,22 +660,22 @@ TEXT;
       echo '<td>' . esc_html($row[2]) . '</td>';
       echo '</tr>';
     }
-    echo '</tbody></table>';
+    echo '</tbody></table></div>';
     echo '</div>';
 
-    echo '<div class="cff-doc-grid">';
-    echo '<div class="cff-doc-card"><h2>' . esc_html__('Basic Example', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($regular_snippet) . '</pre></div>';
-    echo '<div class="cff-doc-card"><h2>' . esc_html__('Cross Page Example', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($cross_page_snippet) . '</pre><div class="cff-doc-note">' . esc_html__('Use the second parameter on helper functions when the field source is another page or post.', 'cff') . '</div></div>';
+    echo '<div class="tk-grid tk-grid-2">';
+    echo '<div class="tk-card"><h2>' . esc_html__('Basic Example', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($regular_snippet) . '</pre></div>';
+    echo '<div class="tk-card"><h2>' . esc_html__('Cross Page Example', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($cross_page_snippet) . '</pre><div class="tk-toolbar-note">' . esc_html__('Use the second parameter on helper functions when the field source is another page or post.', 'cff') . '</div></div>';
     echo '</div>';
 
-    echo '<div class="cff-doc-grid">';
-    echo '<div class="cff-doc-card"><h2>' . esc_html__('Image Example', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($image_snippet) . '</pre></div>';
-    echo '<div class="cff-doc-card"><h2>' . esc_html__('Loop Example', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($repeater_loop_snippet) . '</pre></div>';
+    echo '<div class="tk-grid tk-grid-2" style="margin-top: 16px;">';
+    echo '<div class="tk-card"><h2>' . esc_html__('Image Example', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($image_snippet) . '</pre></div>';
+    echo '<div class="tk-card"><h2>' . esc_html__('Loop Example', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($repeater_loop_snippet) . '</pre></div>';
     echo '</div>';
 
-    echo '<div class="cff-doc-grid">';
-    echo '<div class="cff-doc-card"><h2>' . esc_html__('Reorder Rendering', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($reorder_snippet) . '</pre></div>';
-    echo '<div class="cff-doc-card"><h2>' . esc_html__('Performance Notes', 'cff') . '</h2><ul class="cff-doc-list">';
+    echo '<div class="tk-grid tk-grid-2" style="margin-top: 16px;">';
+    echo '<div class="tk-card"><h2>' . esc_html__('Reorder Rendering', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($reorder_snippet) . '</pre></div>';
+    echo '<div class="tk-card tk-card--feature"><h2>' . esc_html__('Performance Notes', 'cff') . '</h2><ul class="tk-list">';
     echo '<li>' . esc_html__('For single values, prefer direct helpers such as cff_get_text() or get_field().', 'cff') . '</li>';
     echo '<li>' . esc_html__('For reorder output, use a known group_id whenever possible.', 'cff') . '</li>';
     echo '<li>' . esc_html__('Avoid scanning the same group repeatedly in one template. Resolve once, then render.', 'cff') . '</li>';
@@ -701,9 +693,9 @@ TEXT;
     echo '</div>';
     echo '</div>';
 
-    echo '<div id="cff-doc-shortcode" class="cff-doc-panel">';
-    echo '<div class="cff-doc-grid">';
-    echo '<div class="cff-doc-card"><h2>' . esc_html__('Available Shortcodes', 'cff') . '</h2><ul class="cff-doc-list">';
+    echo '<div id="cff-doc-shortcode" class="cff-doc-panel tk-tabs-content">';
+    echo '<div class="tk-grid tk-grid-2">';
+    echo '<div class="tk-card tk-card--feature"><h2>' . esc_html__('Available Shortcodes', 'cff') . '</h2><ul class="tk-list">';
     echo '<li><code>[cff_value]</code> ' . esc_html__('render one field value directly.', 'cff') . '</li>';
     echo '<li><code>[cff_field]</code> ' . esc_html__('render one field value or active loop field.', 'cff') . '</li>';
     echo '<li><code>[cff_item]</code> ' . esc_html__('alias of [cff_field].', 'cff') . '</li>';
@@ -711,7 +703,7 @@ TEXT;
     echo '<li><code>[cff_items]</code> ' . esc_html__('alias of [cff_loop].', 'cff') . '</li>';
     echo '</ul></div>';
 
-    echo '<div class="cff-doc-card"><h2>' . esc_html__('Shortcode Attributes', 'cff') . '</h2><ul class="cff-doc-list">';
+    echo '<div class="tk-card tk-card--feature"><h2>' . esc_html__('Shortcode Attributes', 'cff') . '</h2><ul class="tk-list">';
     echo '<li><code>name</code> ' . esc_html__('field name for single render.', 'cff') . '</li>';
     echo '<li><code>post_id</code> / <code>page_id</code> ' . esc_html__('source content ID for cross-page rendering.', 'cff') . '</li>';
     echo '<li><code>group_id</code> ' . esc_html__('explicit field group for ordered loop rendering.', 'cff') . '</li>';
@@ -726,32 +718,32 @@ TEXT;
     echo '</ul></div>';
     echo '</div>';
 
-    echo '<div class="cff-doc-grid">';
-    echo '<div class="cff-doc-card"><h2>' . esc_html__('Single Item Example', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($shortcode_single_snippet) . '</pre></div>';
-    echo '<div class="cff-doc-card"><h2>' . esc_html__('Loop By Group Example', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($shortcode_loop_snippet) . '</pre></div>';
+    echo '<div class="tk-grid tk-grid-2" style="margin-top: 16px;">';
+    echo '<div class="tk-card"><h2>' . esc_html__('Single Item Example', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($shortcode_single_snippet) . '</pre></div>';
+    echo '<div class="tk-card"><h2>' . esc_html__('Loop By Group Example', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($shortcode_loop_snippet) . '</pre></div>';
     echo '</div>';
 
-    echo '<div class="cff-doc-grid">';
-    echo '<div class="cff-doc-card"><h2>' . esc_html__('Use Shortcode In PHP', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($shortcode_php_snippet) . '</pre><div class="cff-doc-note">' . esc_html__('Use do_shortcode() when you need the same shortcode output inside theme files, template parts, or custom frontend PHP.', 'cff') . '</div></div>';
-    echo '<div class="cff-doc-card"><h2>' . esc_html__('Cross Page + Polylang', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($shortcode_candidates_snippet) . '</pre></div>';
+    echo '<div class="tk-grid tk-grid-2" style="margin-top: 16px;">';
+    echo '<div class="tk-card"><h2>' . esc_html__('Use Shortcode In PHP', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($shortcode_php_snippet) . '</pre><div class="tk-toolbar-note">' . esc_html__('Use do_shortcode() when you need the same shortcode output inside theme files, template parts, or custom frontend PHP.', 'cff') . '</div></div>';
+    echo '<div class="tk-card"><h2>' . esc_html__('Cross Page + Polylang', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($shortcode_candidates_snippet) . '</pre></div>';
     echo '</div>';
 
-    echo '<div class="cff-doc-grid">';
-    echo '<div class="cff-doc-card"><h2>' . esc_html__('Image / Video Auto Render', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($shortcode_image_snippet) . '</pre><div class="cff-doc-note">' . esc_html__('Use the same [cff_item] shortcode for image or video fields. CFF detects the media type automatically from the value.', 'cff') . '</div></div>';
+    echo '<div class="tk-grid tk-grid-2" style="margin-top: 16px;">';
+    echo '<div class="tk-card" style="grid-column: 1 / -1;"><h2>' . esc_html__('Image / Video Auto Render', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($shortcode_image_snippet) . '</pre><div class="tk-toolbar-note">' . esc_html__('Use the same [cff_item] shortcode for image or video fields. CFF detects the media type automatically from the value.', 'cff') . '</div></div>';
     echo '</div>';
 
-    echo '<div class="cff-doc-grid">';
-    echo '<div class="cff-doc-card"><h2>' . esc_html__('Video Options', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($shortcode_video_snippet) . '</pre><div class="cff-doc-note">' . esc_html__('Use controls, muted, autoplay, loop, and playsinline only when the field may contain video. Image fields ignore those attributes.', 'cff') . '</div></div>';
-    echo '<div class="cff-doc-card"><h2>' . esc_html__('include_empty With Keys', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($shortcode_include_empty_snippet) . '</pre><div class="cff-doc-note">' . esc_html__('Use 1/true to include all empty items, or pass keys like id,url,title to keep items when one of those keys has a value.', 'cff') . '</div></div>';
+    echo '<div class="tk-grid tk-grid-2" style="margin-top: 16px;">';
+    echo '<div class="tk-card"><h2>' . esc_html__('Video Options', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($shortcode_video_snippet) . '</pre><div class="tk-toolbar-note">' . esc_html__('Use controls, muted, autoplay, loop, and playsinline only when the field may contain video. Image fields ignore those attributes.', 'cff') . '</div></div>';
+    echo '<div class="tk-card"><h2>' . esc_html__('include_empty With Keys', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($shortcode_include_empty_snippet) . '</pre><div class="tk-toolbar-note">' . esc_html__('Use 1/true to include all empty items, or pass keys like id,url,title to keep items when one of those keys has a value.', 'cff') . '</div></div>';
     echo '</div>';
 
-    echo '<div class="cff-doc-grid">';
-    echo '<div class="cff-doc-card"><h2>' . esc_html__('Relational Example', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($shortcode_relational_snippet) . '</pre><div class="cff-doc-note">' . esc_html__('Relational values now render as linked post/title, term name, or user display name when possible.', 'cff') . '</div></div>';
-    echo '<div class="cff-doc-card"><h2>' . esc_html__('Debug Value', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($shortcode_debug_snippet) . '</pre><div class="cff-doc-note">' . esc_html__('Use [cff_debug] to inspect the active value in JSON format. Use target="item" to inspect the whole loop item payload.', 'cff') . '</div></div>';
+    echo '<div class="tk-grid tk-grid-2" style="margin-top: 16px;">';
+    echo '<div class="tk-card"><h2>' . esc_html__('Relational Example', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($shortcode_relational_snippet) . '</pre><div class="tk-toolbar-note">' . esc_html__('Relational values now render as linked post/title, term name, or user display name when possible.', 'cff') . '</div></div>';
+    echo '<div class="tk-card"><h2>' . esc_html__('Debug Value', 'cff') . '</h2><pre class="cff-doc-code">' . esc_html($shortcode_debug_snippet) . '</pre><div class="tk-toolbar-note">' . esc_html__('Use [cff_debug] to inspect the active value in JSON format. Use target="item" to inspect the whole loop item payload.', 'cff') . '</div></div>';
     echo '</div>';
 
-    echo '<div class="cff-doc-grid">';
-    echo '<div class="cff-doc-card"><h2>' . esc_html__('Shortcode Notes', 'cff') . '</h2><ul class="cff-doc-list">';
+    echo '<div class="tk-grid tk-grid-2" style="margin-top: 16px;">';
+    echo '<div class="tk-card tk-card--feature" style="grid-column: 1 / -1;"><h2>' . esc_html__('Shortcode Notes', 'cff') . '</h2><ul class="tk-list">';
     echo '<li>' . esc_html__('Use shortcode when content needs to stay clean in page builder/editor.', 'cff') . '</li>';
     echo '<li>' . esc_html__('For one field only, use [cff_value] or [cff_item name="..."].', 'cff') . '</li>';
     echo '<li>' . esc_html__('Inside PHP templates, call the same shortcode with do_shortcode().', 'cff') . '</li>';
@@ -959,13 +951,21 @@ TEXT;
       'custom-fields' => 'Custom Fields',
     ];
 
-    echo '<div class="wrap cff-admin"><h1>Post Types</h1>';
-    echo '<h2>Existing</h2>';
+    echo '<div class="wrap tk-wrap cff-admin">';
+    cff_render_header_branding();
+    cff_render_page_hero(
+      __('Post Types', 'cff'),
+      __('Create and manage Custom Post Types. Automatically registers URLs, REST API endpoints, and admin UI.', 'cff'),
+      'dashicons-admin-post'
+    );
+
+    echo '<div class="tk-card">';
+    echo '<h2 style="margin-top:0">Existing Post Types</h2>';
 
     if (!$defs) {
-      echo '<p class="cff-muted">No custom post types yet.</p>';
+      echo '<p class="tk-empty">No custom post types yet.</p>';
     } else {
-      echo '<table class="widefat striped"><thead><tr><th>Key</th><th>Label</th><th>Slug</th><th>Template Files</th><th>Icon</th><th>Thumbnail</th><th>Views</th><th>Public</th><th>Actions</th></tr></thead><tbody>';
+      echo '<div class="tk-table-scroll"><table class="tk-table tk-pairs-table"><thead><tr><th>Key</th><th>Label</th><th>Slug</th><th>Template Files</th><th>Icon</th><th>Thumbnail</th><th>Views</th><th>Public</th><th>Actions</th></tr></thead><tbody>';
 
       foreach ($defs as $key => $def) {
         $label = esc_html(($def['plural'] ?? $key));
@@ -1032,13 +1032,15 @@ TEXT;
         echo '</tr>';
       }
 
-      echo '</tbody></table>';
+      echo '</tbody></table></div>';
     }
+    echo '</div>'; // end tk-card
 
     // =========================
     // ADD / EDIT FORM
     // =========================
-    echo '<hr><h2>'.($editing ? 'Edit Post Type' : 'Add New Post Type').'</h2>';
+    echo '<div class="tk-card tk-card--custom" style="margin-top: 24px;">';
+    echo '<h2 style="margin-top:0">'.($editing ? 'Edit Post Type' : 'Add New Post Type').'</h2>';
 
     $pub = $editing ? !empty($edit_def['public']) : true;
     $arc = $editing ? !empty($edit_def['has_archive']) : true;
@@ -1137,6 +1139,7 @@ TEXT;
     echo '</td></tr>';
 
     echo '</tbody></table>';
+    echo '</div>'; // end tk-card
     echo '<p><button type="submit" class="button button-primary">Save CPT</button></p>';
     echo '</form>';
 
@@ -1236,13 +1239,21 @@ TEXT;
     $post_types = get_post_types(['public'=>true], 'objects');
     $sel_pt = isset($edit_def['post_types']) && is_array($edit_def['post_types']) ? $edit_def['post_types'] : [];
 
-    echo '<div class="wrap cff-admin"><h1>Taxonomies</h1>';
-    echo '<h2>Existing</h2>';
+    echo '<div class="wrap tk-wrap cff-admin">';
+    cff_render_header_branding();
+    cff_render_page_hero(
+      __('Taxonomies', 'cff'),
+      __('Create and manage Custom Taxonomies to group your posts. Automatically registers URLs and REST API endpoints.', 'cff'),
+      'dashicons-category'
+    );
+
+    echo '<div class="tk-card">';
+    echo '<h2 style="margin-top:0">Existing Taxonomies</h2>';
 
     if (!$defs) {
-      echo '<p>No custom taxonomies yet.</p>';
+      echo '<p class="tk-empty">No custom taxonomies yet.</p>';
     } else {
-      echo '<table class="widefat striped"><thead><tr><th>Key</th><th>Label</th><th>Post Types</th><th>Public</th><th>Hierarchical</th><th>Actions</th></tr></thead><tbody>';
+      echo '<div class="tk-table-scroll"><table class="tk-table tk-pairs-table"><thead><tr><th>Key</th><th>Label</th><th>Post Types</th><th>Public</th><th>Hierarchical</th><th>Actions</th></tr></thead><tbody>';
       foreach ($defs as $key=>$def) {
         $pts = isset($def['post_types']) ? implode(', ', array_map('esc_html',(array)$def['post_types'])) : '';
         echo '<tr>';
@@ -1262,15 +1273,15 @@ TEXT;
         echo '</td>';
         echo '</tr>';
       }
-      echo '</tbody></table>';
+      echo '</tbody></table></div>';
     }
+    echo '</div>'; // end tk-card
 
-    echo '<hr><h2>'.($editing ? 'Edit Taxonomy' : 'Add New Taxonomy').'</h2>';
+    echo '<div class="tk-card tk-card--custom" style="margin-top: 24px;">';
+    echo '<h2 style="margin-top:0">'.($editing ? 'Edit Taxonomy' : 'Add New Taxonomy').'</h2>';
     echo '<form method="post" class="cff-tools-form cff-tax-form">';
     echo wp_nonce_field('cffp_tax_nonce','cffp_tax_nonce',true,false);
     echo '<input type="hidden" name="cffp_tax_action" value="'.($editing?'update':'add').'">';
-
-    echo '<div class="cff-tools-card">';
     $langs = $this->polylang_languages();
     echo '<div class="cff-tools-field"><label>Plural Label <span class="required">*</span></label>';
     echo '<input class="regular-text" type="text" name="plural" placeholder="Genres" required value="' . esc_attr($edit_def['plural'] ?? '') . '">';
@@ -1331,8 +1342,9 @@ TEXT;
     echo '</div>';
 
     echo '<p><button class="button button-primary">Save Taxonomy</button></p>';
-    echo '</div></form>';
-    echo '</div>';
+    echo '</form>';
+    echo '</div>'; // end tk-card
+    echo '</div>'; // end wrap
   }
 
   public function page_reorder() {
@@ -1341,7 +1353,14 @@ TEXT;
     $post_types = get_post_types(['public'=>true], 'objects');
     $taxonomies = get_taxonomies(['public'=>true], 'objects');
 
-    echo '<div class="wrap cff-admin"><h1>Reorder</h1>';
+    echo '<div class="wrap tk-wrap cff-admin">';
+    cff_render_header_branding();
+    cff_render_page_hero(
+      __('Reorder', 'cff'),
+      __('Drag and drop to easily reorder your posts, pages, custom post types, and taxonomies.', 'cff'),
+      'dashicons-sort'
+    );
+
     echo '<div id="cff-reorder">';
 
     echo '<div class="cff-reorder-section">';
@@ -1415,19 +1434,26 @@ TEXT;
       $label = $obj->labels->name ?? ucfirst($post_type);
     }
 
-    echo '<div class="wrap cff-admin"><h1>' . esc_html__('Reorder', 'cff') . ' - ' . esc_html($label) . '</h1>';
-    echo '<div id="cff-reorder">';
-    echo '<div class="cff-reorder-section">';
+    echo '<div class="wrap tk-wrap cff-admin">';
+    cff_render_header_branding();
+    cff_render_page_hero(
+      sprintf(__('Reorder %s', 'cff'), $label),
+      __('Drag and drop the items to set their default display order.', 'cff'),
+      'dashicons-sort'
+    );
+    
+    echo '<div id="cff-reorder" class="tk-grid">';
+    echo '<div class="cff-reorder-section tk-card">';
     echo '<h2>' . esc_html($label) . '</h2>';
-    echo '<div class="cff-reorder-controls">';
-    echo '<label for="cff-reorder-post-type">' . esc_html__('Post Type', 'cff') . '</label> ';
-    echo '<select id="cff-reorder-post-type">';
+    echo '<div class="cff-reorder-controls tk-toolbar">';
+    echo '<label for="cff-reorder-post-type" style="font-weight: 500;">' . esc_html__('Post Type:', 'cff') . '</label> ';
+    echo '<select id="cff-reorder-post-type" style="min-width: 200px;">';
     echo '<option value="' . esc_attr($post_type) . '" selected>' . esc_html($label) . '</option>';
     echo '</select> ';
-    echo '<button type="button" class="button" id="cff-reorder-load-posts">' . esc_html__('Load', 'cff') . '</button>';
+    echo '<button type="button" class="button" id="cff-reorder-load-posts">' . esc_html__('Load Items', 'cff') . '</button>';
     echo '</div>';
-    echo '<ul class="cff-reorder-list" data-kind="post"></ul>';
-    echo '<p><button type="button" class="button button-primary" id="cff-reorder-save-posts">' . esc_html__('Save Order', 'cff') . '</button></p>';
+    echo '<ul class="cff-reorder-list" data-kind="post" style="margin-top: 10px;"></ul>';
+    echo '<div style="margin-top: 16px;"><button type="button" class="button button-primary" id="cff-reorder-save-posts">' . esc_html__('Save Order', 'cff') . '</button></div>';
     echo '</div>';
     echo '</div>';
     echo '<script>document.addEventListener("DOMContentLoaded",function(){var btn=document.getElementById("cff-reorder-load-posts");if(btn){btn.click();}});</script>';

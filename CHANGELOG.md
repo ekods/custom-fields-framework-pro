@@ -2,7 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
-## 2.3
+## 2.4.0
+
+### Added
+- Synchronized design system with the Tool Kits plugin for a premium, SaaS-like administrative UI.
+- New standalone `tk-` CSS utility classes included directly within the plugin for independent styling.
+- Added `cff_render_header_branding()` and `cff_render_page_hero()` UI helpers to unify plugin headers.
+
+### Changed
+- Modernized the UI for Dashboard, Post Types, Taxonomies, Reorder, Tools, and Documentation pages to use `tk-card` and `tk-grid` layouts.
+- Updated Field Group edit screens and Global Settings views to render consistent plugin branding above standard WordPress list tables.
+
+## 2.3.0
 
 ### Added
 - Added `Repeater Layout: Table (fill values inline)`.
