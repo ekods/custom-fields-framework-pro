@@ -272,7 +272,9 @@ class Plugin {
     add_action('init', [$this, 'add_polylang_rewrite_rules'], 100);
 
     add_action('admin_menu', [$this, 'admin_menu']);
+    add_action('admin_head', [$this, 'suppress_tool_kits_notices']);
     add_action('add_meta_boxes', [$this, 'meta_boxes']);
+
     add_action('save_post_cff_group', [$this, 'save_group'], 10, 2);
     add_action('save_post_cff_options', [$this, 'save_global_ui_settings'], 10, 2);
 
@@ -315,6 +317,21 @@ class Plugin {
     add_filter('single_template', [$this, 'filter_slug_based_single_template']);
     add_filter('archive_template', [$this, 'filter_slug_based_archive_template']);
     add_filter('nav_menu_css_class', [$this, 'filter_nav_menu_css_class'], 10, 4);
+  }
+
+  public function suppress_tool_kits_notices() {
+    $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+    $is_cff = false;
+    
+    if ($screen) {
+        if (strpos((string) $screen->id, 'cff') !== false || $screen->post_type === 'cff_group' || $screen->id === 'cff_options') {
+            $is_cff = true;
+        }
+    }
+    
+    if ($is_cff) {
+        remove_action('admin_notices', 'tk_license_admin_notice');
+    }
   }
 
   public function admin_menu() {
@@ -1473,7 +1490,7 @@ TEXT;
       wp_enqueue_style('cff-list', CFFP_URL . 'assets/list.css', [], $this->asset_ver('assets/list.css'));
     }
 
-    if ($is_group_editor || $is_plugin_screen) {
+    if ($is_group || $is_plugin_screen || ($screen && $screen->id === 'cff_options')) {
       wp_enqueue_style('cff-admin', CFFP_URL . 'assets/admin.css', [], $this->asset_ver('assets/admin.css'));
 
       wp_enqueue_style('cff-select2', CFFP_URL . 'assets/vendor/select2/select2.min.css', [], '4.1.0-rc.0');
