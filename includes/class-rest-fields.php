@@ -16,7 +16,7 @@ class Rest_Fields {
     foreach ($post_types as $post_type) {
       $post_type = sanitize_key($post_type);
       if (!$post_type) continue;
-      if (in_array($post_type, ['cff_group', 'cff_options', 'revision'], true)) continue;
+      if (in_array($post_type, ['cff_group', 'revision'], true)) continue;
 
       $writable = (bool) apply_filters('cff_rest_fields_writable', true, $post_type);
       $schema_properties = $this->build_schema_properties_for_post_type($post_type);

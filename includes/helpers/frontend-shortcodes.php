@@ -53,12 +53,19 @@ if (!function_exists(__NAMESPACE__ . '\cff_shortcode_translate_post_id')) {
 
 if (!function_exists(__NAMESPACE__ . '\cff_shortcode_resolve_post_id')) {
   function cff_shortcode_resolve_post_id($post_id = 0, $page_id = 0, $lang = '') {
-    $resolved_id = absint($post_id);
-    if (!$resolved_id) {
-      $resolved_id = absint($page_id);
-    }
-    if (!$resolved_id) {
-      $resolved_id = cff_resolve_post_id(0);
+    $raw_post_id = is_scalar($post_id) ? (string) $post_id : '';
+    $raw_page_id = is_scalar($page_id) ? (string) $page_id : '';
+
+    if ($raw_post_id === 'global' || $raw_page_id === 'global') {
+      $resolved_id = absint(get_option('cffp_global_settings_post_id', 0));
+    } else {
+      $resolved_id = absint($post_id);
+      if (!$resolved_id) {
+        $resolved_id = absint($page_id);
+      }
+      if (!$resolved_id) {
+        $resolved_id = cff_resolve_post_id(0);
+      }
     }
 
     return cff_shortcode_translate_post_id($resolved_id, $lang);

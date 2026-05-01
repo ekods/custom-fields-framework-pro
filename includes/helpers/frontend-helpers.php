@@ -93,3 +93,19 @@ if (!function_exists(__NAMESPACE__ . '\cff_get_group_value')) {
     return $group[$sub_field];
   }
 }
+
+if (!function_exists(__NAMESPACE__ . '\cff_get_global_value')) {
+  function cff_get_global_value($field_name, $default = null, $format_value = true) {
+    $post_id = absint(get_option('cffp_global_settings_post_id', 0));
+    if (!$post_id) return $default;
+    return cff_get_value($field_name, $post_id, $default, $format_value);
+  }
+}
+
+if (!function_exists(__NAMESPACE__ . '\cff_get_global_text')) {
+  function cff_get_global_text($field_name, $default = '') {
+    $post_id = absint(get_option('cffp_global_settings_post_id', 0));
+    if (!$post_id) return $default;
+    return cff_get_text($field_name, $post_id, $default);
+  }
+}

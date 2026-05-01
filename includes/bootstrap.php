@@ -52,8 +52,22 @@ add_action('in_admin_header', function() {
   if (!$screen) return;
   
   if ($screen->id === 'edit-cff_group' || $screen->id === 'cff_group' || $screen->id === 'cff_options') {
-    echo '<div class="wrap tk-wrap" style="margin-top: 20px;">';
+    echo '<div class="wrap tk-wrap cff-admin-header-wrap" style="margin-top: 20px; margin-bottom: 0;">';
     \CFF\cff_render_header_branding();
+    
+    if ($screen->id === 'edit-cff_group') {
+      \CFF\cff_render_page_hero(
+        __('Field Groups', 'cff'),
+        __('Manage your custom field sets and define where they should appear across your content.', 'cff'),
+        'dashicons-layout'
+      );
+    } elseif ($screen->id === 'cff_options') {
+      \CFF\cff_render_page_hero(
+        __('Global Settings', 'cff'),
+        __('Manage global configurations and custom fields that apply across your entire website.', 'cff'),
+        'dashicons-admin-generic'
+      );
+    }
     echo '</div>';
   }
 });

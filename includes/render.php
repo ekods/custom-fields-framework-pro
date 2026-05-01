@@ -44,8 +44,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         'medium',
         false,
         [
-          'class' => 'cff-media-thumb',
-          'style' => 'max-width:max-content;height:auto;display:block;object-fit:contain;width:100%;aspect-ratio:initial;'
+          'class' => 'cff-media-thumb'
         ]
       );
       if ($img) return $img;
@@ -400,27 +399,26 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     if ($is_accordion) {
       echo '<div class="postbox-header">';
       echo '<div class="cff-hndle" role="heading" aria-level="2">';
-      echo '<div class="cff-hndle-label">'.$label_text.'</div>';
+      echo '<div class="cff-hndle-label">' . $label_text . '</div>';
       echo '<div class="cff-hndle-meta">';
-      echo '<div class="description cff-meta-type">Type <b>'.esc_html($type_label).'</b></div>';
-      echo '<div class="description cff-meta-name">'.esc_html($name).'</div>';
+      echo '<span class="cff-meta-badge type">' . esc_html($type_label) . '</span>';
+      echo '<span class="cff-meta-badge name">' . esc_html($name) . '</span>';
       echo '</div>';
       echo '</div>';
       echo '<div class="handle-actions hide-if-no-js">';
-      echo '<button type="button" class="cff-handlediv cff-acc-toggle" aria-expanded="'.($is_initially_closed ? 'false' : 'true').'">';
-      echo '<span class="screen-reader-text">'.esc_html__('Toggle panel', 'cff').'</span>';
-      // echo '<span class="toggle-indicator" aria-hidden="true"></span>';
+      echo '<button type="button" class="cff-handlediv cff-acc-toggle" aria-expanded="' . ($is_initially_closed ? 'false' : 'true') . '">';
+      echo '<span class="screen-reader-text">' . esc_html__('Toggle panel', 'cff') . '</span>';
       echo '</button>';
       echo '</div>';
       echo '</div>';
       echo '<div class="inside cff-input">';
     } else {
       echo '<div class="cff-label">';
-      echo '<div class="cff-label-head">';
-      echo '<label>'.$label_text.'</label>';
+      echo '<label>' . $label_text . '</label>';
+      echo '<div class="cff-label-meta">';
+      echo '<span class="cff-meta-badge type">' . esc_html($type_label) . '</span>';
+      echo '<span class="cff-meta-badge name">' . esc_html($name) . '</span>';
       echo '</div>';
-      echo '<div class="description cff-meta-type">Type <b>'.esc_html($type_label).'</b></div>';
-      echo '<div class="description cff-meta-name">'.esc_html($name).'</div>';
       echo '</div>';
       echo '<div class="cff-input">';
     }
@@ -903,7 +901,17 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     } elseif ($layout === 'gallery') {
       echo '<div class="'.esc_attr($head_class).'"><div class="cff-rep-left"><strong class="cff-rep-row-title">'.esc_html($row_title).'</strong></div><div class="cff-rep-actions"><span class="cff-rep-drag" title="Drag"></span><button type="button" class="button-link cff-rep-clone" title="Clone row" aria-label="Clone row"><span class="dashicons dashicons-admin-page" aria-hidden="true"></span></button><button type="button" class="button-link cff-rep-remove" title="Remove row" aria-label="Remove row"><span class="dashicons dashicons-trash" aria-hidden="true"></span></button></div></div>';
     } else {
-      echo '<div class="'.esc_attr($head_class).'"><div class="cff-rep-left"><span class="cff-rep-drag" title="Drag"></span><button type="button" class="cff-rep-toggle" title="Collapse"></button><strong class="cff-rep-row-title">'.esc_html($row_title).'</strong></div><div class="cff-rep-actions"><button type="button" class="button-link cff-rep-clone" title="Clone row" aria-label="Clone row"><span class="dashicons dashicons-admin-page" aria-hidden="true"></span></button><button type="button" class="button-link cff-rep-remove" title="Remove row" aria-label="Remove row"><span class="dashicons dashicons-trash" aria-hidden="true"></span></button></div></div>';
+      echo '<div class="'.esc_attr($head_class).'">';
+      echo '<div class="cff-rep-left">';
+      echo '<span class="cff-rep-drag" title="'.esc_attr__('Drag to reorder', 'cff').'"></span>';
+      echo '<button type="button" class="cff-rep-toggle" title="'.esc_attr__('Toggle row', 'cff').'"></button>';
+      echo '<strong class="cff-rep-row-title">'.esc_html($row_title).'</strong>';
+      echo '</div>';
+      echo '<div class="cff-rep-actions">';
+      echo '<button type="button" class="button-link cff-rep-clone" title="'.esc_attr__('Clone row', 'cff').'" aria-label="'.esc_attr__('Clone row', 'cff').'"><span class="dashicons dashicons-admin-page" aria-hidden="true"></span></button>';
+      echo '<button type="button" class="button-link cff-rep-remove" title="'.esc_attr__('Remove row', 'cff').'" aria-label="'.esc_attr__('Remove row', 'cff').'"><span class="dashicons dashicons-trash" aria-hidden="true"></span></button>';
+      echo '</div>';
+      echo '</div>';
     }
     echo '<div class="cff-rep-row-body">';
     $row_prefix = ($name_prefix !== null ? $name_prefix : 'cff_values['.$parent.']') . '['.$i.']';
@@ -1340,7 +1348,7 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
 
     echo '<div class="cff-flex-row" data-i="'.esc_attr($i).'" data-layout="'.esc_attr($layout).'" data-row-id="'.esc_attr($row_id).'">';
     echo '<div class="cff-flex-head"><strong>'.esc_html($label).'</strong> <span class="cff-pill">'.esc_html($layout).'</span> ';
-    echo '<button type="button" class="button-link cff-flex-remove">Remove</button></div>';
+    echo '<button type="button" class="button-link cff-flex-remove" title="'.esc_attr__('Remove layout', 'cff').'">'.esc_html__('Remove', 'cff').'</button></div>';
     echo '<input type="hidden" name="cff_values['.esc_attr($parent).']['.esc_attr($i).'][layout]" value="'.esc_attr($layout).'">';
     echo '<input type="hidden" class="cff-row-id" name="cff_values['.esc_attr($parent).']['.esc_attr($i).'][__cff_row_id]" value="'.esc_attr($row_id).'">';
     echo '<div class="cff-flex-body">';

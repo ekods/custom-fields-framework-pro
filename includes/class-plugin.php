@@ -272,9 +272,7 @@ class Plugin {
     add_action('init', [$this, 'add_polylang_rewrite_rules'], 100);
 
     add_action('admin_menu', [$this, 'admin_menu']);
-    add_action('admin_head', [$this, 'suppress_tool_kits_notices']);
     add_action('add_meta_boxes', [$this, 'meta_boxes']);
-
     add_action('save_post_cff_group', [$this, 'save_group'], 10, 2);
     add_action('save_post_cff_options', [$this, 'save_global_ui_settings'], 10, 2);
 
@@ -285,6 +283,7 @@ class Plugin {
     add_action('enqueue_block_editor_assets', [$this, 'enqueue_block_editor_assets']);
     add_action('admin_head-edit.php', [$this, 'remove_post_views_id']);
     add_action('admin_notices', [$this, 'maybe_render_copy_to_translations_notice']);
+    add_action('admin_head', [$this, 'suppress_external_notices']);
     add_action('admin_init', [$this, 'handle_export_tools']);
     add_action('admin_init', [$this, 'handle_export_group']);
     add_action('admin_init', [$this, 'handle_export_acf_data']);
@@ -317,21 +316,6 @@ class Plugin {
     add_filter('single_template', [$this, 'filter_slug_based_single_template']);
     add_filter('archive_template', [$this, 'filter_slug_based_archive_template']);
     add_filter('nav_menu_css_class', [$this, 'filter_nav_menu_css_class'], 10, 4);
-  }
-
-  public function suppress_tool_kits_notices() {
-    $screen = function_exists('get_current_screen') ? get_current_screen() : null;
-    $is_cff = false;
-    
-    if ($screen) {
-        if (strpos((string) $screen->id, 'cff') !== false || $screen->post_type === 'cff_group' || $screen->id === 'cff_options') {
-            $is_cff = true;
-        }
-    }
-    
-    if ($is_cff) {
-        remove_action('admin_notices', 'tk_license_admin_notice');
-    }
   }
 
   public function admin_menu() {
@@ -388,6 +372,17 @@ class Plugin {
       '<a href="'.esc_url(admin_url('edit.php?post_type=cff_group')).'" class="button button-primary button-hero" style="color: #fff; border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); backdrop-filter: blur(10px);">'.__('Manage Field Groups', 'cff').'</a>'
     );
 
+    // Quick Stats
+    $total_groups = wp_count_posts('cff_group')->publish;
+    $custom_pts = count(get_option('cffp_post_types', []));
+    $custom_tax = count(get_option('cffp_taxonomies', []));
+
+    echo '<div class="tk-grid tk-grid-3" style="margin-top: 24px; margin-bottom: 24px;">';
+    $this->render_stat_card(__('Field Groups', 'cff'), $total_groups, 'dashicons-layout', admin_url('edit.php?post_type=cff_group'));
+    $this->render_stat_card(__('Custom Post Types', 'cff'), $custom_pts, 'dashicons-admin-post', admin_url('admin.php?page=cff-post-types'));
+    $this->render_stat_card(__('Custom Taxonomies', 'cff'), $custom_tax, 'dashicons-tag', admin_url('admin.php?page=cff-taxonomies'));
+    echo '</div>';
+
     $pts = get_post_types(['public'=>true], 'objects');
     echo '<div class="tk-card">';
     echo '<h2>All Post Types</h2>';
@@ -406,6 +401,20 @@ class Plugin {
     echo '</tbody></table></div>';
     echo '</div>';
     echo '</div>';
+  }
+
+  private function render_stat_card($label, $value, $icon, $link = '') {
+    echo '<a href="' . esc_url($link ?: '#') . '" class="tk-card tk-stat-card" style="text-decoration: none; transition: transform 0.2s ease, box-shadow 0.2s ease; display: block;">';
+    echo '<div style="display: flex; align-items: center; gap: 16px;">';
+    echo '<div style="background: #eff6ff; color: #1d4ed8; padding: 12px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">';
+    echo '<span class="dashicons ' . esc_attr($icon) . '" style="font-size: 24px; width: 24px; height: 24px;"></span>';
+    echo '</div>';
+    echo '<div>';
+    echo '<div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">' . esc_html($label) . '</div>';
+    echo '<div style="font-size: 24px; font-weight: 800; color: #1e293b; margin-top: 2px;">' . esc_html($value) . '</div>';
+    echo '</div>';
+    echo '</div>';
+    echo '</a>';
   }
 
   private function ensure_global_settings_post() {
@@ -454,12 +463,61 @@ class Plugin {
       return;
     }
 
-    $url = add_query_arg([
-      'post' => $post_id,
-      'action' => 'edit',
-    ], admin_url('post.php'));
-    wp_safe_redirect($url);
-    exit;
+    $post = get_post($post_id);
+
+    // Handle save
+    if (isset($_POST['cff_nonce']) && wp_verify_nonce($_POST['cff_nonce'], 'cff_save_content')) {
+      $this->save_content_fields($post_id, $post);
+      $this->save_global_ui_settings($post_id, $post);
+      echo '<div class="updated notice is-dismissible"><p>' . esc_html__('Settings saved.', 'cff') . '</p></div>';
+    }
+
+    // Register metaboxes
+    $screen = get_current_screen();
+    // Force post type for metaboxes
+    do_action('add_meta_boxes', 'cff_options', $post);
+    do_action('add_meta_boxes_cff_options', $post);
+
+    echo '<div class="wrap tk-wrap cff-admin">';
+    cff_render_header_branding();
+    cff_render_page_hero(
+      __('Global Settings', 'cff'),
+      __('Manage global configurations and custom fields that apply across your entire website.', 'cff'),
+      'dashicons-admin-generic'
+    );
+
+    echo '<form method="post" action="" style="margin-top: 20px;">';
+    wp_nonce_field('cff_save_content', 'cff_nonce');
+    wp_nonce_field('cff_global_ui_settings_save', 'cff_global_ui_settings_nonce');
+
+    echo '<div id="poststuff">';
+    echo '<div id="post-body" class="metabox-holder columns-2">';
+
+    echo '<div id="postbox-container-1" class="postbox-container">';
+    do_meta_boxes('cff_options', 'side', $post);
+    echo '</div>';
+
+    echo '<div id="postbox-container-2" class="postbox-container">';
+    do_meta_boxes('cff_options', 'normal', $post);
+    do_meta_boxes('cff_options', 'advanced', $post);
+    
+    echo '<div class="cff-form-actions" style="margin-top: 20px;">';
+    echo '<input type="submit" name="submit" id="submit" class="button button-primary button-hero" value="' . esc_attr__('Save Changes', 'cff') . '" style="min-height: 46px; padding: 0 32px; font-weight: 600; border-radius: 12px;">';
+    echo '</div>';
+    echo '</div>';
+
+    echo '</div>';
+    echo '</div>';
+    echo '</form>';
+    
+    // Floating Save Bar
+    echo '<div class="cff-floating-save">';
+    echo '<button type="button" class="button button-primary cff-floating-save-trigger">' . esc_html__('Save Changes', 'cff') . '</button>';
+    echo '</div>';
+    
+    echo '</div>';
+    
+    echo '<script>jQuery(document).ready(function($){ if(window.postboxes) { postboxes.add_postbox_toggles("cff_options"); } });</script>';
   }
 
   public function page_docs() {
@@ -1389,7 +1447,6 @@ TEXT;
       echo '<option value="'.esc_attr($pt->name).'">'.esc_html($pt->labels->name).'</option>';
     }
     echo '</select> ';
-    echo '<button type="button" class="button" id="cff-reorder-load-posts">Load</button>';
     echo '</div>';
     echo '<ul class="cff-reorder-list" data-kind="post"></ul>';
     echo '<p><button type="button" class="button button-primary" id="cff-reorder-save-posts">Save Order</button></p>';
@@ -1418,7 +1475,6 @@ TEXT;
       echo '<option value="'.esc_attr($tax->name).'">'.esc_html($display_label).'</option>';
     }
     echo '</select> ';
-    echo '<button type="button" class="button" id="cff-reorder-load-terms">Load</button>';
     echo '</div>';
     echo '<ul class="cff-reorder-list" data-kind="term"></ul>';
     echo '<p><button type="button" class="button button-primary" id="cff-reorder-save-terms">Save Order</button></p>';
@@ -1430,7 +1486,6 @@ TEXT;
     echo '<h2>Field Groups</h2>';
     echo '<p class="description" style="margin-bottom:8px;">' . esc_html__('Drag field groups to adjust the order they appear in the editor and frontend.', 'cff') . '</p>';
     echo '<div class="cff-reorder-controls">';
-    echo '<button type="button" class="button" id="cff-reorder-load-groups">Load Field Groups</button>';
     echo '</div>';
     echo '<ul class="cff-reorder-list" data-kind="group"></ul>';
     echo '<p><button type="button" class="button button-primary" id="cff-reorder-save-groups">Save Order</button></p>';
@@ -1467,14 +1522,27 @@ TEXT;
     echo '<select id="cff-reorder-post-type" style="min-width: 200px;">';
     echo '<option value="' . esc_attr($post_type) . '" selected>' . esc_html($label) . '</option>';
     echo '</select> ';
-    echo '<button type="button" class="button" id="cff-reorder-load-posts">' . esc_html__('Load Items', 'cff') . '</button>';
     echo '</div>';
     echo '<ul class="cff-reorder-list" data-kind="post" style="margin-top: 10px;"></ul>';
     echo '<div style="margin-top: 16px;"><button type="button" class="button button-primary" id="cff-reorder-save-posts">' . esc_html__('Save Order', 'cff') . '</button></div>';
     echo '</div>';
     echo '</div>';
-    echo '<script>document.addEventListener("DOMContentLoaded",function(){var btn=document.getElementById("cff-reorder-load-posts");if(btn){btn.click();}});</script>';
     echo '</div>';
+  }
+
+  public function suppress_external_notices() {
+    $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+    if (!$screen) return;
+
+    $is_cff_screen = (
+      strpos($screen->id, 'cff') !== false || 
+      $screen->post_type === 'cff_group' || 
+      $screen->post_type === 'cff_options'
+    );
+
+    if ($is_cff_screen) {
+      remove_action('admin_notices', 'tk_license_admin_notice');
+    }
   }
 
   public function assets($hook) {
@@ -1485,6 +1553,7 @@ TEXT;
     $is_post_edit = $screen && in_array($screen->base, ['post','post-new'], true);
     $is_term_edit = $screen && in_array($screen->base, ['edit-tags','term'], true);
     $is_plugin_screen = strpos((string) $hook, 'cff') !== false;
+    $is_global_settings = ($screen && $screen->id === 'custom-fields_page_cff-global-settings');
 
     if ($is_list_screen) {
       wp_enqueue_style('cff-list', CFFP_URL . 'assets/list.css', [], $this->asset_ver('assets/list.css'));
@@ -1492,6 +1561,8 @@ TEXT;
 
     if ($is_group || $is_plugin_screen || ($screen && $screen->id === 'cff_options')) {
       wp_enqueue_style('cff-admin', CFFP_URL . 'assets/admin.css', [], $this->asset_ver('assets/admin.css'));
+      wp_enqueue_script('postbox');
+      wp_enqueue_script('common');
 
       wp_enqueue_style('cff-select2', CFFP_URL . 'assets/vendor/select2/select2.min.css', [], '4.1.0-rc.0');
       wp_enqueue_script('cff-select2', CFFP_URL . 'assets/vendor/select2/select2.min.js', ['jquery'], '4.1.0-rc.0', true);
@@ -1506,7 +1577,7 @@ TEXT;
       ]);
     }
 
-    if ($is_post_edit) {
+    if ($is_post_edit || $is_global_settings) {
       wp_enqueue_style('cff-admin', CFFP_URL . 'assets/admin.css', [], $this->asset_ver('assets/admin.css'));
       wp_enqueue_style('cff-post', CFFP_URL . 'assets/post.css', [], $this->asset_ver('assets/post.css'));
 
@@ -2334,6 +2405,7 @@ TEXT;
   public function meta_boxes() {
     add_meta_box('cff_group_settings', __('Settings', 'cff'), [$this,'render_group_settings'], 'cff_group', 'normal', 'high');
     add_meta_box('cff_global_ui_settings', __('Editor UI Settings', 'cff'), [$this,'render_global_ui_settings'], 'cff_options', 'normal', 'high');
+    add_meta_box('cff_global_guide', __('Guide & Usage', 'cff'), [$this,'render_global_guide'], 'cff_options', 'side', 'default');
   }
 
   public function render_global_ui_settings($post) {
@@ -2372,6 +2444,30 @@ TEXT;
     echo '</div>';
   }
 
+  public function render_global_guide($post) {
+    echo '<div class="cff-guide-wrap">';
+    echo '<h4>' . esc_html__('About Global Settings', 'cff') . '</h4>';
+    echo '<p>' . esc_html__('This page is used to manage data that applies globally across your entire website, such as Logo, Contact Info, or Footer Settings.', 'cff') . '</p>';
+
+    echo '<h4 style="margin-top:20px;">' . esc_html__('Step-by-Step Guide:', 'cff') . '</h4>';
+    echo '<ol class="cff-guide-steps" style="padding-left:18px;">';
+    echo '<li>' . sprintf(__('Create a new <strong>Field Group</strong> in the <a href="%s">Field Groups</a> menu.', 'cff'), admin_url('edit.php?post_type=cff_group')) . '</li>';
+    echo '<li>' . esc_html__('Add the fields you need (e.g., Logo, Address, Phone Number).', 'cff') . '</li>';
+    echo '<li>' . esc_html__('In the <strong>Location Rules</strong> section, select the rule: <code>Options Page == Global Settings</code>.', 'cff') . '</li>';
+    echo '<li>' . esc_html__('Save the Field Group.', 'cff') . '</li>';
+    echo '<li>' . esc_html__('Return to this page to fill in the values for the fields you created.', 'cff') . '</li>';
+    echo '</ol>';
+
+    echo '<h4 style="margin-top:20px;">' . esc_html__('How to Display on Frontend:', 'cff') . '</h4>';
+    echo '<p>' . esc_html__('Use the following helper functions in your theme files:', 'cff') . '</p>';
+    echo '<pre style="background:#f6f7f7; padding:10px; border-radius:6px; font-size:11px; overflow-x:auto;"><code>' . esc_html("<?php\n// Get text value\n\$logo = \\CFF\\cff_get_global_text('logo_url');\n\n// Get any value (image, array, etc)\n\$social = \\CFF\\cff_get_global_value('social_links');\n?>") . '</code></pre>';
+    
+    echo '<p style="margin-top:10px;">' . esc_html__('Or using shortcode:', 'cff') . '</p>';
+    echo '<pre style="background:#f6f7f7; padding:10px; border-radius:6px; font-size:11px;"><code>' . esc_html("[cff_value name=\"logo_url\" page_id=\"global\"]") . '</code></pre>';
+    echo '<p class="description">' . esc_html__('Note: page_id="global" automatically refers to this settings page.', 'cff') . '</p>';
+    echo '</div>';
+  }
+
   public function save_global_ui_settings($post_id, $post) {
     if (!$post || $post->post_type !== 'cff_options') return;
     if (!isset($_POST['cff_global_ui_settings_nonce']) || !wp_verify_nonce($_POST['cff_global_ui_settings_nonce'], 'cff_global_ui_settings_save')) return;
@@ -2405,7 +2501,7 @@ TEXT;
       'label_placement' => 'top',
       'instruction_placement' => 'below_labels',
       'order' => 0,
-      'hide_on_screen' => (object)[],
+      'hide_on_screen' => [],
     ];
     $presentation_json = wp_json_encode($presentation);
 
@@ -2413,24 +2509,24 @@ TEXT;
     echo '<p>Fields marked with <span class="cff-required-indicator" aria-hidden="true">*</span> are required.</p>';
     echo '</div>';
 
-    echo '<div class="cff-tabs">';
-    echo '<div class="cff-tabbar">';
-    echo '<button type="button" class="cff-tab active" data-tab="fields">Fields</button>';
-    echo '<button type="button" class="cff-tab" data-tab="location">Location Rules</button>';
-    echo '<button type="button" class="cff-tab" data-tab="presentation">Presentation</button>';
+    echo '<div class="tk-tabs">';
+    echo '<div class="tk-tabs-nav">';
+    echo '<button type="button" class="tk-tabs-nav-button is-active" data-tab="fields">Fields</button>';
+    echo '<button type="button" class="tk-tabs-nav-button" data-tab="location">Location Rules</button>';
+    echo '<button type="button" class="tk-tabs-nav-button" data-tab="presentation">Presentation</button>';
     echo '</div>';
 
-    echo '<div class="cff-tabpanel active" data-panel="fields">';
+    echo '<div class="tk-tab-panel is-active" data-panel="fields">';
     echo '<input type="hidden" id="cff_fields_json" name="cff_fields_json" value="'.esc_attr($fields_json).'">';
     echo '<div id="cff-fields-builder"></div>';
     echo '</div>';
 
-    echo '<div class="cff-tabpanel" data-panel="location">';
+    echo '<div class="tk-tab-panel" data-panel="location">';
     echo '<input type="hidden" id="cff_location_json" name="cff_location_json" value="'.esc_attr($location_json).'">';
     echo '<div id="cff-location-builder"></div>';
     echo '</div>';
 
-    echo '<div class="cff-tabpanel" data-panel="presentation">';
+    echo '<div class="tk-tab-panel" data-panel="presentation">';
     echo '<input type="hidden" id="cff_presentation_json" name="cff_presentation_json" value="'.esc_attr($presentation_json).'">';
 
     echo '<div id="cff-presentation-builder" class="cff-presentation">';
@@ -2517,8 +2613,8 @@ TEXT;
 
     echo '  </div>'; // grid
     echo '</div>'; // builder
-
-    echo '</div>'; // panel
+    echo '</div>'; // tk-tab-panel (presentation)
+    echo '</div>'; // tk-tabs
 
     $this->render_js_templates();
   }
@@ -3612,6 +3708,12 @@ TEXT;
   }
 
   private function get_groups_for_context($post) {
+    if (!$post || empty($post->ID)) return [];
+
+    static $cache = [];
+    $cache_key = $post->ID . '_' . $post->post_type;
+    if (isset($cache[$cache_key])) return $cache[$cache_key];
+
     $groups = get_posts([
       'post_type' => 'cff_group',
       'post_status' => 'publish',
@@ -3624,6 +3726,8 @@ TEXT;
       $location = $settings['location'] ?? [];
       if ($this->match_location($post, $location)) $out[] = $g;
     }
+
+    $cache[$cache_key] = $out;
     return $out;
   }
 

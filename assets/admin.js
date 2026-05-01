@@ -147,19 +147,33 @@
    * ------------------------- */
   CFF.tabs = (function(){
     function init(){
+      // Legacy CFF tabs
       $(document).on('click', '.cff-tabbar .cff-tab', function(){
         var t = $(this).data('tab');
         $('.cff-tab').removeClass('active'); $(this).addClass('active');
         $('.cff-tabpanel').removeClass('active');
         $('.cff-tabpanel[data-panel="'+t+'"]').addClass('active');
-
-        // trigger module refresh when tab opened
         $(document).trigger('cff:tab:' + t);
       });
 
-      // if a tab already active on load, trigger it
-      var $active = $('.cff-tabbar .cff-tab.active');
-      if ($active.length) $(document).trigger('cff:tab:' + $active.data('tab'));
+      // Modern TK tabs
+      $(document).on('click', '.tk-tabs-nav .tk-tabs-nav-button', function(){
+        var t = $(this).data('tab');
+        var $wrap = $(this).closest('.tk-tabs');
+        $wrap.find('.tk-tabs-nav-button').removeClass('is-active'); 
+        $(this).addClass('is-active');
+        $wrap.find('.tk-tab-panel').removeClass('is-active');
+        $wrap.find('.tk-tab-panel[data-panel="'+t+'"]').addClass('is-active');
+        $(document).trigger('cff:tab:' + t);
+      });
+
+      // Init active
+      var $active = $('.cff-tabbar .cff-tab.active, .tk-tabs-nav .tk-tabs-nav-button.is-active');
+      if ($active.length) {
+        $active.each(function(){
+          $(document).trigger('cff:tab:' + $(this).data('tab'));
+        });
+      }
     }
     return { init:init };
   })();
@@ -3240,7 +3254,7 @@
 
      // ✅ Ambil kondisi checkbox langsung dari DOM -> state -> hidden input
      function commitFromDOM(){
-       var $panel = $('.cff-tabpanel[data-panel="presentation"]');
+       var $panel = $('.cff-tabpanel[data-panel="presentation"], .tk-tab-panel[data-panel="presentation"]');
        if (!$panel.length) {
          save();
          return;
@@ -3270,7 +3284,7 @@
      }
 
      function sync(){
-       var $panel = $('.cff-tabpanel[data-panel="presentation"]');
+       var $panel = $('.cff-tabpanel[data-panel="presentation"], .tk-tab-panel[data-panel="presentation"]');
        if (!$panel.length) return;
 
        $panel.find('.cff-btn-group').each(function(){
@@ -3292,7 +3306,7 @@
 
      function bindEvents(){
        // button groups
-       $(document).on('click', '.cff-tabpanel[data-panel="presentation"] .cff-btn-group button', function(){
+       $(document).on('click', '.cff-tabpanel[data-panel="presentation"] .cff-btn-group button, .tk-tab-panel[data-panel="presentation"] .cff-btn-group button', function(){
          var $g = $(this).closest('.cff-btn-group');
          state[$g.data('name')] = $(this).data('value');
          sync();
@@ -3305,8 +3319,8 @@
        });
 
        // hide on screen
-       $(document).on('change', '.cff-tabpanel[data-panel="presentation"] .cff-hide-screen input[type=checkbox]', function(){
-         var $panel = $('.cff-tabpanel[data-panel="presentation"]');
+       $(document).on('change', '.cff-tabpanel[data-panel="presentation"] .cff-hide-screen input[type=checkbox], .tk-tab-panel[data-panel="presentation"] .cff-hide-screen input[type=checkbox]', function(){
+         var $panel = $('.cff-tabpanel[data-panel="presentation"], .tk-tab-panel[data-panel="presentation"]');
          var k = $(this).data('key');
 
          // ✅ TOGGLE ALL
@@ -3507,14 +3521,17 @@
  * ------------------------- */
   CFF.presentationUI = (function(){
   function init(){
-    var $panel = $('.cff-tabpanel[data-panel="presentation"]');
+    var $panel = $('.cff-tabpanel[data-panel="presentation"], .tk-tab-panel[data-panel="presentation"]');
     if (!$panel.length) return;
 
     var $wrap = $('#cff-presentation-builder');
     if (!$wrap.length) return;
 
-    // jika sudah ada tombol/checkbox, jangan timpa
-    if ($wrap.find('.cff-btn-group').length || $wrap.find('.cff-hide-screen').length) return;
+    // jika sudah ada tombol/checkbox, jangan timpa, tapi tetap trigger sync
+    if ($wrap.find('.cff-btn-group').length || $wrap.find('.cff-hide-screen').length) {
+      $(document).trigger('cff:tab:presentation');
+      return;
+    }
 
     // build UI
     $wrap.html(
@@ -3820,6 +3837,22 @@
       if ($groupList.length) {
         loadGroups($groupList);
       }
+
+      // Auto load first item in select for Posts/Terms
+      if ($postSelect.length && $postList.length) {
+        loadPosts($postSelect.val(), $postList);
+      }
+      if ($taxSelect.length && $termList.length) {
+        loadTerms($taxSelect.val(), $termList);
+      }
+
+      // Auto load when select changed
+      $postSelect.on('change', function(){
+        loadPosts($(this).val(), $postList);
+      });
+      $taxSelect.on('change', function(){
+        loadTerms($(this).val(), $termList);
+      });
     }
 
     function renderList($list, items){
@@ -4335,5 +4368,32 @@
     CFF.autoSlug.init();
     CFF.conditionalLogic.init();
     initCptAutoSlug();
+    initGlobalSettingsOptimizations();
   });
+
+  /* -------------------------
+   * Global Settings Optimizations
+   * ------------------------- */
+  var initGlobalSettingsOptimizations = function(){
+    var $floatBar = $('.cff-floating-save');
+    var $mainSave = $('.cff-form-actions #submit');
+    if (!$floatBar.length || !$mainSave.length) return;
+
+    $(window).on('scroll.cffFloatingSave', CFF.utils.debounce(function(){
+      var btnTop = $mainSave.offset().top;
+      var scrollTop = $(window).scrollTop();
+      var scrollBottom = scrollTop + $(window).height();
+      
+      // If main button is off-screen
+      if (btnTop > scrollBottom - 50 || btnTop < scrollTop) {
+        $floatBar.addClass('is-visible');
+      } else {
+        $floatBar.removeClass('is-visible');
+      }
+    }, 50));
+
+    $floatBar.find('.cff-floating-save-trigger').on('click', function(){
+      $mainSave.trigger('click');
+    });
+  };
 })(jQuery);

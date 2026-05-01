@@ -38,9 +38,9 @@ function cff_render_header_branding() {
             <span class="tk-header-version">v<?php echo defined('CFFP_VERSION') ? CFFP_VERSION : '2.3'; ?></span>
         </div>
 
-        <div style="display:flex; align-items:center; gap:20px;">
-            <div class="tk-header-status" style="background:#f0fdf4; border-color:#bbf7d0; color:#166534;">
-                <div class="tk-status-dot" style="background:#22c55e;"></div>
+        <div class="tk-header-meta">
+            <div class="tk-header-status is-active">
+                <div class="tk-status-dot"></div>
                 <span>Framework Active</span>
             </div>
 
