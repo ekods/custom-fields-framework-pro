@@ -31,12 +31,17 @@ add_action('manage_cff_group_posts_custom_column', function($col, $post_id){
 }, 10, 2);
 
 add_filter('post_row_actions', function($actions, $post){
-  if ($post && $post->post_type === 'cff_group' && current_user_can('manage_options')) {
+  if (
+    $post
+    && $post->post_type === 'cff_group'
+    && $post->post_status === 'publish'
+    && current_user_can('manage_options')
+  ) {
     $url = wp_nonce_url(
       admin_url('edit.php?post_type=cff_group&cff_export_group=' . $post->ID),
       'cff_export_group_' . $post->ID
     );
-    $actions['cff_export_group'] = '<a href="' . esc_url($url) . '">' . esc_html__('Export JSON', 'cff') . '</a>';
+    $actions['cff_export_group'] = '<a href="' . esc_url($url) . '">' . esc_html__('Save to Template', 'cff') . '</a>';
   }
   return $actions;
 }, 10, 2);

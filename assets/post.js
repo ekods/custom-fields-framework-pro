@@ -768,6 +768,7 @@ jQuery(function($){
        var $internal   = $wrap.find('.cff-link-internal');
        var $custom     = $wrap.find('.cff-link-custom');
        var $select     = $wrap.find('.cff-link-select');
+       var $postTypeFilter = $wrap.find('.cff-link-post-type-select');
        var $internalId = $wrap.find('.cff-link-internal-id');
        var $url        = $wrap.find('input[name$="[url]"]');
 
@@ -797,10 +798,28 @@ jQuery(function($){
          }
        }
 
+       function getPostTypeFilter(){
+         return ($postTypeFilter.val() || $select.data('post-type') || 'any');
+       }
+
+       function clearInternalSelection(){
+         $internalId.val('');
+         if ($internalTitle.length) $internalTitle.val('');
+         if ($select.data('select2')) {
+           $select.val(null).trigger('change');
+         } else {
+           $select.val('');
+         }
+       }
+
        // init mode
        var mode = $modeInputs.filter(':checked').val() || $wrap.data('mode') || 'custom';
        $modeInputs.filter('[value="' + mode + '"]').prop('checked', true);
        applyMode(mode);
+
+       if ($select.length) {
+         $select.attr('data-post-type', getPostTypeFilter()).data('post-type', getPostTypeFilter());
+       }
 
        // init select2 (TANPA title logic)
        if ($select.length && $.fn.select2 && !$select.data('select2')) {
@@ -812,7 +831,7 @@ jQuery(function($){
              delay: 250,
              transport: function(params, success, failure){
                var term = params.data && params.data.term ? params.data.term : '';
-               var postType = $select.data('post-type') || 'any';
+               var postType = getPostTypeFilter();
 
                $.post(CFFP.ajax, {
                  action: 'cff_search_posts',
@@ -845,6 +864,15 @@ jQuery(function($){
 
        $select.on('select2:clear.cffLink', function(){
          $internalId.val('');
+       });
+
+       $postTypeFilter.off('.cffLink');
+       $postTypeFilter.on('change.cffLink', function(){
+         var postType = getPostTypeFilter();
+         $select.attr('data-post-type', postType).data('post-type', postType);
+         clearInternalSelection();
+         $modeInputs.filter('[value="internal"]').prop('checked', true);
+         applyMode('internal');
        });
 
        // ganti mode manual

@@ -397,6 +397,9 @@ if (!function_exists(__NAMESPACE__ . '\cff_shortcode_format_value')) {
       $html = cff_shortcode_render_relational($value, $atts);
       return $html !== '' ? $html : (string) $fallback;
     }
+    if ($field_type === 'shortcode' && is_scalar($value)) {
+      return do_shortcode((string) $value);
+    }
 
     if (is_scalar($value)) {
       $text = wp_kses_post((string) $value);

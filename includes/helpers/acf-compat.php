@@ -48,15 +48,29 @@ function cff_get_cached_group_ids($post_status = ['publish']) {
 
   $cache_key = implode('|', $statuses);
   if (!isset($cache[$cache_key])) {
-    $cache[$cache_key] = array_map('absint', (array) get_posts([
+    $groups = (array) get_posts([
       'post_type' => 'cff_group',
       'post_status' => $statuses,
       'posts_per_page' => -1,
       'no_found_rows' => true,
-      'fields' => 'ids',
-      'orderby' => 'menu_order title',
+      'orderby' => 'title',
       'order' => 'ASC',
-    ]));
+    ]);
+
+    usort($groups, function($a, $b) {
+      $settings_a = cff_get_cached_group_settings($a->ID ?? 0);
+      $settings_b = cff_get_cached_group_settings($b->ID ?? 0);
+      $order_a = intval($settings_a['presentation']['order'] ?? 0);
+      $order_b = intval($settings_b['presentation']['order'] ?? 0);
+      if ($order_a !== $order_b) return $order_a <=> $order_b;
+
+      $title_compare = strcasecmp($a->post_title ?? '', $b->post_title ?? '');
+      if ($title_compare !== 0) return $title_compare;
+
+      return intval($a->ID ?? 0) <=> intval($b->ID ?? 0);
+    });
+
+    $cache[$cache_key] = array_map('absint', wp_list_pluck($groups, 'ID'));
   }
 
   return $cache[$cache_key];
@@ -296,16 +310,37 @@ if (!function_exists(__NAMESPACE__ . '\cff_get_ordered_fields')) {
         if (!isset($rank[$name])) $rank[$name] = $idx;
       }
 
-      usort($fields, function($a, $b) use ($rank) {
-        $name_a = sanitize_key($a['name'] ?? '');
-        $name_b = sanitize_key($b['name'] ?? '');
-        $has_a = array_key_exists($name_a, $rank);
-        $has_b = array_key_exists($name_b, $rank);
-        if ($has_a && $has_b) return $rank[$name_a] <=> $rank[$name_b];
+      $indexed_fields = [];
+      foreach (array_values($fields) as $original_index => $field) {
+        $saved_rank = null;
+        $candidate_names = array_merge(
+          [sanitize_key($field['name'] ?? '')],
+          array_map('sanitize_key', (array) ($field['aliases'] ?? []))
+        );
+        foreach (array_filter(array_unique($candidate_names)) as $candidate_name) {
+          if (!array_key_exists($candidate_name, $rank)) continue;
+          $candidate_rank = $rank[$candidate_name];
+          $saved_rank = $saved_rank === null ? $candidate_rank : min($saved_rank, $candidate_rank);
+        }
+        $indexed_fields[] = [
+          'field' => $field,
+          'original_index' => $original_index,
+          'saved_rank' => $saved_rank,
+        ];
+      }
+
+      usort($indexed_fields, function($a, $b) {
+        $has_a = $a['saved_rank'] !== null;
+        $has_b = $b['saved_rank'] !== null;
+        if ($has_a && $has_b) return $a['saved_rank'] <=> $b['saved_rank'];
         if ($has_a) return -1;
         if ($has_b) return 1;
-        return 0;
+        return $a['original_index'] <=> $b['original_index'];
       });
+
+      $fields = array_values(array_map(function($item) {
+        return $item['field'];
+      }, $indexed_fields));
     }
 
     if (!$include_values) {

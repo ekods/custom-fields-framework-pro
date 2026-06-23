@@ -86,19 +86,30 @@
 }
 
 .cff-copy-field-action {
-  min-width: 36px;
-  width: 36px;
-  height: 36px;
+  min-width: 34px;
+  width: 34px;
+  height: 34px;
   padding: 0 !important;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  border-radius: 6px;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+.cff-copy-field-action:hover,
+.cff-copy-field-action:focus {
+  border-color: #2271b1;
+  color: #135e96;
+  box-shadow: 0 0 0 1px #2271b1;
 }
 
 .cff-copy-field-action .dashicons {
-  font-size: 17px;
-  width: 17px;
-  height: 17px;
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  line-height: 16px;
 }
 
 .cff-copy-field-indicator {
@@ -141,15 +152,16 @@
 }
 
 .cff-subfield-input>.cff-field-actions .cff-copy-field-action {
-  min-width: 28px;
-  width: 28px;
-  height: 28px;
+  min-width: 30px;
+  width: 30px;
+  height: 30px;
 }
 
 .cff-subfield-input>.cff-field-actions .cff-copy-field-action .dashicons {
   font-size: 14px;
   width: 14px;
   height: 14px;
+  line-height: 1;
 }
 
 .cff-subfield-input>.cff-field-actions .cff-copy-field-indicator {
@@ -321,6 +333,7 @@
 
 .cff-media-actions .button {
   min-width: 34px;
+  min-height: 34px;
   width: 34px;
   height: 34px;
   padding: 0;
@@ -337,6 +350,7 @@
   font-size: 16px;
   width: 16px;
   height: 16px;
+  line-height: 1 !important;
 }
 
 .cff-media-limit-label {

@@ -188,6 +188,7 @@
       text: true,
       number: true,
       textarea: true,
+      shortcode: true,
       url: true,
       link: true,
       embed: true
@@ -236,6 +237,7 @@
                     '<option value="number">Number</option>' +
                     '<option value="textarea">Textarea</option>' +
                     '<option value="wysiwyg">WYSIWYG</option>' +
+                    '<option value="shortcode">Shortcode</option>' +
                     '<option value="color">Color</option>' +
                     '<option value="url">URL (Simple)</option>' +
                     '<option value="link">Link (URL + Label Button)</option>' +
@@ -364,6 +366,15 @@
                   '<input type="text" class="cff-input cff-conditional-value" placeholder="value"></p>' +
                 '</div>' +
               '</div>' +
+              '<div class="cff-row-hide">' +
+                '<span class="cff-tools-toggles">' +
+                  '<div><strong>Hide</strong><div class="description">Do not render this field in the editor.</div></div>' +
+                  '<label class="cff-switch">' +
+                    '<input type="checkbox" class="cff-hide-toggle">' +
+                    '<span class="cff-slider"></span>' +
+                  '</label>' +
+                '</span>' +
+              '</div>' +
             '</div>' +
           '</div>' +
           '<div class="cff-field-choice is-hidden">' +
@@ -407,6 +418,10 @@
             '<div class="cff-row-relational-subtype" style="display:none;">' +
               '<label>Select Type</label>' +
               '<select class="cff-input cff-relational-subtype cff-select2"></select>' +
+            '</div>' +
+            '<div class="cff-row-relational-taxonomy" style="display:none;">' +
+              '<label>Taxonomy</label>' +
+              '<select class="cff-input cff-relational-taxonomy cff-select2"></select>' +
             '</div>' +
             '<div class="cff-row-relational-display">' +
               '<label>Display</label>' +
@@ -485,6 +500,7 @@
                     '<option value="number">Number</option>' +
                     '<option value="textarea">Textarea</option>' +
                     '<option value="wysiwyg">WYSIWYG</option>' +
+                    '<option value="shortcode">Shortcode</option>' +
                     '<option value="color">Color</option>' +
                     '<option value="url">URL (Simple)</option>' +
                     '<option value="link">Link (URL + Label Button)</option>' +
@@ -613,6 +629,15 @@
                     '<input type="text" class="cff-input cff-conditional-value" placeholder="value"></p>' +
                   '</div>' +
                 '</div>' +
+                '<div class="cff-row-hide">' +
+                  '<span class="cff-tools-toggles">' +
+                    '<div><strong>Hide</strong><div class="description">Do not render this field in the editor.</div></div>' +
+                    '<label class="cff-switch">' +
+                      '<input type="checkbox" class="cff-hide-toggle">' +
+                      '<span class="cff-slider"></span>' +
+                    '</label>' +
+                  '</span>' +
+                '</div>' +
               '</div>' +
             '</div>' +
             '<div class="cff-field-choice is-hidden">' +
@@ -656,6 +681,10 @@
               '<div class="cff-row-relational-subtype" style="display:none;">' +
                 '<label>Select Type</label>' +
                 '<select class="cff-input cff-relational-subtype cff-select2"></select>' +
+              '</div>' +
+              '<div class="cff-row-relational-taxonomy" style="display:none;">' +
+                '<label>Taxonomy</label>' +
+                '<select class="cff-input cff-relational-taxonomy cff-select2"></select>' +
               '</div>' +
               '<div class="cff-row-relational-display">' +
                 '<label>Display</label>' +
@@ -995,6 +1024,7 @@
         number: true,
         textarea: true,
         wysiwyg: true,
+        shortcode: true,
         color: true,
         url: true,
         link: true,
@@ -1126,6 +1156,7 @@
       $el.attr('data-sub-key', subKey);
       $el.attr('data-original-name', CFF.utils.sanitizeName((s && s.name) || ''));
       setAliasesAttr($el, 'data-field-aliases', Array.isArray(s && s.aliases) ? s.aliases : []);
+      initAutoNameTracking($el, true);
 
       var $wrap = $el.find('.cff-handle-wrap');
       if (!$wrap.length) {
@@ -1146,6 +1177,7 @@
       renderRelationalPanel($el, {
         relational_type: s.relational_type,
         relational_subtype: s.relational_subtype,
+        relational_post_type: s.relational_post_type,
         relational_display: s.relational_display,
         relational_multiple: s.relational_multiple,
       });
@@ -1154,6 +1186,7 @@
       getMediaOptions($el).fileLibrary.val(normalizeFileLibrary(s.file_library));
       getMediaOptions($el).maxUploadMb.val(normalizeMediaMaxUploadMb(s.max_upload_mb));
       $el.find('.cff-required-toggle').prop('checked', !!s.required);
+      $el.find('.cff-hide-toggle').prop('checked', !!s.hide);
       $el.find('.cff-datetime-use-time-toggle').prop('checked', (s.datetime_use_time !== false));
       toggleDatetimeOptions($el, s.type || 'text');
       toggleMediaOptions($el, s.type || 'text');
@@ -1541,12 +1574,12 @@
       if (!$panel.length) return;
 
       $panel.find('.cff-relational-type').first().val(data.relational_type || 'post');
-      $panel.find('.cff-relational-subtype').first().val(data.relational_subtype || '');
       $panel.find('.cff-relational-display').first().val(data.relational_display || 'select');
       $panel.find('.cff-relational-multiple-toggle').first().prop('checked', !!data.relational_multiple);
 
       // ✅ simpan di $element (ctx), biar updateRelationalSubtypeOptions bisa baca
       $element.data('cff-relational-subtype', data.relational_subtype || '');
+      $element.data('cff-relational-post-type', data.relational_post_type || '');
 
       updateRelationalSubtypeOptions($element);
       renderArchiveLinks($element);
@@ -1613,18 +1646,23 @@
       var type = $panel.find('.cff-relational-type').first().val();
       var $wrap = $panel.find('.cff-row-relational-subtype').first();
       var $select = $panel.find('.cff-relational-subtype').first();
+      var $taxonomyWrap = $panel.find('.cff-row-relational-taxonomy').first();
+      var $taxonomySelect = $panel.find('.cff-relational-taxonomy').first();
 
       // ✅ ambil dari select dulu, baru fallback ke data ctx
       var currentValue = ($select.val() || '') || ($ctx.data('cff-relational-subtype') || '');
 
       $select.empty();
       $wrap.hide();
+      $taxonomySelect.empty();
+      $taxonomyWrap.hide();
 
       function applyCurrent(){
         if (currentValue) $select.val(String(currentValue));
         if (!$select.val() && $select.find('option').length) $select.prop('selectedIndex', 0);
         // ✅ simpan balik supaya stabil
         $ctx.data('cff-relational-subtype', $select.val() || '');
+        $select.trigger('change.select2');
       }
 
       if (type === 'post') {
@@ -1672,6 +1710,58 @@
 
         return;
       }
+
+      if (type === 'taxonomy') {
+        $wrap.show();
+        $taxonomyWrap.show();
+
+        var taxonomySlug = $ctx.data('cff-relational-subtype') || '';
+        var configuredPostType = $ctx.data('cff-relational-post-type') || '';
+        var taxonomyMap = (window.CFFP && CFFP.relational_taxonomies) || {};
+
+        loadRelationalPostTypes(function(postTypeOptions){
+          $select.empty();
+          (postTypeOptions || []).forEach(function(pt){
+            if (Array.isArray(taxonomyMap[pt.value]) && taxonomyMap[pt.value].length) {
+              $select.append($('<option>', { value: pt.value, text: pt.label }));
+            }
+          });
+
+          if (!configuredPostType && taxonomySlug) {
+            Object.keys(taxonomyMap).some(function(postType){
+              var matches = (taxonomyMap[postType] || []).some(function(tax){
+                return tax.value === taxonomySlug;
+              });
+              if (matches) configuredPostType = postType;
+              return matches;
+            });
+          }
+
+          if (configuredPostType) $select.val(configuredPostType);
+          if (!$select.val() && $select.find('option').length) $select.prop('selectedIndex', 0);
+          $ctx.data('cff-relational-post-type', $select.val() || '');
+          $select.trigger('change.select2');
+          updateRelationalTaxonomyOptions($ctx, taxonomySlug);
+        });
+      }
+    }
+
+    function updateRelationalTaxonomyOptions($ctx, preferredTaxonomy) {
+      var $panel = getOwnRelationalPanel($ctx);
+      var postType = $panel.find('.cff-relational-subtype').first().val() || '';
+      var $select = $panel.find('.cff-relational-taxonomy').first();
+      var taxonomyMap = (window.CFFP && CFFP.relational_taxonomies) || {};
+      var taxonomies = taxonomyMap[postType] || [];
+      var current = preferredTaxonomy || $select.val() || $ctx.data('cff-relational-subtype') || '';
+
+      $select.empty();
+      taxonomies.forEach(function(taxonomy){
+        $select.append($('<option>', { value: taxonomy.value, text: taxonomy.label }));
+      });
+      if (current) $select.val(current);
+      if (!$select.val() && $select.find('option').length) $select.prop('selectedIndex', 0);
+      $ctx.data('cff-relational-subtype', $select.val() || '');
+      $select.trigger('change.select2');
     }
 
 
@@ -1709,6 +1799,7 @@
         $f.attr('data-original-name', name);
         setAliasesAttr($f, 'data-field-aliases', aliases);
         item.required = $f.find('.cff-required-toggle').is(':checked');
+        item.hide = $f.find('.cff-hide-toggle').is(':checked');
         item.placeholder = $f.find('.cff-placeholder').val() || '';
         if (type === 'image' || type === 'file') {
           item.file_library = normalizeFileLibrary(getMediaOptions($f).fileLibrary.val());
@@ -1731,7 +1822,12 @@
         if (type === 'relational') {
           var $fieldRelPanel = getOwnRelationalPanel($f);
           item.relational_type = $fieldRelPanel.find('.cff-relational-type').first().val() || 'post';
-          item.relational_subtype = $fieldRelPanel.find('.cff-relational-subtype').first().val() || ($f.data('cff-relational-subtype') || '');
+          if (item.relational_type === 'taxonomy') {
+            item.relational_post_type = $fieldRelPanel.find('.cff-relational-subtype').first().val() || '';
+            item.relational_subtype = $fieldRelPanel.find('.cff-relational-taxonomy').first().val() || '';
+          } else {
+            item.relational_subtype = $fieldRelPanel.find('.cff-relational-subtype').first().val() || ($f.data('cff-relational-subtype') || '');
+          }
           item.relational_display = $fieldRelPanel.find('.cff-relational-display').first().val() || 'select';
           item.relational_multiple = $fieldRelPanel.find('.cff-relational-multiple-toggle').first().is(':checked');
         }
@@ -1808,7 +1904,7 @@
       var $list = $('#cff-field-list');
       if (!$list.length || !$reorderList.length) return;
       $reorderList.empty();
-      $list.find('.cff-field-row').each(function(){
+      $list.children('.cff-field-row').each(function(){
         var $row = $(this);
         var key = $row.attr('data-field-key') || $row.data('field-key') || '';
         var label = $row.find('.cff-label').val() || $row.find('.cff-name').val() || '';
@@ -1821,20 +1917,44 @@
       });
     }
 
-    function applyReorderFromReorderList(){
+    function syncBuilderOrderFromReorderList(){
       var $list = $('#cff-field-list');
       var $reorderList = $root.find('#cff-field-reorder-list');
-      if (!$list.length || !$reorderList.length) return;
+      if (!$list.length || !$reorderList.length) return false;
       var order = [];
-      $reorderList.find('.cff-field-reorder-item').each(function(){
+      $reorderList.children('.cff-field-reorder-item').each(function(){
         var key = $(this).attr('data-field-key');
         if (key) order.push(key);
       });
-      if (!order.length) return;
-      order.forEach(function(key){
-        var $row = $list.find('.cff-field-row[data-field-key="' + key + '"]').first();
-        if ($row.length) $row.appendTo($list);
+      if (!order.length) return false;
+
+      var rowsByKey = Object.create(null);
+      var matchedNodes = [];
+      $list.children('.cff-field-row').each(function(){
+        var $row = $(this);
+        var key = String($row.attr('data-field-key') || '');
+        if (key && !rowsByKey[key]) rowsByKey[key] = $row;
       });
+
+      var moved = false;
+      order.forEach(function(key){
+        var $row = rowsByKey[key];
+        if (!$row || !$row.length) return;
+        $row.appendTo($list);
+        matchedNodes.push($row[0]);
+        moved = true;
+      });
+
+      // New/unmatched fields stay after the explicitly reordered fields.
+      $list.children('.cff-field-row').each(function(){
+        if (matchedNodes.indexOf(this) === -1) $(this).appendTo($list);
+      });
+
+      return moved;
+    }
+
+    function applyReorderFromReorderList(){
+      if (!syncBuilderOrderFromReorderList()) return;
       save(readFromDOM());
       refreshReorderList();
       refreshConditionalFieldDropdowns();
@@ -2309,6 +2429,7 @@
         toggleMediaOptions($el, f.type || 'text');
         $el.find('.cff-placeholder').val(f.placeholder || '');
         $el.find('.cff-required-toggle').prop('checked', !!f.required);
+        $el.find('.cff-hide-toggle').prop('checked', !!f.hide);
         $el.find('.cff-datetime-use-time-toggle').prop('checked', (f.datetime_use_time !== false));
         renderConditionalPanel($el, f);
         var fieldKey = CFF.utils.sanitizeName(f.key || '');
@@ -2317,6 +2438,7 @@
         $el.data('field-key', fieldKey);
         $el.attr('data-original-name', CFF.utils.sanitizeName(f.name || ''));
         setAliasesAttr($el, 'data-field-aliases', Array.isArray(f.aliases) ? f.aliases : []);
+        initAutoNameTracking($el, false);
 
         if (f.type === 'repeater' && Array.isArray(f.sub_fields)) {
           var $sf = $el.find('> .cff-advanced > .cff-subbuilder > .cff-subfields').first();
@@ -2423,6 +2545,7 @@
       toggleMediaOptions($el, f.type || 'text');
       $el.find('.cff-placeholder').val(f.placeholder || '');
       $el.find('.cff-required-toggle').prop('checked', !!f.required);
+      $el.find('.cff-hide-toggle').prop('checked', !!f.hide);
       $el.find('.cff-datetime-use-time-toggle').prop('checked', (f.datetime_use_time !== false));
       renderConditionalPanel($el, f);
       var fieldKey = CFF.utils.sanitizeName(f.key || '');
@@ -2431,6 +2554,7 @@
       $el.data('field-key', fieldKey);
       $el.attr('data-original-name', CFF.utils.sanitizeName(f.name || ''));
       setAliasesAttr($el, 'data-field-aliases', Array.isArray(f.aliases) ? f.aliases : []);
+      initAutoNameTracking($el, false);
 
       if (f.type === 'repeater' && Array.isArray(f.sub_fields)) {
         var $sf = $el.find('> .cff-advanced > .cff-subbuilder > .cff-subfields').first();
@@ -2481,7 +2605,8 @@
           name:  name,                 // boleh kosong sementara
           _tmp:  name ? '' : key,       // simpan tmp id biar stabil
           type:  stype,
-          required: $meta.find('.cff-required-toggle').first().is(':checked')
+          required: $meta.find('.cff-required-toggle').first().is(':checked'),
+          hide: $meta.find('.cff-hide-toggle').first().is(':checked')
         };
         item.key = CFF.utils.sanitizeName($sub.attr('data-sub-key') || '');
         if (!item.key) {
@@ -2521,7 +2646,12 @@
         if (stype === 'relational') {
           var $relPanel = getOwnRelationalPanel($sub);
           item.relational_type = $relPanel.find('.cff-relational-type').first().val() || 'post';
-          item.relational_subtype = $relPanel.find('.cff-relational-subtype').first().val() || ($sub.data('cff-relational-subtype') || '');
+          if (item.relational_type === 'taxonomy') {
+            item.relational_post_type = $relPanel.find('.cff-relational-subtype').first().val() || '';
+            item.relational_subtype = $relPanel.find('.cff-relational-taxonomy').first().val() || '';
+          } else {
+            item.relational_subtype = $relPanel.find('.cff-relational-subtype').first().val() || ($sub.data('cff-relational-subtype') || '');
+          }
           item.relational_display = $relPanel.find('.cff-relational-display').first().val() || 'select';
           item.relational_multiple = $relPanel.find('.cff-relational-multiple-toggle').first().is(':checked');
         }
@@ -2565,18 +2695,39 @@
       return subs;
     }
 
+    function initAutoNameTracking($element, isSubfield){
+      var $head = getFieldHeadRow($element);
+      var $label = $head.find(isSubfield ? '.cff-slabel' : '.cff-label').first();
+      var $name = $head.find(isSubfield ? '.cff-sname' : '.cff-name').first();
+      if (!$label.length || !$name.length) return;
+
+      var labelSlug = CFF.utils.sanitizeName($label.val() || '');
+      var currentName = CFF.utils.sanitizeName($name.val() || '');
+      var suffix = labelSlug && currentName.indexOf(labelSlug + '_') === 0
+        ? currentName.slice(labelSlug.length + 1)
+        : '';
+      var looksAutomatic = !!currentName && !!labelSlug && (
+        currentName === labelSlug || /^\d+$/.test(suffix)
+      );
+
+      $name.data('manual', looksAutomatic || !currentName ? 0 : 1);
+      $name.data('auto', looksAutomatic ? currentName : '');
+    }
+
     function autoNameFromLabel($row){
-      var $name = $row.find('.cff-name');
+      var $name = getFieldHeadRow($row).find('.cff-name').first();
       if ($name.data('manual') === 1) return;
 
-      var label = $row.find('.cff-label').val() || '';
-      if (!label) return;
+      var label = getFieldHeadRow($row).find('.cff-label').first().val() || '';
+      var current  = CFF.utils.sanitizeName($name.val() || '');
+      var prevAuto = $name.data('auto') || '';
+      if (!label) {
+        if (!current || current === prevAuto) $name.val('').data('auto', '');
+        return;
+      }
 
       var slug = CFF.utils.sanitizeName(label);
       if (!slug) return;
-
-      var current  = CFF.utils.sanitizeName($name.val() || '');
-      var prevAuto = $name.data('auto') || '';
 
       if (!current || current === prevAuto) {
         $name.val(slug);
@@ -2585,12 +2736,18 @@
     }
 
     function autoNameFromSubLabel($sub){
-      var $name = $sub.find('.cff-sname');
+      var $head = getFieldHeadRow($sub);
+      var $name = $head.find('.cff-sname').first();
       if (!$name.length) return;
       if ($name.data('manual') === 1) return;
 
-      var label = $sub.find('.cff-slabel').val() || '';
-      if (!label) return;
+      var label = $head.find('.cff-slabel').first().val() || '';
+      var current  = CFF.utils.sanitizeName($name.val() || '');
+      var prevAuto = $name.data('auto') || '';
+      if (!label) {
+        if (!current || current === prevAuto) $name.val('').data('auto', '');
+        return;
+      }
 
       var slug = CFF.utils.sanitizeName(label);
       if (!slug) return;
@@ -2598,7 +2755,7 @@
       var $container = $sub.parent();
       var used = new Set();
       $container.children('.cff-subfield').not($sub).each(function(){
-        var n = CFF.utils.sanitizeName($(this).find('.cff-sname').val() || '');
+        var n = CFF.utils.sanitizeName(getFieldHeadRow($(this)).find('.cff-sname').first().val() || '');
         if (n) used.add(n);
       });
 
@@ -2608,9 +2765,6 @@
         unique = slug + '_' + i;
         i++;
       }
-
-      var current  = CFF.utils.sanitizeName($name.val() || '');
-      var prevAuto = $name.data('auto') || '';
 
       if (!current || current === prevAuto) {
         $name.val(unique);
@@ -2657,8 +2811,15 @@
 
       // Name input manual
       $root.on('input', '.cff-name', function(){
-        $(this).data('manual', 1);
-        $(this).val(CFF.utils.sanitizeName($(this).val()));
+        var $name = $(this);
+        var value = CFF.utils.sanitizeName($name.val());
+        $name.val(value);
+        if (value) {
+          $name.data('manual', 1).data('auto', '');
+        } else {
+          $name.data('manual', 0).data('auto', '');
+          autoNameFromLabel($name.closest('.cff-field-row'));
+        }
         refreshConditionalFieldDropdowns();
       });
 
@@ -2675,8 +2836,15 @@
 
       // Subfields auto name
       $root.on('input', '.cff-sname', function(){
-        $(this).data('manual', 1);
-        $(this).val(CFF.utils.sanitizeName($(this).val()));
+        var $name = $(this);
+        var value = CFF.utils.sanitizeName($name.val());
+        $name.val(value);
+        if (value) {
+          $name.data('manual', 1).data('auto', '');
+        } else {
+          $name.data('manual', 0).data('auto', '');
+          autoNameFromSubLabel($name.closest('.cff-subfield'));
+        }
         refreshConditionalFieldDropdowns();
       });
 
@@ -2733,6 +2901,7 @@
 
       $(document).on('submit', '#post', function(){
         if (!$root.length || !$input.length) return;
+        if (fieldViewMode === 'reorder') syncBuilderOrderFromReorderList();
         save(readFromDOM());
       });
 
@@ -2796,7 +2965,11 @@
       });
 
       $root.on('change', '#cff-field-view-mode', function(){
-        setFieldViewMode($(this).val());
+        var nextMode = $(this).val();
+        if (fieldViewMode === 'reorder' && nextMode !== 'reorder') {
+          applyReorderFromReorderList();
+        }
+        setFieldViewMode(nextMode);
       });
 
       $root.on('click', '.cff-field-mapping-jump', function(e){
@@ -2945,6 +3118,10 @@
         commit();
       });
 
+      $root.on('change', '.cff-hide-toggle', function(){
+        commit();
+      });
+
       // Relational field configuration
       $root.on('change', '.cff-relational-type', function(){
         var $ctx = getRelationalContext($(this));
@@ -2954,7 +3131,7 @@
 
       $root.on(
         'change',
-        '.cff-relational-subtype, .cff-relational-display, .cff-relational-multiple-toggle',
+        '.cff-relational-subtype, .cff-relational-taxonomy, .cff-relational-display, .cff-relational-multiple-toggle',
         function(){
           var $ctx = getRelationalContext($(this));
           save(readFromDOM());
@@ -2964,7 +3141,18 @@
 
       $root.on('change', '.cff-relational-subtype', function(){
         var $ctx = getRelationalContext($(this));
+        var type = getOwnRelationalPanel($ctx).find('.cff-relational-type').first().val();
+        if (type === 'taxonomy') {
+          $ctx.data('cff-relational-post-type', $(this).val() || '');
+          updateRelationalTaxonomyOptions($ctx, '');
+        } else {
+          $ctx.data('cff-relational-subtype', $(this).val() || '');
+        }
+        save(readFromDOM());
+      });
 
+      $root.on('change', '.cff-relational-taxonomy', function(){
+        var $ctx = getRelationalContext($(this));
         $ctx.data('cff-relational-subtype', $(this).val() || '');
         save(readFromDOM());
       });
@@ -3211,6 +3399,7 @@
          label_placement: 'top',
          instruction_placement: 'below_labels',
          order: 0,
+         super_priority: false,
          hide_on_screen: {}
        }, load());
 
@@ -3227,7 +3416,7 @@
        $('#post')
          .off('submit.cffFields')
          .on('submit.cffFields', function(){
-           commit();
+           commitFromDOM();
          });
 
        $(document)
@@ -3237,7 +3426,7 @@
          .on('click.cffFieldsPublish',
            '#publish, #save-post, #post-preview, .editor-post-publish-button, .editor-post-publish-panel__toggle, .editor-post-publish-panel__header-publish-button',
            function(){
-             commit();
+             commitFromDOM();
            }
          );
      }
@@ -3270,6 +3459,7 @@
        // order
        var orderVal = parseInt($('#cff-order').val() || 0, 10);
        state.order = isNaN(orderVal) ? 0 : orderVal;
+       state.super_priority = $('#cff-super-priority').is(':checked');
 
        // hide_on_screen
        var hide = {};
@@ -3294,6 +3484,7 @@
        });
 
        $('#cff-order').val(parseInt(state.order || 0, 10));
+       $('#cff-super-priority').prop('checked', !!state.super_priority);
 
        $panel.find('.cff-hide-screen input[type=checkbox]').each(function(){
          var k = $(this).data('key');
@@ -3315,6 +3506,11 @@
        // order
        $(document).on('input', '#cff-order', function(){
          state.order = parseInt($(this).val() || 0, 10);
+         save();
+       });
+
+       $(document).on('change', '#cff-super-priority', function(){
+         state.super_priority = $(this).is(':checked');
          save();
        });
 
@@ -3573,6 +3769,12 @@
             '<p class="description">Field groups with a lower order will appear first</p>' +
           '</div>' +
 
+          '<div class="cff-pres-section">' +
+            '<h3>Super Priority</h3>' +
+            '<label class="cff-check"><input type="checkbox" id="cff-super-priority"> <span>Always show this Field Group first</span></label>' +
+            '<p class="description">This Field Group stays above other matching Field Groups, before Order No.</p>' +
+          '</div>' +
+
         '</div>' +
 
         '<div class="cff-pres-right">' +
@@ -3598,8 +3800,12 @@
             checkbox('categories','Categories') +
             checkbox('tags','Tags') +
             checkbox('trackbacks','Send Trackbacks') +
+            checkbox('custom_fields','Custom Fields') +
             checkbox('field_actions','Field Actions') +
-            checkbox('copy_to_translations','Save + Copy CFF to Translations Button') +
+            checkbox('field_view_controls','Field View Controls') +
+            checkbox('field_view_copy','Field View Copy') +
+            checkbox('field_view_mode','Field View Mode') +
+            checkbox('copy_to_translations','Save + Copy All CFF to Translations Button') +
 
           '</div>' +
         '</div>' +
@@ -3806,9 +4012,29 @@
       var $termList = $root.find('.cff-reorder-list[data-kind="term"]');
       var $groupList = $root.find('.cff-reorder-list[data-kind="group"]');
 
-      $postList.sortable({ handle: '.cff-reorder-handle' });
-      $termList.sortable({ handle: '.cff-reorder-handle' });
-      $groupList.sortable({ handle: '.cff-reorder-handle' });
+      var sortableOptions = {
+        handle: '.cff-reorder-handle',
+        cancel: 'input,textarea,select,option',
+        placeholder: 'cff-reorder-placeholder',
+        tolerance: 'pointer'
+      };
+      $postList.sortable(sortableOptions);
+      $termList.sortable(sortableOptions);
+      $groupList.sortable(sortableOptions);
+
+      $root.on('keydown', '.cff-reorder-handle', function(e){
+        if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+        e.preventDefault();
+        var $item = $(this).closest('.cff-reorder-item');
+        if (e.key === 'ArrowUp') {
+          var $previous = $item.prev('.cff-reorder-item');
+          if ($previous.length) $item.insertBefore($previous);
+        } else {
+          var $next = $item.next('.cff-reorder-item');
+          if ($next.length) $item.insertAfter($next);
+        }
+        $(this).focus();
+      });
 
       $root.on('click', '#cff-reorder-load-posts', function(){
         loadPosts($postSelect.val(), $postList);
@@ -3879,7 +4105,7 @@
         var itemClass = 'cff-reorder-item' + (depth ? ' is-child' : '');
         $list.append(
           '<li class="' + itemClass + '" data-id="' + escAttr(String(it.id)) + '" data-parent="' + escAttr(String(it.parent || 0)) + '" data-depth="' + escAttr(String(depth)) + '">' +
-            '<span class="cff-reorder-handle">≡</span>' +
+            '<button type="button" class="cff-reorder-handle" aria-label="Move ' + escAttr(it.title || 'item') + '; use arrow keys">≡</button>' +
             '<span class="cff-reorder-title" style="padding-left:' + escAttr(String(depth * 20)) + 'px">' + esc(it.title || '') + '</span>' +
             metaHtml +
           '</li>'
@@ -4050,6 +4276,32 @@
       if (!next) return;
       $slug.val(next);
       $slug.data('cffSlugAuto', true);
+    }
+
+    return { init:init };
+  })();
+
+  /* -------------------------
+   * Field Group metabox position
+   * ------------------------- */
+  CFF.metaboxPosition = (function(){
+    function init(){
+      var $target = $('#postbox-container-2');
+      var $sortables = $('#cff-after-title-sortables');
+      if ($target.length && $sortables.length && !$sortables.parent().is($target)) {
+        $sortables.prependTo($target);
+      }
+
+      var $boxes = $('.postbox.cff-position-high');
+      if ($target.length && $boxes.length) {
+        if (!$sortables.length) {
+          $sortables = $('<div id="cff-after-title-sortables" class="meta-box-sortables"></div>');
+          $sortables.prependTo($target);
+        }
+        $boxes.not(function(){
+          return $(this).parent().is($sortables);
+        }).appendTo($sortables);
+      }
     }
 
     return { init:init };
@@ -4349,6 +4601,20 @@
         onConfirm: function(){
           var form = $button.closest('form');
           if (form.length) {
+            var name = $button.attr('name');
+            var val = $button.val();
+            if (name) {
+              var $hidden = form.find('input[type="hidden"][name="' + name + '"]');
+              if ($hidden.length) {
+                $hidden.val(val);
+              } else {
+                $('<input>').attr({
+                  type: 'hidden',
+                  name: name,
+                  value: val
+                }).appendTo(form);
+              }
+            }
             form.trigger('submit');
           }
         }
@@ -4364,6 +4630,7 @@
      CFF.dashicons.init();
      CFF.multiselect.init();
      CFF.reorder.init();
+     CFF.metaboxPosition.init();
     CFF.langTabs.init();
     CFF.autoSlug.init();
     CFF.conditionalLogic.init();

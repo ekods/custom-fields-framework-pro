@@ -22,6 +22,17 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       . ' data-cff-conditional-value="' . esc_attr($value) . '"';
   }
 
+  function cff_field_is_hidden($field) {
+    return is_array($field) && !empty($field['hide']);
+  }
+
+  function cff_visible_fields($fields) {
+    if (!is_array($fields)) return [];
+    return array_values(array_filter($fields, function($field) {
+      return !cff_field_is_hidden($field);
+    }));
+  }
+
   function cff_media_preview_html($type, $id) {
     $id = intval($id);
     if (!$id) return '<span class="cff-muted">No file selected</span>';
@@ -264,8 +275,16 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     ];
   }
 
+  function cff_polylang_copy_to_translations_enabled() {
+    return function_exists('pll_current_language') && function_exists('pll_get_post_translations');
+  }
+
   function cff_render_copy_to_translations_field_action($request = []) {
-    if (!function_exists('pll_current_language')) {
+    if (!empty(get_option('cffp_hide_field_copy_actions', 0))) {
+      return;
+    }
+
+    if (!cff_polylang_copy_to_translations_enabled()) {
       return;
     }
 
@@ -303,7 +322,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       echo '<code>' . esc_html($copy_indicator) . '</code>';
       echo '</div>';
     }
-    echo '<button type="submit" class="button cff-copy-field-action" name="cff_copy_field_to_translations" value="' . esc_attr($payload) . '" title="' . esc_attr__('Save + Copy This Field to Translations', 'cff') . '" aria-label="' . esc_attr__('Save + Copy This Field to Translations', 'cff') . '">';
+    echo '<button type="submit" class="button button-secondary cff-copy-field-action" name="cff_copy_field_to_translations" value="' . esc_attr($payload) . '" title="' . esc_attr__('Save + Copy This Field to Translations', 'cff') . '" aria-label="' . esc_attr__('Save + Copy This Field to Translations', 'cff') . '">';
     echo '<span class="dashicons dashicons-translation" aria-hidden="true"></span>';
     echo '</button>';
     echo '</div>';
@@ -320,7 +339,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     $items = [];
     foreach ((array) $value as $item) {
       $id = absint(is_array($item) ? ($item['id'] ?? 0) : $item);
-      if ($id) $items[] = $id;
+      if ($id && get_post_type($id) === 'attachment') $items[] = $id;
     }
     $items = array_values(array_unique($items));
 
@@ -366,6 +385,8 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
 
 
   function render_field_impl($plugin, $post, $f) {
+    if (cff_field_is_hidden($f)) return;
+
     $type = $f['type'];
     $name = $f['name'];
     $label = $f['label'] ?? $name;
@@ -428,6 +449,8 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       echo '<input class="widefat" type="'.esc_attr($input_type).'" name="cff_values['.esc_attr($name).']" value="'.esc_attr($val).'"'.$placeholder_attr.$required_attr.'>';
     } elseif ($type === 'textarea') {
       echo '<textarea class="widefat" rows="5" name="cff_values['.esc_attr($name).']"'.$placeholder_attr.$required_attr.'>'.esc_textarea($val).'</textarea>';
+    } elseif ($type === 'shortcode') {
+      render_shortcode_input('cff_values[' . $name . ']', $val, $placeholder_attr, $required_attr);
     } elseif ($type === 'color') {
       echo '<div class="cff-color">';
       echo '<input class="cff-color-picker" type="color" value="'.esc_attr($val ?: '#ffffff').'">';
@@ -612,6 +635,14 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     echo '<p class="description">' . esc_html__('Simple URL field for a direct link only.', 'cff') . '</p>';
   }
 
+  function render_shortcode_input($name_attr, $value, $placeholder_attr, $required_attr) {
+    if (!$placeholder_attr) {
+      $placeholder_attr = ' placeholder="' . esc_attr('[shortcode attr="value"]') . '"';
+    }
+    echo '<input class="widefat cff-shortcode-input" type="text" name="'.esc_attr($name_attr).'" value="'.esc_attr($value).'"'.$placeholder_attr.$required_attr.'>';
+    echo '<p class="description">' . esc_html__('Enter a WordPress shortcode. It will be executed when rendered through CFF shortcodes.', 'cff') . '</p>';
+  }
+
   function render_choice_input($name_attr, $choices, $display, $value, $required_attr, $default_value = '') {
     $display = sanitize_key($display ?? '');
     $allowed = ['select','checkbox','radio','button_group','true_false'];
@@ -703,6 +734,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
   }
 
   function cff_render_repeater_table_head($subs) {
+    $subs = cff_visible_fields($subs);
     echo '<table class="cff-rep-table">';
     echo '<thead class="cff-rep-table-head" aria-hidden="true"><tr>';
     echo '<th class="cff-rep-table-heading cff-rep-table-heading-actions" scope="col">' . esc_html__('Actions', 'cff') . '</th>';
@@ -715,6 +747,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
   }
 
   function render_repeater_row($parent, $subs, $row, $i, $post_id, $name_prefix = null, $layout = 'default', $row_label_field = '', $collapsed_default = false, $root_name = '', $path = []) {
+    $subs = cff_visible_fields($subs);
     $layout = in_array($layout, ['simple','grid','row','gallery','table','default'], true) ? $layout : 'default';
     $row_classes = 'cff-rep-row';
     if ($layout === 'grid') {
@@ -769,6 +802,8 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         echo '<label>'.$label_text.'</label>';
         if ($stype === 'textarea') {
           echo '<textarea class="widefat" rows="3" name="'.esc_attr($name_attr).'"'.$placeholder_attr.$required_attr.'>'.esc_textarea($v).'</textarea>';
+        } elseif ($stype === 'shortcode') {
+          render_shortcode_input($name_attr, $v, $placeholder_attr, $required_attr);
         } elseif ($stype === 'color') {
           echo '<div class="cff-color">';
           echo '<input class="cff-color-picker" type="color" value="'.esc_attr($v ?: '#ffffff').'">';
@@ -868,7 +903,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
           render_group_fields($group_prefix, $gsubs, $gvals, $post_id, $root_name, $current_path);
           echo '</div>';
         } else {
-          echo '<input class="widefat" type="text" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$required_attr.'>';
+          echo '<input class="widefat" type="text" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$placeholder_attr.$required_attr.'>';
         }
         cff_render_copy_to_translations_field_action([
           'root' => $root_name ?: sanitize_key($parent),
@@ -938,6 +973,8 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       echo '<label>'.$label_text.'</label>';
       if ($stype === 'textarea') {
         echo '<textarea class="widefat" rows="3" name="'.esc_attr($name_attr).'"'.$placeholder_attr.$required_attr.'>'.esc_textarea($v).'</textarea>';
+      } elseif ($stype === 'shortcode') {
+        render_shortcode_input($name_attr, $v, $placeholder_attr, $required_attr);
       } elseif ($stype === 'color') {
         echo '<div class="cff-color">';
         echo '<input class="cff-color-picker" type="color" value="'.esc_attr($v ?: '#ffffff').'">';
@@ -1053,7 +1090,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         render_group_fields($group_prefix, $gsubs, $gvals, $post_id, $root_name, $current_path);
         echo '</div>';
       } else {
-        echo '<input class="widefat" type="text" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$required_attr.'>';
+        echo '<input class="widefat" type="text" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$placeholder_attr.$required_attr.'>';
       }
       cff_render_copy_to_translations_field_action([
         'root' => $root_name ?: sanitize_key($parent),
@@ -1068,6 +1105,8 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
 
 function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name = '', $path = []) {
     foreach ($subs as $s) {
+      if (cff_field_is_hidden($s)) continue;
+
       $sname = $s['name'];
       $stype = $s['type'];
       $label = $s['label'] ?? $sname;
@@ -1089,6 +1128,8 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
       echo '<label>'.$label_text.'</label>';
       if ($stype === 'textarea') {
         echo '<textarea class="widefat" rows="3" name="'.esc_attr($name_attr).'"'.$placeholder_attr.$required_attr.'>'.esc_textarea($v).'</textarea>';
+      } elseif ($stype === 'shortcode') {
+        render_shortcode_input($name_attr, $v, $placeholder_attr, $required_attr);
       } elseif ($stype === 'color') {
         echo '<div class="cff-color">';
         echo '<input class="cff-color-picker" type="color" value="'.esc_attr($v ?: '#ffffff').'">';
@@ -1226,6 +1267,7 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
       'text' => 'Enter text…',
       'number' => 'Enter number…',
       'textarea' => 'Enter text…',
+      'shortcode' => '[shortcode attr="value"]',
       'url' => 'https://example.com',
       'link' => 'https://example.com',
       'email' => 'name@example.com',
@@ -1358,6 +1400,8 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
         'type' => 'layout',
       ]]);
       foreach (($l['sub_fields'] ?? []) as $sf) {
+        if (cff_field_is_hidden($sf)) continue;
+
         $sname = $sf['name'];
         $stype = $sf['type'];
         $slabel = $sf['label'] ?? $sname;
@@ -1379,6 +1423,8 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
         echo '<label>'.$label_text.'</label>';
         if ($stype === 'textarea') {
           echo '<textarea class="widefat" rows="4" name="'.esc_attr($name_attr).'"'.$placeholder_attr.$required_attr.'>'.esc_textarea($v).'</textarea>';
+        } elseif ($stype === 'shortcode') {
+          render_shortcode_input($name_attr, $v, $placeholder_attr, $required_attr);
         } elseif ($stype === 'color') {
           echo '<div class="cff-color">';
           echo '<input class="cff-color-picker" type="color" value="'.esc_attr($v ?: '#ffffff').'">';
@@ -1494,35 +1540,33 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
       return;
     }
 
-    $vals = $_POST['cff_values'];
+    $vals = wp_unslash($_POST['cff_values']);
+    $definitions = $plugin->get_field_definitions_for_post($post);
 
     foreach ($vals as $name => $value) {
       $name = sanitize_key($name);
+      if (!$name || !isset($definitions[$name])) continue;
+
       $key  = $plugin->meta_key($name);
+      $field = $definitions[$name];
+      $value = $plugin->field_sanitizer()->sanitize($field, $value);
 
-      if (is_array($value)) {
+      // Preserve nested values that were not submitted because a conditional
+      // sub-field was hidden in the editor.
+      if (($field['type'] ?? '') === 'group' && is_array($value)) {
         $existing = get_post_meta($post_id, $key, true);
-        if (is_array($existing) && is_assoc_array($value) && is_assoc_array($existing)) {
-          $value = deep_merge_assoc($existing, $value);
-        }
-        $value = deep_sanitize($value);
-
-        // ✅ PENTING: kalau repeater/flex sudah kosong -> hapus meta lama
-        if (empty($value)) {
-          delete_post_meta($post_id, $key);
-          continue;
-        }
-      } else {
-        $value = wp_kses_post((string) $value);
-
-        // opsional: kalau string kosong, hapus
-        if ($value === '') {
-          delete_post_meta($post_id, $key);
-          continue;
-        }
+        if (is_array($existing)) $value = deep_merge_assoc($existing, $value);
       }
 
+      if ($value === null || $value === '' || (is_array($value) && !$value)) {
+        delete_post_meta($post_id, $key);
+        continue;
+      }
       update_post_meta($post_id, $key, $value);
+
+      if (in_array(($field['type'] ?? ''), ['image', 'file'], true)) {
+        delete_post_meta($post_id, $plugin->meta_key($name . '_url'));
+      }
     }
 
     if ($copy_all_to_translations) {
@@ -1924,19 +1968,13 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
 
   function render_relational_input($name_attr, $rel_type, $rel_subtype, $rel_display, $value, $rel_multiple, $required_attr) {
     $rel_subtype = cff_resolve_relational_subtype($rel_type, $rel_subtype);
-    $options = cff_get_relational_items($rel_type, $rel_subtype);
-
-    if (empty($options)) {
-      echo '<div class="cff-muted">' . esc_html__('No items available', 'cff') . '</div>';
-      return;
-    }
-
     $selected = $rel_multiple ? (is_array($value) ? array_map('strval', $value) : []) : (string)$value;
 
     if ($rel_display === 'select') {
+      $options = cff_get_selected_relational_items($rel_type, $rel_subtype, $selected);
       $name_suffix = $rel_multiple ? '[]' : '';
       $rel_subtype = cff_resolve_relational_subtype($rel_type, $rel_subtype);
-      echo '<select class="widefat cff-relational-select cff-select2" name="'.esc_attr($name_attr).$name_suffix.'"' . ($rel_multiple ? ' multiple' : '') . $required_attr
+      echo '<select class="widefat cff-relational-select cff-relational-ajax cff-select2" name="'.esc_attr($name_attr).$name_suffix.'"' . ($rel_multiple ? ' multiple' : '') . $required_attr
         . ' data-placeholder="' . esc_attr__('Select...', 'cff') . '"'
         . ' data-relational-type="'.esc_attr($rel_type).'"'
         . ' data-relational-subtype="'.esc_attr($rel_subtype).'"'
@@ -1950,6 +1988,12 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
         echo '<option value="'.esc_attr($id).'"'.$selected_attr.'>'.esc_html($title).'</option>';
       }
       echo '</select>';
+      return;
+    }
+
+    $options = cff_get_relational_items($rel_type, $rel_subtype);
+    if (empty($options)) {
+      echo '<div class="cff-muted">' . esc_html__('No items available', 'cff') . '</div>';
       return;
     }
 
@@ -1989,6 +2033,33 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
       echo '<option value="'.esc_attr($id).'"'.$selected_attr.'>'.esc_html($title).'</option>';
     }
     echo '</select>';
+  }
+
+  function cff_get_selected_relational_items($type, $subtype, $selected) {
+    $ids = array_values(array_filter(array_map('absint', (array) $selected)));
+    if (!$ids) return [];
+
+    $items = [];
+    if ($type === 'taxonomy') {
+      foreach ($ids as $id) {
+        $term = get_term($id, $subtype);
+        if ($term && !is_wp_error($term)) $items[$id] = $term->name;
+      }
+      return $items;
+    }
+    if ($type === 'user') {
+      foreach ($ids as $id) {
+        $user = get_userdata($id);
+        if ($user) $items[$id] = $user->display_name;
+      }
+      return $items;
+    }
+
+    foreach ($ids as $id) {
+      $item = get_post($id);
+      if ($item) $items[$id] = $item->post_title ?: __('(no title)', 'cff');
+    }
+    return $items;
   }
 
   function cff_get_relational_items($type, $subtype = '') {

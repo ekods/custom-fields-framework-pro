@@ -98,6 +98,7 @@ Kemampuan utama:
   - Taxonomies
   - Field Groups
   - bisa pilih Field Group tertentu
+  - Field Group aktif dapat disimpan sebagai template JSON struktur tanpa value konten
 - Import JSON dari format export plugin ini.
 - Import dasar ACF JSON (mapping basic).
 - Migrasi field group dari ACF.
@@ -371,7 +372,7 @@ add_filter('cff_block_sidebar_enabled', function($enabled, $screen){
 
 ### 1.12 Versi
 
-- Versi plugin saat ini: `1.01`
+- Versi plugin saat ini: `2.5.0`
 
 ---
 
@@ -653,4 +654,4 @@ add_filter('cff_block_sidebar_enabled', function($enabled, $screen){
 
 ### 2.12 Version
 
-- Current plugin version: `1.01`
+- Current plugin version: `2.5.0`

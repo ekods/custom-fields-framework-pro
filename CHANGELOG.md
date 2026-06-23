@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.5.0
+
+### Added
+- Added the native WordPress Custom Fields panel to Field Group “Hide on screen” controls.
+- Added paginated AJAX search for relational select fields.
+- Added PHPUnit configuration and a PHP 7.4–8.3 CI matrix.
+
+### Changed
+- Centralized classic-editor and REST value validation in a type-aware field sanitizer.
+- Load heavy editor assets only when the current screen has matching field groups.
+- Cache field group settings per request and batch large post reorder writes.
+- Made reorder handles keyboard-accessible with Arrow Up and Arrow Down.
+
+### Fixed
+- Hidden editor fields remain available to frontend helpers and REST responses.
+- REST reads and writes no longer fall back to field groups that do not match the current post.
+- Native WordPress meta boxes are removed through `remove_meta_box()` in addition to the CSS fallback.
+
+## 2.4.1
+
+### Fixed
+- Fixed missing `tk-header-branding` styles on native WordPress admin pages.
+- Suppressed `Tool Kits` license notification inside CFF admin screens to maintain a clean UI.
+
 ## 2.4.0
 
 ### Added

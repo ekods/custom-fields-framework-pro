@@ -134,7 +134,11 @@ class Tools_Page {
     if (!check_admin_referer('cff_export_group_' . $group_id)) return;
 
     $group = get_post($group_id);
-    if (!$group || $group->post_type !== 'cff_group') return;
+    if (
+      !$group
+      || $group->post_type !== 'cff_group'
+      || $group->post_status !== 'publish'
+    ) return;
 
     $payload = [
       'version' => defined('CFFP_VERSION') ? CFFP_VERSION : '0.0.0',
@@ -146,7 +150,7 @@ class Tools_Page {
 
     $json = wp_json_encode($payload, JSON_PRETTY_PRINT);
     $slug = $group->post_name ?: ('group-' . $group_id);
-    $filename = 'cff-group-' . sanitize_file_name($slug) . '-' . date('Ymd-His') . '.json';
+    $filename = 'cff-template-' . sanitize_file_name($slug) . '-' . date('Ymd-His') . '.json';
 
     header('Content-Type: application/json; charset=utf-8');
     header('Content-Disposition: attachment; filename="' . $filename . '"');

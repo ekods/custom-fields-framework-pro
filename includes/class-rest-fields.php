@@ -51,9 +51,6 @@ class Rest_Fields {
     if (!$post || $post->post_type !== $post_type) return [];
 
     $definitions = $this->plugin->get_field_definitions_for_post($post);
-    if (!$definitions) {
-      $definitions = $this->get_definitions_for_post_type($post_type);
-    }
 
     $format_value = (bool) apply_filters('cff_rest_fields_format_value', true, $post_type, $post_id);
     $out = [];
@@ -87,9 +84,6 @@ class Rest_Fields {
     }
 
     $definitions = $this->plugin->get_field_definitions_for_post($post);
-    if (!$definitions) {
-      $definitions = $this->get_definitions_for_post_type($post_type);
-    }
     if (!$definitions) return true;
 
     $readonly_fields = array_values(array_filter(array_map('sanitize_key', (array) apply_filters('cff_rest_fields_readonly', [], $post_type, $post_id))));
@@ -127,6 +121,7 @@ class Rest_Fields {
       'numberposts' => -1,
       'no_found_rows' => true,
     ]);
+    $this->sort_groups_by_setting_order($groups);
 
     $definitions = [];
     foreach ($groups as $group) {
@@ -139,6 +134,23 @@ class Rest_Fields {
       }
     }
     return $definitions;
+  }
+
+  private function sort_groups_by_setting_order(&$groups) {
+    if (!is_array($groups) || count($groups) < 2) return;
+
+    usort($groups, function($a, $b) {
+      $settings_a = get_post_meta($a->ID ?? 0, '_cff_settings', true);
+      $settings_b = get_post_meta($b->ID ?? 0, '_cff_settings', true);
+      $order_a = is_array($settings_a) ? intval($settings_a['presentation']['order'] ?? 0) : 0;
+      $order_b = is_array($settings_b) ? intval($settings_b['presentation']['order'] ?? 0) : 0;
+      if ($order_a !== $order_b) return $order_a <=> $order_b;
+
+      $title_compare = strcasecmp($a->post_title ?? '', $b->post_title ?? '');
+      if ($title_compare !== 0) return $title_compare;
+
+      return intval($a->ID ?? 0) <=> intval($b->ID ?? 0);
+    });
   }
 
   public function build_schema_properties_for_post_type($post_type) {
@@ -248,127 +260,6 @@ class Rest_Fields {
   }
 
   public function sanitize_field_value($field, $value) {
-    if (is_object($value)) {
-      $value = (array) $value;
-    }
-    $type = sanitize_key($field['type'] ?? 'text');
-
-    if ($type === 'number') {
-      if ($value === '' || $value === null) return null;
-      return is_numeric($value) ? 0 + $value : null;
-    }
-    if ($type === 'checkbox') {
-      return !empty($value) ? '1' : '0';
-    }
-    if ($type === 'choice') {
-      $display = sanitize_key($field['choice_display'] ?? 'select');
-      if ($display === 'checkbox') {
-        if (!is_array($value)) return [];
-        $out = [];
-        foreach ($value as $item) {
-          $item = sanitize_text_field($item);
-          if ($item !== '') $out[] = $item;
-        }
-        return array_values(array_unique($out));
-      }
-      return sanitize_text_field(is_scalar($value) ? (string) $value : '');
-    }
-    if ($type === 'url') {
-      return is_scalar($value) ? esc_url_raw((string) $value) : '';
-    }
-    if ($type === 'link') {
-      if (!is_array($value)) return null;
-      return [
-        'url' => esc_url_raw($value['url'] ?? ''),
-        'title' => sanitize_text_field($value['title'] ?? ''),
-        'target' => sanitize_text_field($value['target'] ?? ''),
-      ];
-    }
-    if ($type === 'image' || $type === 'file') {
-      if (is_array($value)) {
-        if (isset($value['id'])) return absint($value['id']);
-        return null;
-      }
-      return absint($value);
-    }
-    if ($type === 'gallery') {
-      if (!is_array($value)) return [];
-      $out = [];
-      foreach ($value as $item) {
-        $id = absint(is_array($item) ? ($item['id'] ?? 0) : $item);
-        if ($id) $out[] = $id;
-      }
-      return array_values(array_unique($out));
-    }
-    if ($type === 'repeater') {
-      if (is_object($value)) $value = (array) $value;
-      if (!is_array($value)) return [];
-      $rows = [];
-      $sub_map = [];
-      foreach ((array) ($field['sub_fields'] ?? []) as $sub) {
-        $sub_name = sanitize_key($sub['name'] ?? '');
-        if ($sub_name) $sub_map[$sub_name] = $sub;
-      }
-      foreach ($value as $row) {
-        if (!is_array($row)) continue;
-        $clean_row = [];
-        $row_id = sanitize_key($row['__cff_row_id'] ?? '');
-        $clean_row['__cff_row_id'] = $row_id ?: ('row_' . substr(md5(uniqid((string) wp_rand(), true)), 0, 12));
-        foreach ($sub_map as $sub_name => $sub_field) {
-          if (!array_key_exists($sub_name, $row)) continue;
-          $clean_row[$sub_name] = $this->sanitize_field_value($sub_field, $row[$sub_name]);
-        }
-        if ($clean_row) $rows[] = $clean_row;
-      }
-      return $rows;
-    }
-    if ($type === 'group') {
-      if (is_object($value)) $value = (array) $value;
-      if (!is_array($value)) return [];
-      $clean = [];
-      foreach ((array) ($field['sub_fields'] ?? []) as $sub) {
-        $sub_name = sanitize_key($sub['name'] ?? '');
-        if (!$sub_name || !array_key_exists($sub_name, $value)) continue;
-        $clean[$sub_name] = $this->sanitize_field_value($sub, $value[$sub_name]);
-      }
-      return $clean;
-    }
-    if ($type === 'flexible') {
-      if (is_object($value)) $value = (array) $value;
-      if (!is_array($value)) return [];
-      $layout_map = [];
-      foreach ((array) ($field['layouts'] ?? []) as $layout) {
-        $layout_name = sanitize_key($layout['name'] ?? '');
-        if ($layout_name) $layout_map[$layout_name] = $layout;
-      }
-      $rows = [];
-      foreach ($value as $row) {
-        if (is_object($row)) $row = (array) $row;
-        if (!is_array($row)) continue;
-        $layout_name = sanitize_key($row['layout'] ?? '');
-        if (!$layout_name || !isset($layout_map[$layout_name])) continue;
-        $row_id = sanitize_key($row['__cff_row_id'] ?? '');
-        $row_fields = $row['fields'] ?? [];
-        if (is_object($row_fields)) $row_fields = (array) $row_fields;
-        if (!is_array($row_fields)) $row_fields = [];
-        $clean_fields = [];
-        foreach ((array) ($layout_map[$layout_name]['sub_fields'] ?? []) as $sub) {
-          $sub_name = sanitize_key($sub['name'] ?? '');
-          if (!$sub_name || !array_key_exists($sub_name, $row_fields)) continue;
-          $clean_fields[$sub_name] = $this->sanitize_field_value($sub, $row_fields[$sub_name]);
-        }
-        $rows[] = [
-          'layout' => $layout_name,
-          '__cff_row_id' => $row_id ?: ('row_' . substr(md5(uniqid((string) wp_rand(), true)), 0, 12)),
-          'fields' => $clean_fields,
-        ];
-      }
-      return $rows;
-    }
-
-    if ($type === 'wysiwyg' || $type === 'embed') {
-      return wp_kses_post(is_scalar($value) ? (string) $value : '');
-    }
-    return sanitize_text_field(is_scalar($value) ? (string) $value : '');
+    return $this->plugin->field_sanitizer()->sanitize($field, $value);
   }
 }
