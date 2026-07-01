@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.5.1
+
+### Added
+- Renamed the field hide control to `Hide Section` for clearer dynamic section workflows.
+- Added frontend hide enforcement for ordered field helpers and `[cff_items]` loops.
+
+### Changed
+- Hidden fields are excluded from ordered frontend section output, including saved per-post reorder sequences and candidate-based shortcode loops.
+- Direct hidden field shortcode calls now return a hidden placeholder with `display:none!important`.
+
 ## 2.5.0
 
 ### Added

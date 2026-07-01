@@ -344,11 +344,14 @@ if (!function_exists(__NAMESPACE__ . '\cff_get_ordered_fields')) {
     }
 
     if (!$include_values) {
-      return $fields;
+      return array_values(array_filter($fields, function($field) {
+        return is_array($field) && empty($field['hide']);
+      }));
     }
 
     $out = [];
     foreach ($fields as $field) {
+      if (!is_array($field) || !empty($field['hide'])) continue;
       $name = sanitize_key($field['name'] ?? '');
       if (!$name) continue;
       $field['value'] = get_field($name, $post_id, $format_value);
@@ -372,6 +375,7 @@ if (!function_exists(__NAMESPACE__ . '\cff_render_ordered_fields')) {
 
     echo '<div class="cff-frontend-fields">';
     foreach ($items as $item) {
+      if (!empty($item['hide'])) continue;
       $name = sanitize_key($item['name'] ?? '');
       if (!$name) continue;
 
@@ -471,10 +475,22 @@ if (!function_exists(__NAMESPACE__ . '\cff_get_ordered_field_names')) {
         $fields = isset($settings['fields']) && is_array($settings['fields']) ? $settings['fields'] : [];
 
         $field_names = [];
+        $hidden_candidate_names = [];
         foreach ($fields as $field) {
+          if (!is_array($field)) continue;
           $name = sanitize_key($field['name'] ?? '');
-          if ($name) $field_names[] = $name;
+          if (!$name) continue;
+          if (!empty($field['hide'])) {
+            $hidden_names = array_merge([$name], array_map('sanitize_key', (array) ($field['aliases'] ?? [])));
+            foreach (array_filter(array_unique($hidden_names)) as $hidden_name) {
+              $matched_hidden = $match_candidate($hidden_name);
+              if ($matched_hidden) $hidden_candidate_names[] = $matched_hidden;
+            }
+            continue;
+          }
+          $field_names[] = $name;
         }
+        $hidden_candidate_names = array_unique($hidden_candidate_names);
         $field_score = count(array_intersect($candidate_names, array_unique($field_names)));
         if ($field_score > $best_field_score) {
           $best_field_score = $field_score;
@@ -493,6 +509,7 @@ if (!function_exists(__NAMESPACE__ . '\cff_get_ordered_field_names')) {
         $saved_filtered = [];
         foreach ($saved as $name) {
           $matched = $match_candidate($name);
+          if ($matched && in_array($matched, $hidden_candidate_names, true)) continue;
           if ($matched && !in_array($matched, $saved_filtered, true)) {
             $saved_filtered[] = $matched;
           }
@@ -517,6 +534,7 @@ if (!function_exists(__NAMESPACE__ . '\cff_get_ordered_field_names')) {
     $defs = cff_get_ordered_fields($post_id, $group_id, false);
     $ordered = [];
     foreach ((array) $defs as $def) {
+      if (!is_array($def) || !empty($def['hide'])) continue;
       $name = sanitize_key($def['name'] ?? '');
       $matched = $match_candidate($name);
       if ($matched && !in_array($matched, $ordered, true)) {

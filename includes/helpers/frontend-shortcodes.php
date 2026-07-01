@@ -148,6 +148,10 @@ if (!function_exists(__NAMESPACE__ . '\cff_shortcode_get_nested_value')) {
 
 if (!function_exists(__NAMESPACE__ . '\cff_shortcode_should_include_item')) {
   function cff_shortcode_should_include_item($item, $include_empty) {
+    if (!empty($item['hide'])) {
+      return false;
+    }
+
     $value = $item['value'] ?? null;
 
     if (is_array($value)) {
@@ -161,6 +165,12 @@ if (!function_exists(__NAMESPACE__ . '\cff_shortcode_should_include_item')) {
     }
 
     return cff_shortcode_value_has_any_key($value, $include_empty) || cff_shortcode_value_has_any_key($item, $include_empty);
+  }
+}
+
+if (!function_exists(__NAMESPACE__ . '\cff_shortcode_hidden_section_html')) {
+  function cff_shortcode_hidden_section_html() {
+    return '<span class="cff-hidden-section" hidden aria-hidden="true" style="display:none!important"></span>';
   }
 }
 
@@ -470,6 +480,7 @@ if (!function_exists(__NAMESPACE__ . '\cff_shortcode_get_loop_items')) {
           if (!$name) continue;
 
           $definition = isset($definitions[$name]) && is_array($definitions[$name]) ? $definitions[$name] : [];
+          if (!empty($definition['hide'])) continue;
           $items[] = array_merge($definition, [
             'name' => $name,
             'label' => sanitize_text_field($definition['label'] ?? $name),
@@ -568,6 +579,9 @@ if (!function_exists(__NAMESPACE__ . '\cff_shortcode_field')) {
     if ($field_name) {
       $definitions = cff_shortcode_get_field_definitions($post_id);
       $field_type = sanitize_key($definitions[$field_name]['type'] ?? '');
+      if (!empty($definitions[$field_name]['hide'])) {
+        return cff_shortcode_hidden_section_html();
+      }
       $value = get_field($field_name, $post_id, $format_value);
       return cff_shortcode_format_value($value, $atts['default'], $field_type, $atts);
     }

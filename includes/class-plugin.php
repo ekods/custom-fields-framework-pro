@@ -2927,7 +2927,7 @@ TEXT;
               </div>
               <div class="cff-row-hide">
                 <span class="cff-tools-toggles">
-                  <div><strong>Hide</strong><div class="description">Do not render this field in the editor.</div></div>
+                  <div><strong>Hide Section</strong><div class="description">Do not render this field in the editor or frontend section loops.</div></div>
                   <label class="cff-switch">
                     <input type="checkbox" class="cff-hide-toggle">
                     <span class="cff-slider"></span>
@@ -3195,7 +3195,7 @@ TEXT;
               </div>
               <div class="cff-row-hide">
                 <span class="cff-tools-toggles">
-                  <div><strong>Hide</strong><div class="description">Do not render this field in the editor.</div></div>
+                  <div><strong>Hide Section</strong><div class="description">Do not render this field in the editor or frontend section loops.</div></div>
                   <label class="cff-switch">
                     <input type="checkbox" class="cff-hide-toggle">
                     <span class="cff-slider"></span>
