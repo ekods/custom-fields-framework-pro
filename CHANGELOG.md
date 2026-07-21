@@ -2,6 +2,61 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.5.9
+
+### Fixed
+- Saved nested media companion URLs for group, repeater, and flexible fields so selected image/video URLs are not dropped before formatting.
+- Resolved media IDs from submitted companion URLs when possible, preventing stale attachment IDs from rendering an older asset.
+- Added a defensive media-frame fallback so the picker can still open if a library filter fails in WordPress admin.
+
+## 2.5.8
+
+### Fixed
+- Restored image field support for both image and video attachments while still rejecting unrelated attachment types.
+- Kept cleared nested media values as explicit empty values so old image/video IDs are not merged back after save.
+
+## 2.5.7
+
+### Fixed
+- Limited image fields to image attachments in the media picker instead of allowing videos.
+- Rejected non-image attachment IDs during image field sanitization so stale video IDs cannot be saved back into image fields.
+- Rendered invalid existing video IDs as empty for image fields in the editor.
+
+## 2.5.6
+
+### Fixed
+- Scoped media picker updates to the active media field so nested group/repeater media inputs do not keep stale attachment IDs or URLs.
+- Preserved submitted empty nested image/file values during save so cleared group, repeater, and flexible media fields override older attachment IDs instead of merging stale media back in.
+
+## 2.5.5
+
+### Fixed
+- Cleared stale companion media URL metadata when image/file fields are removed.
+- Made the field builder initialize against the current builder root markup and tolerate saved field JSON wrapped in a `fields` object.
+
+## 2.5.4
+
+### Added
+- Added parameter and hash inputs for internal Button/Link fields.
+
+### Fixed
+- Preserved internal Button/Link mode metadata after saving so internal links do not reload as custom links.
+
+## 2.5.3
+
+### Fixed
+- Enforced per-post `Hide Section` state in direct frontend helpers, including `cff_get_value()`, `cff_get_text()`, repeater helpers, shortcode field checks, and CFF-compatible `get_field()`.
+- Kept hidden-section checks consistent with Polylang-local metadata so translated posts do not inherit hidden sections unless saved locally.
+
+## 2.5.2
+
+### Added
+- Added a per-post `Hide Section` switch directly inside rendered `.cff-field` editors.
+- Hidden rendered sections are saved in `_cff_hidden_sections` and excluded from frontend helpers and shortcode output.
+
+### Changed
+- Rendered field bodies now hide immediately with `display:none!important` when the section switch is enabled, while keeping the switch visible for re-enabling.
+
 ## 2.5.1
 
 ### Added

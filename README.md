@@ -394,7 +394,7 @@ add_filter('cff_block_sidebar_enabled', function($enabled, $screen){
 
 ### 1.13 Versi
 
-- Versi plugin saat ini: `2.5.1`
+- Versi plugin saat ini: `2.5.9`
 
 ---
 
@@ -676,4 +676,4 @@ add_filter('cff_block_sidebar_enabled', function($enabled, $screen){
 
 ### 2.12 Version
 
-- Current plugin version: `2.5.1`
+- Current plugin version: `2.5.9`

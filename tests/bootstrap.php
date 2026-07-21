@@ -25,5 +25,8 @@ function absint($value) {
 function wp_generate_password($length = 12) {
   return str_repeat('a', $length);
 }
+function get_permalink($post_id) {
+  return 'https://example.test/post-' . absint($post_id) . '/';
+}
 
 require_once dirname(__DIR__) . '/includes/class-field-sanitizer.php';

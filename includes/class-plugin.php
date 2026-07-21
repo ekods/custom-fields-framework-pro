@@ -2656,7 +2656,7 @@ TEXT;
 
     echo '<div class="tk-tab-panel is-active" data-panel="fields">';
     echo '<input type="hidden" id="cff_fields_json" name="cff_fields_json" value="'.esc_attr($fields_json).'">';
-    echo '<div id="cff-fields-builder"></div>';
+    echo '<div id="cff-fields-builder" class="cff-fields-builder"></div>';
     echo '</div>';
 
     echo '<div class="tk-tab-panel" data-panel="location">';
@@ -3372,6 +3372,9 @@ TEXT;
 
     $fields_json = isset($_POST['cff_fields_json']) ? wp_unslash($_POST['cff_fields_json']) : '[]';
     $fields = json_decode($fields_json, true);
+    if (is_array($fields) && isset($fields['fields']) && is_array($fields['fields'])) {
+      $fields = $fields['fields'];
+    }
     if (!is_array($fields)) $fields = [];
 
     $location_json = isset($_POST['cff_location_json']) ? wp_unslash($_POST['cff_location_json']) : '[]';
@@ -5061,14 +5064,24 @@ TEXT;
 
     if ($type === 'link') {
       if (is_array($value)) {
+        $mode = sanitize_key($value['mode'] ?? '');
+        $mode = in_array($mode, ['internal', 'custom'], true) ? $mode : (!empty($value['internal_id']) ? 'internal' : 'custom');
+        $parameter = isset($value['parameter']) && is_scalar($value['parameter']) ? ltrim(trim(sanitize_text_field((string) $value['parameter'])), "?& \t\n\r\0\x0B") : '';
+        $hash = isset($value['hash']) && is_scalar($value['hash']) ? ltrim(trim(sanitize_text_field((string) $value['hash'])), "# \t\n\r\0\x0B") : '';
+
         return [
+          'mode' => $mode,
           'url' => isset($value['url']) ? (string) $value['url'] : '',
           'title' => isset($value['title']) ? (string) $value['title'] : '',
           'target' => isset($value['target']) ? (string) $value['target'] : '',
+          'internal_id' => absint($value['internal_id'] ?? 0),
+          'post_type_filter' => sanitize_key($value['post_type_filter'] ?? 'any') ?: 'any',
+          'parameter' => $parameter,
+          'hash' => $hash,
         ];
       }
       if (is_string($value) && $value !== '') {
-        return ['url' => $value, 'title' => '', 'target' => ''];
+        return ['mode' => 'custom', 'url' => $value, 'title' => '', 'target' => '', 'internal_id' => 0, 'post_type_filter' => 'any', 'parameter' => '', 'hash' => ''];
       }
       return [];
     }

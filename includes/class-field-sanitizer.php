@@ -27,16 +27,35 @@ class Field_Sanitizer {
 
     if ($type === 'link') {
       if (!is_array($value)) return null;
+      $mode = sanitize_key($value['mode'] ?? '');
+      $mode = in_array($mode, ['internal', 'custom'], true) ? $mode : 'custom';
       $target = sanitize_key($value['target'] ?? '');
+      $parameter = $this->sanitize_link_parameter($value['parameter'] ?? '');
+      $hash = $this->sanitize_link_hash($value['hash'] ?? '');
+      $internal_id = absint($value['internal_id'] ?? 0);
+      $url = esc_url_raw($value['url'] ?? '');
+
+      if ($mode === 'internal' && $internal_id && function_exists('get_permalink')) {
+        $permalink = get_permalink($internal_id);
+        if ($permalink) {
+          $url = esc_url_raw($this->build_link_url((string) $permalink, $parameter, $hash));
+        }
+      }
+
       return [
-        'url' => esc_url_raw($value['url'] ?? ''),
+        'mode' => $mode,
+        'url' => $url,
         'title' => sanitize_text_field($value['title'] ?? ''),
         'target' => $target === '_blank' ? '_blank' : '',
+        'internal_id' => $internal_id,
+        'post_type_filter' => sanitize_key($value['post_type_filter'] ?? 'any') ?: 'any',
+        'parameter' => $parameter,
+        'hash' => $hash,
       ];
     }
 
     if ($type === 'image' || $type === 'file') {
-      return absint(is_array($value) ? ($value['id'] ?? 0) : $value);
+      return $this->sanitize_media_value($field, $value, is_array($value) ? ($value['url'] ?? '') : '');
     }
 
     if ($type === 'gallery') {
@@ -122,7 +141,9 @@ class Field_Sanitizer {
       if (!is_array($row)) continue;
       $clean = ['__cff_row_id' => $this->row_id($row['__cff_row_id'] ?? '')];
       foreach ($sub_fields as $name => $sub_field) {
-        if (array_key_exists($name, $row)) $clean[$name] = $this->sanitize($sub_field, $row[$name]);
+        if (!array_key_exists($name, $row)) continue;
+        $clean[$name] = $this->sanitize_nested_value($sub_field, $row[$name], $row[$name . '_url'] ?? '');
+        $this->append_media_companion_url($clean, $name, $sub_field, $row[$name . '_url'] ?? '', $clean[$name]);
       }
       $rows[] = $clean;
     }
@@ -135,7 +156,9 @@ class Field_Sanitizer {
     if (!is_array($value)) return [];
     $clean = [];
     foreach ($this->index_fields($field['sub_fields'] ?? []) as $name => $sub_field) {
-      if (array_key_exists($name, $value)) $clean[$name] = $this->sanitize($sub_field, $value[$name]);
+      if (!array_key_exists($name, $value)) continue;
+      $clean[$name] = $this->sanitize_nested_value($sub_field, $value[$name], $value[$name . '_url'] ?? '');
+      $this->append_media_companion_url($clean, $name, $sub_field, $value[$name . '_url'] ?? '', $clean[$name]);
     }
     return $clean;
   }
@@ -156,7 +179,9 @@ class Field_Sanitizer {
       $submitted = is_array($row['fields'] ?? null) ? $row['fields'] : [];
       $fields = [];
       foreach ($this->index_fields($layouts[$layout_name]['sub_fields'] ?? []) as $name => $sub_field) {
-        if (array_key_exists($name, $submitted)) $fields[$name] = $this->sanitize($sub_field, $submitted[$name]);
+        if (!array_key_exists($name, $submitted)) continue;
+        $fields[$name] = $this->sanitize_nested_value($sub_field, $submitted[$name], $submitted[$name . '_url'] ?? '');
+        $this->append_media_companion_url($fields, $name, $sub_field, $submitted[$name . '_url'] ?? '', $fields[$name]);
       }
       $rows[] = [
         'layout' => $layout_name,
@@ -165,6 +190,49 @@ class Field_Sanitizer {
       ];
     }
     return $rows;
+  }
+
+  private function sanitize_nested_value($field, $value, $companion_url = '') {
+    $type = sanitize_key($field['type'] ?? 'text');
+    if ($type === 'image' || $type === 'file') {
+      return $this->sanitize_media_value($field, $value, $companion_url);
+    }
+    return $this->sanitize($field, $value);
+  }
+
+  private function sanitize_media_value($field, $value, $companion_url = '') {
+    $type = sanitize_key($field['type'] ?? 'file');
+    $id = absint(is_array($value) ? ($value['id'] ?? 0) : $value);
+    $url = is_scalar($companion_url) ? esc_url_raw((string) $companion_url) : '';
+
+    if ($url !== '' && function_exists('attachment_url_to_postid')) {
+      $url_id = absint(attachment_url_to_postid($url));
+      if ($url_id) $id = $url_id;
+    }
+
+    if (
+      $type === 'image'
+      && $id
+      && function_exists('wp_attachment_is')
+      && !wp_attachment_is('image', $id)
+      && !wp_attachment_is('video', $id)
+    ) {
+      return 0;
+    }
+
+    return $id;
+  }
+
+  private function append_media_companion_url(&$clean, $name, $field, $companion_url, $id) {
+    $type = sanitize_key($field['type'] ?? 'text');
+    if ($type !== 'image' && $type !== 'file') return;
+
+    $url = is_scalar($companion_url) ? esc_url_raw((string) $companion_url) : '';
+    if (!$url && absint($id) && function_exists('wp_get_attachment_url')) {
+      $url = (string) wp_get_attachment_url(absint($id));
+    }
+
+    $clean[$name . '_url'] = absint($id) ? $url : '';
   }
 
   private function sanitize_date($value, $with_time) {
@@ -188,5 +256,37 @@ class Field_Sanitizer {
   private function row_id($value) {
     $value = sanitize_key($value);
     return $value ?: 'row_' . wp_generate_password(12, false, false);
+  }
+
+  private function sanitize_link_parameter($value) {
+    if (!is_scalar($value)) return '';
+    $value = sanitize_text_field((string) $value);
+    return ltrim(trim($value), "?& \t\n\r\0\x0B");
+  }
+
+  private function sanitize_link_hash($value) {
+    if (!is_scalar($value)) return '';
+    $value = sanitize_text_field((string) $value);
+    return ltrim(trim($value), "# \t\n\r\0\x0B");
+  }
+
+  private function build_link_url($base_url, $parameter = '', $hash = '') {
+    $base_url = (string) $base_url;
+    $parameter = $this->sanitize_link_parameter($parameter);
+    $hash = $this->sanitize_link_hash($hash);
+
+    if ($hash !== '') {
+      $base_url = preg_replace('/#.*$/', '', $base_url);
+    }
+
+    if ($parameter !== '') {
+      $base_url .= (strpos($base_url, '?') === false ? '?' : '&') . $parameter;
+    }
+
+    if ($hash !== '') {
+      $base_url .= '#' . $hash;
+    }
+
+    return $base_url;
   }
 }

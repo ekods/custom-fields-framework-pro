@@ -27,6 +27,7 @@ rsync -a "$ROOT_DIR/" "$TEMP_DIR/$PLUGIN_SLUG/" \
   --exclude 'phpunit.xml.dist' \
   --exclude 'scripts' \
   --exclude 'tests' \
+  --exclude 'vendor' \
   --exclude '*.md'
 
 (cd "$TEMP_DIR" && zip -qr "$OUTPUT_PATH" "$PLUGIN_SLUG")

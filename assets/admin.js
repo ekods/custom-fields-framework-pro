@@ -197,6 +197,9 @@
     function init(){
       $input = $('#cff_fields_json');
       $root  = $('#cff-fields-builder');
+      if (!$root.length) {
+        $root = $('.cff-fields-builder, .cff-field-builder-root').first();
+      }
       if (!$root.length || !$input.length) return;
 
       tplField  = $('#tmpl-cff-field').html();
@@ -756,7 +759,16 @@
     }
 
     function load(){
-      return CFF.utils.jsonParse($input.val() || '[]', []);
+      var data = CFF.utils.jsonParse($input.val() || '[]', []);
+      if (data && !Array.isArray(data) && Array.isArray(data.fields)) {
+        data = data.fields;
+      }
+      if (data && !Array.isArray(data) && typeof data === 'object') {
+        data = Object.keys(data).map(function(key){ return data[key]; });
+      }
+      return Array.isArray(data) ? data.filter(function(item){
+        return item && typeof item === 'object';
+      }) : [];
     }
 
     function save(data){
@@ -2351,7 +2363,7 @@
         '<div class="cff-head">Actions</div>' +
       '</div>';
       var viewControl = '<div class="cff-field-view-controls">' +
-        '<label for="cff-field-view-mode">Type</label>' +
+        '<label for="cff-field-view-mode">View</label>' +
         '<select id="cff-field-view-mode">' +
           '<option value="builder">Builder</option>' +
           '<option value="reorder">Reorder</option>' +
@@ -2397,6 +2409,7 @@
       $builderRoot.append($mappingView);
 
       data.forEach(function(f, i){
+        if (!f || typeof f !== 'object') return;
         var html = CFF.utils.tmpl(tplField, {
           i: i,
           label: CFF.utils.escapeHtml(f.label || ''),

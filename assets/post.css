@@ -60,6 +60,89 @@
   font-size: 15px;
 }
 
+.cff-label-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.cff-meta-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: #315b8f;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.cff-section-hide-switch {
+  width: auto;
+  min-width: 0;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  vertical-align: middle;
+}
+
+.cff-section-hide-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.cff-section-hide-switch .cff-slider {
+  position: relative;
+  display: inline-block;
+  width: 42px;
+  height: 22px;
+  flex: 0 0 42px;
+  cursor: pointer;
+  background: #cbd5e1;
+  border-radius: 999px;
+  transition: background .2s ease;
+}
+
+.cff-section-hide-switch .cff-slider:before {
+  position: absolute;
+  content: "";
+  width: 16px;
+  height: 16px;
+  left: 3px;
+  bottom: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform .2s ease;
+}
+
+.cff-section-hide-switch input:checked + .cff-slider {
+  background: #f59e0b;
+}
+
+.cff-section-hide-switch input:checked + .cff-slider:before {
+  transform: translateX(20px);
+}
+
+.cff-section-hide-label {
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cff-section-hidden > .cff-label,
+.cff-section-hidden.cff-postbox > .postbox-header {
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+
 .cff-input {
   margin: 0;
   padding: 0;
@@ -617,6 +700,25 @@
 }
 
 .cff-link-post-type label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1d2327
+}
+
+.cff-link-internal-extra {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px
+}
+
+.cff-link-internal-extra p {
+  margin: 0
+}
+
+.cff-link-internal-extra label {
+  display: block;
+  margin-bottom: 4px;
   font-size: 12px;
   font-weight: 600;
   color: #1d2327
@@ -1493,6 +1595,10 @@
   .cff-link {
     padding: 10px;
     border-radius: 10px;
+  }
+
+  .cff-link-internal-extra {
+    grid-template-columns: 1fr;
   }
 
   .cff-field.cff-postbox .postbox-header .cff-hndle {

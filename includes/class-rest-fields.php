@@ -96,7 +96,16 @@ class Rest_Fields {
 
       $sanitized = $this->sanitize_field_value($definitions[$field_name], $raw_field_value);
       $meta_key = $this->plugin->meta_key($field_name);
-      if ($sanitized === null || $sanitized === '' || (is_array($sanitized) && empty($sanitized))) {
+      $is_media_field = in_array(sanitize_key($definitions[$field_name]['type'] ?? ''), ['image', 'file'], true);
+      if ($is_media_field) {
+        delete_post_meta($post_id, $this->plugin->meta_key($field_name . '_url'));
+      }
+      if (
+        $sanitized === null
+        || $sanitized === ''
+        || (is_array($sanitized) && empty($sanitized))
+        || ($is_media_field && !absint($sanitized))
+      ) {
         delete_post_meta($post_id, $meta_key);
       } else {
         update_post_meta($post_id, $meta_key, $sanitized);
@@ -199,9 +208,14 @@ class Rest_Fields {
     if ($type === 'link') {
       $schema['type'] = 'object';
       $schema['properties'] = [
+        'mode' => ['type' => 'string', 'enum' => ['internal', 'custom']],
         'url' => ['type' => 'string'],
         'title' => ['type' => 'string'],
         'target' => ['type' => 'string'],
+        'internal_id' => ['type' => 'integer'],
+        'post_type_filter' => ['type' => 'string'],
+        'parameter' => ['type' => 'string'],
+        'hash' => ['type' => 'string'],
       ];
       return $schema;
     }

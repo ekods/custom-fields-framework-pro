@@ -174,6 +174,25 @@ if (!function_exists(__NAMESPACE__ . '\cff_shortcode_hidden_section_html')) {
   }
 }
 
+if (!function_exists(__NAMESPACE__ . '\cff_shortcode_section_is_hidden')) {
+  function cff_shortcode_section_is_hidden($post_id, $field_name) {
+    $post_id = absint($post_id);
+    $field_name = sanitize_key($field_name);
+    if (!$post_id || !$field_name) return false;
+
+    if (function_exists(__NAMESPACE__ . '\cff_field_is_hidden_for_post')) {
+      return cff_field_is_hidden_for_post($post_id, $field_name);
+    }
+
+    if (function_exists(__NAMESPACE__ . '\cff_get_post_hidden_sections')) {
+      $hidden = cff_get_post_hidden_sections($post_id);
+    } else {
+      $hidden = get_post_meta($post_id, '_cff_hidden_sections', true);
+    }
+    return is_array($hidden) && !empty($hidden[$field_name]);
+  }
+}
+
 if (!function_exists(__NAMESPACE__ . '\cff_shortcode_is_video_url')) {
   function cff_shortcode_is_video_url($url) {
     $url = is_scalar($url) ? strtolower((string) $url) : '';
@@ -579,7 +598,7 @@ if (!function_exists(__NAMESPACE__ . '\cff_shortcode_field')) {
     if ($field_name) {
       $definitions = cff_shortcode_get_field_definitions($post_id);
       $field_type = sanitize_key($definitions[$field_name]['type'] ?? '');
-      if (!empty($definitions[$field_name]['hide'])) {
+      if (!empty($definitions[$field_name]['hide']) || cff_shortcode_section_is_hidden($post_id, $field_name)) {
         return cff_shortcode_hidden_section_html();
       }
       $value = get_field($field_name, $post_id, $format_value);

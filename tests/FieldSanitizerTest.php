@@ -65,4 +65,26 @@ final class FieldSanitizerTest extends TestCase {
     ]);
     $this->assertSame('', $value['target']);
   }
+
+  public function test_link_preserves_internal_mode_metadata(): void {
+    $field = ['type' => 'link'];
+    $value = $this->sanitizer->sanitize($field, [
+      'mode' => 'internal',
+      'url' => '',
+      'title' => 'Internal Page',
+      'target' => '_blank',
+      'internal_id' => '42',
+      'post_type_filter' => 'page',
+      'parameter' => '?ref=hero',
+      'hash' => '#cta',
+    ]);
+
+    $this->assertSame('internal', $value['mode']);
+    $this->assertSame('https://example.test/post-42/?ref=hero#cta', $value['url']);
+    $this->assertSame(42, $value['internal_id']);
+    $this->assertSame('page', $value['post_type_filter']);
+    $this->assertSame('ref=hero', $value['parameter']);
+    $this->assertSame('cta', $value['hash']);
+    $this->assertSame('_blank', $value['target']);
+  }
 }
