@@ -329,6 +329,14 @@
               '<input type="number" class="cff-input cff-max-upload-mb" min="1" step="1" value="2">' +
               '<p class="description">Default 2 MB. Set a larger value for this image or file field only.</p>' +
             '</div>' +
+            '<div class="cff-row-gallery-options">' +
+              '<label>Gallery Preview Fit</label>' +
+              '<select class="cff-input cff-gallery-preview-fit cff-select2">' +
+                '<option value="cover">Cover</option>' +
+                '<option value="contain">Contain</option>' +
+              '</select>' +
+              '<p class="description">Choose how images fit inside gallery item previews.</p>' +
+            '</div>' +
             '<div class="cff-row-rules">' +
               '<div class="cff-row-required">' +
                 '<span class="cff-tools-toggles">' +
@@ -592,6 +600,14 @@
               '<input type="number" class="cff-input cff-max-upload-mb" min="1" step="1" value="2">' +
               '<p class="description">Default 2 MB. Set a larger value for this image or file field only.</p>' +
             '</div>' +
+            '<div class="cff-row-gallery-options">' +
+              '<label>Gallery Preview Fit</label>' +
+              '<select class="cff-input cff-gallery-preview-fit cff-select2">' +
+                '<option value="cover">Cover</option>' +
+                '<option value="contain">Contain</option>' +
+              '</select>' +
+              '<p class="description">Choose how images fit inside gallery item previews.</p>' +
+            '</div>' +
             '<div class="cff-row-rules">' +
                 '<div class="cff-row-required">' +
                   '<span class="cff-tools-toggles">' +
@@ -763,6 +779,9 @@
       if (data && !Array.isArray(data) && Array.isArray(data.fields)) {
         data = data.fields;
       }
+      if (data && !Array.isArray(data) && data.fields && typeof data.fields === 'object') {
+        data = data.fields;
+      }
       if (data && !Array.isArray(data) && typeof data === 'object') {
         data = Object.keys(data).map(function(key){ return data[key]; });
       }
@@ -776,6 +795,13 @@
       $input.val(JSON.stringify(normalized));
       $input.trigger('change');
       refreshSecondaryViews(normalized);
+    }
+
+    function syncFieldsInput(){
+      if (!$root || !$root.length || !$input || !$input.length) return;
+      if ($root.attr('data-cff-render-failed') === '1') return;
+      if (fieldViewMode === 'reorder') syncBuilderOrderFromReorderList();
+      save(readFromDOM());
     }
 
     function parseAliasesAttr($el, attrName){
@@ -815,6 +841,7 @@
       toggleRepeaterOptions($field, t);
       toggleDatetimeOptions($field, t);
       toggleMediaOptions($field, t);
+      toggleGalleryOptions($field, t);
     }
 
     function togglePlaceholderRow($element, type){
@@ -904,6 +931,18 @@
       $row.toggle(selected === 'image' || selected === 'file');
     }
 
+    function toggleGalleryOptions($element, type){
+      if (!$element || !$element.length) return;
+      var $meta = getFieldMetaRow($element);
+      var $row = $meta.children('.cff-row-gallery-options').first();
+      if (!$row.length) return;
+      var selected = String(type || '').trim();
+      if (!selected) {
+        selected = ($element.find('.cff-type').val() || $element.find('.cff-stype').val() || '').trim();
+      }
+      $row.toggle(selected === 'gallery');
+    }
+
     function getFieldRepeaterOptions($element){
       var $meta = getFieldMetaRow($element);
       return {
@@ -934,6 +973,13 @@
       };
     }
 
+    function getGalleryOptions($element){
+      var $meta = getFieldMetaRow($element);
+      return {
+        previewFit: $meta.children('.cff-row-gallery-options').find('.cff-gallery-preview-fit').first()
+      };
+    }
+
     function normalizeFileLibrary(value){
       var normalized = String(value || '').trim();
       var allowed = ['all', 'pdf', 'excel', 'word', 'image', 'video', 'document'];
@@ -943,6 +989,11 @@
     function normalizeMediaMaxUploadMb(value){
       var parsed = parseInt(value, 10) || 0;
       return parsed > 0 ? parsed : 2;
+    }
+
+    function normalizeGalleryPreviewFit(value){
+      var normalized = String(value || '').trim();
+      return ['cover', 'contain'].indexOf(normalized) !== -1 ? normalized : 'cover';
     }
 
     function toggleSubGroup($sub){
@@ -994,6 +1045,7 @@
 
     function sortableSubs($container){
       if (!$container || !$container.length) return;
+      if (!$.fn.sortable) return;
 
       if ($container.hasClass('ui-sortable')) {
         $container.sortable('destroy');
@@ -1058,6 +1110,7 @@
 
     function sortableLayouts($container){
       if (!$container || !$container.length) return;
+      if (!$.fn.sortable) return;
       if ($container.hasClass('ui-sortable')) {
         $container.sortable('destroy');
       }
@@ -1152,6 +1205,7 @@
     }
 
     function renderSub(s, si){
+      s = (s && typeof s === 'object') ? s : {};
       var html = CFF.utils.tmpl(tplSub, {
         si: si,
         label: CFF.utils.escapeHtml(s.label || ''),
@@ -1197,11 +1251,13 @@
       $el.find('.cff-placeholder').val(s.placeholder || '');
       getMediaOptions($el).fileLibrary.val(normalizeFileLibrary(s.file_library));
       getMediaOptions($el).maxUploadMb.val(normalizeMediaMaxUploadMb(s.max_upload_mb));
+      getGalleryOptions($el).previewFit.val(normalizeGalleryPreviewFit(s.gallery_preview_fit));
       $el.find('.cff-required-toggle').prop('checked', !!s.required);
       $el.find('.cff-hide-toggle').prop('checked', !!s.hide);
       $el.find('.cff-datetime-use-time-toggle').prop('checked', (s.datetime_use_time !== false));
       toggleDatetimeOptions($el, s.type || 'text');
       toggleMediaOptions($el, s.type || 'text');
+      toggleGalleryOptions($el, s.type || 'text');
       renderConditionalPanel($el, s);
       if (s.type === 'group' && Array.isArray(s.sub_fields)) {
         var $gf = $el.find('> .cff-groupbuilder > .cff-group-fields').first();
@@ -1231,6 +1287,7 @@
     }
 
     function renderLayout(l, li){
+      l = (l && typeof l === 'object') ? l : {};
       var html = CFF.utils.tmpl(tplLayout, {
         li: li,
         label: CFF.utils.escapeHtml(l.label || ''),
@@ -1248,6 +1305,7 @@
     }
 
     function renderChoiceRow(choice){
+      choice = (choice && typeof choice === 'object') ? choice : {};
       var html =
         '<div class="cff-choice-row">' +
           '<input type="text" class="cff-input cff-choice-label" placeholder="Label">' +
@@ -1270,6 +1328,7 @@
     }
 
     function renderChoicesPanel($element, data){
+      data = (data && typeof data === 'object') ? data : {};
       var $panel = getOwnChoicePanel($element);
       if (!$panel.length) return;
       populateChoiceList($panel, data.choices || []);
@@ -1582,6 +1641,7 @@
     }
 
     function renderRelationalPanel($element, data){
+      data = (data && typeof data === 'object') ? data : {};
       var $panel = getOwnRelationalPanel($element);
       if (!$panel.length) return;
 
@@ -1816,6 +1876,9 @@
         if (type === 'image' || type === 'file') {
           item.file_library = normalizeFileLibrary(getMediaOptions($f).fileLibrary.val());
           item.max_upload_mb = normalizeMediaMaxUploadMb(getMediaOptions($f).maxUploadMb.val());
+        }
+        if (type === 'gallery') {
+          item.gallery_preview_fit = normalizeGalleryPreviewFit(getGalleryOptions($f).previewFit.val());
         }
         if (type === 'datetime_picker') {
           item.datetime_use_time = $f.find('.cff-datetime-use-time-toggle').is(':checked');
@@ -2408,101 +2471,77 @@
       );
       $builderRoot.append($mappingView);
 
-      data.forEach(function(f, i){
-        if (!f || typeof f !== 'object') return;
-        var html = CFF.utils.tmpl(tplField, {
-          i: i,
-          label: CFF.utils.escapeHtml(f.label || ''),
-          name:  CFF.utils.escapeHtml(f.name  || ''),
-          placeholder: CFF.utils.escapeHtml(f.placeholder || '')
+      try {
+        data.forEach(function(f, i){
+          if (!f || typeof f !== 'object') return;
+          try {
+            $list.append(renderField(f, i));
+          } catch (fieldErr) {
+            var message = fieldErr && fieldErr.message ? fieldErr.message : 'Unknown error';
+            $root.attr('data-cff-render-failed', '1');
+            $list.append(
+              '<div class="cff-field-builder-notice notice notice-error inline">' +
+                '<p>Field "' + CFF.utils.escapeHtml(f.label || f.name || ('#' + (i + 1))) + '" failed to render: ' + CFF.utils.escapeHtml(message) + '. Saved field JSON was not overwritten.</p>' +
+              '</div>'
+            );
+            if (window.console && console.error) {
+              console.error('CFF field render failed', f, fieldErr);
+            }
+          }
         });
-
-        var $el = $(html);
-        $el.addClass('is-collapsed');
-        $el.find('.cff-type').val(f.type || 'text');
-
-        toggleBuilders($el);
-        renderChoicesPanel($el, f);
-        toggleChoicePanel($el, f.type);
-        renderRelationalPanel($el, f);
-        toggleRelationalPanel($el, f.type);
-        togglePlaceholderRow($el, f.type || 'text');
-        getMediaOptions($el).fileLibrary.val(normalizeFileLibrary(f.file_library));
-        getMediaOptions($el).maxUploadMb.val(normalizeMediaMaxUploadMb(f.max_upload_mb));
-        var layoutValue = f.repeater_layout || 'default';
-        var fieldRepeaterOptions = getFieldRepeaterOptions($el);
-        fieldRepeaterOptions.layout.val(layoutValue);
-        fieldRepeaterOptions.min.val(parseInt(f.min || 0, 10) || 0);
-        fieldRepeaterOptions.max.val(parseInt(f.max || 0, 10) || 0);
-        fieldRepeaterOptions.rowLabel.val(f.repeater_row_label || '');
-        fieldRepeaterOptions.collapsed.prop('checked', !!f.repeater_collapsed);
-        toggleRepeaterOptions($el, f.type || 'text');
-        syncRepeaterBuilderLayout($el);
-        toggleDatetimeOptions($el, f.type || 'text');
-        toggleMediaOptions($el, f.type || 'text');
-        $el.find('.cff-placeholder').val(f.placeholder || '');
-        $el.find('.cff-required-toggle').prop('checked', !!f.required);
-        $el.find('.cff-hide-toggle').prop('checked', !!f.hide);
-        $el.find('.cff-datetime-use-time-toggle').prop('checked', (f.datetime_use_time !== false));
-        renderConditionalPanel($el, f);
-        var fieldKey = CFF.utils.sanitizeName(f.key || '');
-        if (!fieldKey) fieldKey = 'fld_' + Math.random().toString(36).slice(2, 14);
-        $el.attr('data-field-key', fieldKey);
-        $el.data('field-key', fieldKey);
-        $el.attr('data-original-name', CFF.utils.sanitizeName(f.name || ''));
-        setAliasesAttr($el, 'data-field-aliases', Array.isArray(f.aliases) ? f.aliases : []);
-        initAutoNameTracking($el, false);
-
-        if (f.type === 'repeater' && Array.isArray(f.sub_fields)) {
-          var $sf = $el.find('> .cff-advanced > .cff-subbuilder > .cff-subfields').first();
-          f.sub_fields.forEach(function(s, si){ $sf.append(renderSub(s, si)); });
-          sortableSubs($sf);
+        if (!$list.find('.cff-field-builder-notice').length) {
+          $root.removeAttr('data-cff-render-failed');
         }
-
-        if (f.type === 'group' && Array.isArray(f.sub_fields)) {
-          var $gf = $el.find('> .cff-advanced > .cff-groupbuilder > .cff-group-fields').first();
-          f.sub_fields.forEach(function(s, si){ $gf.append(renderSub(s, si)); });
-          sortableSubs($gf);
+      } catch (err) {
+        var renderMessage = err && err.message ? err.message : 'Unknown error';
+        $root.attr('data-cff-render-failed', '1');
+        $list.empty().append(
+          '<div class="cff-field-builder-notice notice notice-error inline">' +
+            '<p>Field builder failed to render: ' + CFF.utils.escapeHtml(renderMessage) + '. Saved field JSON was not overwritten.</p>' +
+          '</div>'
+        );
+        if (window.console && console.error) {
+          console.error('CFF field builder render failed', err);
         }
+      }
 
-        if (f.type === 'flexible' && Array.isArray(f.layouts)) {
-          var $layouts = $el.find('.cff-layouts');
-          f.layouts.forEach(function(l, li){ $layouts.append(renderLayout(l, li)); });
-          sortableLayouts($layouts);
-        }
-
-        $list.append($el);
-      });
+      if (!$list.children('.cff-field-row').length && !data.length) {
+        $list.append('<p class="cff-field-builder-empty">No fields yet. Click Add Field to create one.</p>');
+      }
 
       refreshReorderList();
 
-      $('#cff-field-list').sortable({
-        connectWith: '.cff-group-fields',
-        handle: '.cff-handle',
-        update: function(){ save(readFromDOM()); refreshReorderList(); },
-        receive: function(event, ui){
-          if (ui.item.hasClass('cff-subfield')) {
-            var item = readSingleSubfield(ui.item);
-            if (!item) return;
-            var $replacement = renderField(item, Date.now());
-            ui.item.replaceWith($replacement);
-            save(readFromDOM());
-            refreshReorderList();
-            refreshConditionalFieldDropdowns();
-            $(document).trigger('cff:refresh', $replacement);
-          } else {
-            save(readFromDOM());
-            refreshReorderList();
-            refreshConditionalFieldDropdowns();
+      if ($.fn.sortable) {
+        $('#cff-field-list').sortable({
+          connectWith: '.cff-group-fields',
+          handle: '.cff-handle',
+          update: function(){ save(readFromDOM()); refreshReorderList(); },
+          receive: function(event, ui){
+            if (ui.item.hasClass('cff-subfield')) {
+              var item = readSingleSubfield(ui.item);
+              if (!item) return;
+              var $replacement = renderField(item, Date.now());
+              ui.item.replaceWith($replacement);
+              save(readFromDOM());
+              refreshReorderList();
+              refreshConditionalFieldDropdowns();
+              $(document).trigger('cff:refresh', $replacement);
+            } else {
+              save(readFromDOM());
+              refreshReorderList();
+              refreshConditionalFieldDropdowns();
+            }
           }
-        }
-      });
+        });
+      }
 
       var $reorderList = $builderRoot.find('#cff-field-reorder-list');
-      $reorderList.sortable({
-        handle: '.cff-field-reorder-handle',
-        update: function(){ applyReorderFromReorderList(); }
-      });
+      if ($.fn.sortable) {
+        $reorderList.sortable({
+          handle: '.cff-field-reorder-handle',
+          update: function(){ applyReorderFromReorderList(); }
+        });
+      }
 
       setFieldViewMode(fieldViewMode);
 
@@ -2526,6 +2565,7 @@
     }
 
     function renderField(f, i){
+      f = (f && typeof f === 'object') ? f : {};
       var html = CFF.utils.tmpl(tplField, {
         i: i,
         label: CFF.utils.escapeHtml(f.label || ''),
@@ -2545,6 +2585,7 @@
       togglePlaceholderRow($el, f.type || 'text');
       getMediaOptions($el).fileLibrary.val(normalizeFileLibrary(f.file_library));
       getMediaOptions($el).maxUploadMb.val(normalizeMediaMaxUploadMb(f.max_upload_mb));
+      getGalleryOptions($el).previewFit.val(normalizeGalleryPreviewFit(f.gallery_preview_fit));
       var layoutValue = f.repeater_layout || 'default';
       var fieldRepeaterOptions = getFieldRepeaterOptions($el);
       fieldRepeaterOptions.layout.val(layoutValue);
@@ -2556,6 +2597,7 @@
       syncRepeaterBuilderLayout($el);
       toggleDatetimeOptions($el, f.type || 'text');
       toggleMediaOptions($el, f.type || 'text');
+      toggleGalleryOptions($el, f.type || 'text');
       $el.find('.cff-placeholder').val(f.placeholder || '');
       $el.find('.cff-required-toggle').prop('checked', !!f.required);
       $el.find('.cff-hide-toggle').prop('checked', !!f.hide);
@@ -2640,6 +2682,9 @@
         if (stype === 'image' || stype === 'file') {
           item.file_library = normalizeFileLibrary(getMediaOptions($sub).fileLibrary.val());
           item.max_upload_mb = normalizeMediaMaxUploadMb(getMediaOptions($sub).maxUploadMb.val());
+        }
+        if (stype === 'gallery') {
+          item.gallery_preview_fit = normalizeGalleryPreviewFit(getGalleryOptions($sub).previewFit.val());
         }
         if (stype === 'datetime_picker') {
           item.datetime_use_time = $meta.find('.cff-datetime-use-time-toggle').first().is(':checked');
@@ -2812,6 +2857,7 @@
         if (!$list.length) return;
 
         var $field = renderField({ label:'', name:'', type:'text' }, Date.now());
+        $list.children('.cff-field-builder-empty, .cff-field-builder-notice').remove();
         $list.append($field);
         if ($list.hasClass('ui-sortable')) {
           $list.sortable('refresh');
@@ -2907,15 +2953,21 @@
         save(readFromDOM());
       });
 
+      $root.on('change select2:select', '.cff-gallery-preview-fit', function(){
+        syncFieldsInput();
+      });
+
       $root.on('change', '.cff-repeater-layout', function(){
         syncRepeaterBuilderLayout($(this).closest('.cff-field-row, .cff-subfield'));
         save(readFromDOM());
       });
 
       $(document).on('submit', '#post', function(){
-        if (!$root.length || !$input.length) return;
-        if (fieldViewMode === 'reorder') syncBuilderOrderFromReorderList();
-        save(readFromDOM());
+        syncFieldsInput();
+      });
+
+      $(document).on('mousedown click', '#publish, #save-post, .editor-post-publish-button, .editor-post-publish-panel__toggle, .editor-post-publish-panel__header-publish-button', function(){
+        syncFieldsInput();
       });
 
       $root.on('input change', '.cff-repeater-min, .cff-repeater-max, .cff-repeater-row-label', CFF.utils.debounce(function(){
@@ -2973,6 +3025,7 @@
         togglePlaceholderRow($row, $(this).val());
         toggleDatetimeOptions($row, $(this).val());
         toggleMediaOptions($row, $(this).val());
+        toggleGalleryOptions($row, $(this).val());
         refreshConditionalFieldDropdowns();
         save(readFromDOM());
       });
@@ -3007,6 +3060,7 @@
         toggleRepeaterOptions($sub, $(this).val());
         toggleDatetimeOptions($sub, $(this).val());
         toggleMediaOptions($sub, $(this).val());
+        toggleGalleryOptions($sub, $(this).val());
         refreshConditionalFieldDropdowns();
         save(readFromDOM());
       });
@@ -3818,6 +3872,7 @@
             checkbox('field_view_controls','Field View Controls') +
             checkbox('field_view_copy','Field View Copy') +
             checkbox('field_view_mode','Field View Mode') +
+            checkbox('field_reorder_view','Field Reorder View') +
             checkbox('copy_to_translations','Save + Copy All CFF to Translations Button') +
 
           '</div>' +
@@ -3889,13 +3944,15 @@
           toggleReorder($meta, mode);
         });
 
-        $list.sortable({
-          handle: '.cff-metabox-reorder-handle',
-          placeholder: 'cff-metabox-reorder-placeholder',
-          update: function(){
-            applyOrder($meta, $list);
-          }
-        });
+        if ($.fn.sortable) {
+          $list.sortable({
+            handle: '.cff-metabox-reorder-handle',
+            placeholder: 'cff-metabox-reorder-placeholder',
+            update: function(){
+              applyOrder($meta, $list);
+            }
+          });
+        }
       });
     }
 
@@ -4031,9 +4088,11 @@
         placeholder: 'cff-reorder-placeholder',
         tolerance: 'pointer'
       };
-      $postList.sortable(sortableOptions);
-      $termList.sortable(sortableOptions);
-      $groupList.sortable(sortableOptions);
+      if ($.fn.sortable) {
+        $postList.sortable(sortableOptions);
+        $termList.sortable(sortableOptions);
+        $groupList.sortable(sortableOptions);
+      }
 
       $root.on('keydown', '.cff-reorder-handle', function(e){
         if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;

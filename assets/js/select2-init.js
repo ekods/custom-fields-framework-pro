@@ -1,5 +1,6 @@
 jQuery(document).ready(function ($) {
   function initSelect2(ctx){
+    if (!$.fn.select2) return;
     $(ctx).find('select.cff-select2').each(function(){
       var $el = $(this);
       if ($el.data('select2')) return;

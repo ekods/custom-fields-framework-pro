@@ -768,7 +768,7 @@ jQuery(function($){
   /* -------------------------
    * Link picker (internal/custom)
    * ------------------------- */
-   function initLinkPickers($scope){
+  function initLinkPickers($scope){
      $scope = $scope && $scope.length ? $scope : $(document);
 
      $scope.find('.cff-link-picker').each(function(){
@@ -946,6 +946,100 @@ jQuery(function($){
        });
      });
    }
+
+  function getFieldTitle($field){
+    var label = $.trim($field.find('> .cff-label label, > .postbox-header .cff-hndle-label').first().text() || '');
+    if (label) return label.replace(/\s*\*$/, '');
+    return String($field.data('field-name') || $field.attr('data-field-name') || '');
+  }
+
+  function syncMetaboxOrderInput($metabox){
+    var order = [];
+    $metabox.find('> .cff-metabox-reorder .cff-metabox-reorder-list > .cff-metabox-reorder-item').each(function(){
+      var name = String($(this).attr('data-field-name') || '');
+      if (name) order.push(name);
+    });
+    $metabox.find('> .cff-metabox-reorder .cff-metabox-order-input').val(order.join(','));
+  }
+
+  function markMetaboxOrderActive($metabox){
+    $metabox.find('> .cff-metabox-reorder .cff-metabox-order-active').val('1');
+  }
+
+  function buildMetaboxReorderList($metabox){
+    var $list = $metabox.find('> .cff-metabox-reorder .cff-metabox-reorder-list').first();
+    if (!$list.length) return;
+
+    $list.empty();
+    $metabox.find('> .cff-metabox-fields > .cff-field').each(function(){
+      var $field = $(this);
+      var name = String($field.attr('data-field-name') || '');
+      if (!name) return;
+
+      var type = $.trim($field.find('> .cff-label .cff-meta-badge.type, > .postbox-header .cff-meta-badge.type').first().text() || '');
+      var title = getFieldTitle($field);
+      var $item = $('<li/>', {
+        'class': 'cff-metabox-reorder-item',
+        'data-field-name': name
+      });
+
+      $('<span/>', {
+        'class': 'dashicons dashicons-menu cff-metabox-reorder-handle',
+        'aria-hidden': 'true'
+      }).appendTo($item);
+      $('<span/>', {
+        'class': 'cff-metabox-reorder-title',
+        text: title || name
+      }).appendTo($item);
+      $('<code/>', {
+        'class': 'cff-metabox-reorder-name',
+        text: name
+      }).appendTo($item);
+      if (type) {
+        $('<span/>', {
+          'class': 'cff-metabox-reorder-type',
+          text: type
+        }).appendTo($item);
+      }
+
+      $list.append($item);
+    });
+
+    if ($.fn.sortable) {
+      if ($list.data('ui-sortable')) {
+        try { $list.sortable('destroy'); } catch(e){}
+      }
+      $list.sortable({
+        handle: '.cff-metabox-reorder-handle',
+        items: '> .cff-metabox-reorder-item',
+        update: function(){
+          markMetaboxOrderActive($metabox);
+          syncMetaboxOrderInput($metabox);
+          $metabox.closest('form').trigger('change');
+        }
+      });
+    }
+
+    syncMetaboxOrderInput($metabox);
+  }
+
+  function setMetaboxView($metabox, mode){
+    var reorder = mode === 'reorder';
+    $metabox.find('> .cff-metabox-reorder').attr('aria-hidden', reorder ? 'false' : 'true').toggle(reorder);
+    $metabox.find('> .cff-metabox-fields').toggle(!reorder);
+    if (reorder) {
+      markMetaboxOrderActive($metabox);
+      syncMetaboxOrderInput($metabox);
+    }
+  }
+
+  function initMetaboxReorder($scope){
+    ($scope && $scope.length ? $scope : $(document)).find('.cff-metabox').each(function(){
+      var $metabox = $(this);
+      buildMetaboxReorderList($metabox);
+      setMetaboxView($metabox, $metabox.find('> .cff-metabox-view .cff-field-view-mode').val() || 'builder');
+    });
+  }
 
   /* -------------------------
    * Field accordion
@@ -1340,6 +1434,7 @@ jQuery(function($){
   ensureFlexibleRowIds($(document));
   window.cffInitWysiwyg($(document)); // sekali saja
   initLinkPickers($(document));
+  initMetaboxReorder($(document));
 
   $('.cff-repeater').each(function(){
     var $rep = $(this);
@@ -1455,6 +1550,12 @@ jQuery(function($){
       $field.toggleClass('cff-section-hidden', hidden);
       $field.children('[data-cff-section-body="1"]').attr('style', hidden ? 'display:none!important' : '');
       $field.closest('form').trigger('change');
+    });
+
+  $(document)
+    .off('change.cffMetaboxView', '.cff-field-view-mode--metabox')
+    .on('change.cffMetaboxView', '.cff-field-view-mode--metabox', function(){
+      setMetaboxView($(this).closest('.cff-metabox'), $(this).val() || 'builder');
     });
 
   /* -------------------------

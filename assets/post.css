@@ -488,6 +488,11 @@
   display: block;
 }
 
+.cff-gallery.is-fit-contain .cff-gallery-item-preview img,
+.cff-gallery.is-fit-contain .cff-gallery-item-preview video {
+  object-fit: contain !important;
+}
+
 .cff-gallery-remove {
   position: absolute;
   top: 6px;
@@ -1407,6 +1412,53 @@
   line-height: 1.5;
 }
 
+.cff-metabox-reorder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+}
+
+.cff-metabox-reorder-item {
+  display: grid;
+  grid-template-columns: 28px minmax(120px, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid #d9e2ef;
+  border-radius: 8px;
+  background: #fff;
+  color: #1d2327;
+}
+
+.cff-metabox-reorder-handle {
+  color: #607086;
+  cursor: grab;
+}
+
+.cff-metabox-reorder-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.cff-metabox-reorder-name {
+  font-size: 11px;
+}
+
+.cff-metabox-reorder-type {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: #38527c;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 /* .cff-metabox-fields {
   gap: 16px;
 } */
@@ -1611,4 +1663,141 @@
     text-align: left;
     min-width: 0;
   }
+}
+
+/* Premium content editor polish */
+:root {
+  --cff-editor-surface: #ffffff;
+  --cff-editor-soft: #f7f8fb;
+  --cff-editor-muted: #637083;
+  --cff-editor-border: #d8dee8;
+  --cff-editor-border-soft: #e8edf4;
+  --cff-editor-text: #172033;
+  --cff-editor-primary: #135e96;
+  --cff-editor-warn: #b7791f;
+  --cff-editor-shadow: 0 8px 22px rgba(15, 23, 42, .07);
+  --cff-editor-radius: 8px;
+}
+
+.cff-metabox {
+  gap: 14px;
+}
+
+.cff-field,
+.cff-field.cff-postbox .postbox-header,
+.cff-field.cff-postbox .inside,
+.cff-field-view-controls,
+.cff-metabox-reorder,
+.cff-rep-row,
+.cff-flex-row,
+.cff-link,
+.cff-media-preview {
+  border-color: var(--cff-editor-border);
+  border-radius: var(--cff-editor-radius);
+  background: var(--cff-editor-surface);
+}
+
+.cff-field {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+}
+
+.cff-field:hover {
+  border-color: #c7d1df;
+  box-shadow: var(--cff-editor-shadow);
+}
+
+.cff-label,
+.cff-field.cff-postbox .postbox-header {
+  background:
+    linear-gradient(90deg, rgba(19, 94, 150, .07), transparent 50%),
+    var(--cff-editor-soft);
+  border-color: var(--cff-editor-border);
+}
+
+.cff-label label,
+.cff-hndle-label,
+.cff-field-view-copy label,
+.cff-metabox-reorder-label {
+  color: var(--cff-editor-text);
+  letter-spacing: 0;
+}
+
+.cff-label .description,
+.cff-field-view-copy p,
+.cff-metabox-reorder-note,
+.cff-section-hide-label,
+.cff-hndle-meta .description {
+  color: var(--cff-editor-muted);
+}
+
+.cff-field:not(.cff-postbox) .cff-input,
+.cff-field.cff-postbox .inside {
+  border-color: var(--cff-editor-border-soft);
+}
+
+.cff-field-view-controls {
+  background: var(--cff-editor-surface);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+}
+
+.cff-field-view-controls select,
+.cff-field-view-controls .button,
+.cff-copy-field-action,
+.cff-metabox-reorder-item,
+.cff-link input,
+.cff-link select,
+.cff-link textarea,
+.cff-field input,
+.cff-field select,
+.cff-field textarea {
+  border-radius: 6px !important;
+}
+
+.cff-field input:focus,
+.cff-field select:focus,
+.cff-field textarea:focus,
+.cff-field-view-controls select:focus {
+  border-color: var(--cff-editor-primary) !important;
+  box-shadow: 0 0 0 2px rgba(19, 94, 150, .14) !important;
+  outline: none;
+}
+
+.cff-meta-badge,
+.cff-pill,
+.cff-metabox-reorder-type,
+.cff-copy-field-indicator {
+  border: 1px solid var(--cff-editor-border-soft);
+  background: var(--cff-editor-soft);
+  color: var(--cff-editor-muted);
+  border-radius: 999px;
+}
+
+.cff-section-hidden > .cff-label,
+.cff-section-hidden.cff-postbox > .postbox-header {
+  border-color: rgba(183, 121, 31, .45);
+  background: #fff8ed;
+}
+
+.cff-section-hide-switch input:checked + .cff-slider {
+  background: var(--cff-editor-warn);
+}
+
+.cff-media-preview {
+  border-style: dashed;
+  background: #fbfcfe;
+}
+
+.cff-link {
+  background: #fbfcfe;
+}
+
+.cff-rep-row,
+.cff-flex-row {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+}
+
+.cff-rep-row-head,
+.cff-flex-head {
+  background: var(--cff-editor-soft);
+  border-bottom-color: var(--cff-editor-border-soft);
 }

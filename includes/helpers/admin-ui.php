@@ -6,13 +6,10 @@ if (!defined('ABSPATH')) exit;
 function cff_render_page_hero($title, $description, $icon = 'dashicons-admin-tools', $action_html = '') {
     ?>
     <div class="tk-hero">
-        <div class="tk-hero-bg-1"></div>
-        <div class="tk-hero-bg-2"></div>
-        
-        <div class="tk-hero-content" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-            <div style="display: flex; align-items: center; gap: 20px;">
-                <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 16px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2);">
-                    <span class="dashicons <?php echo esc_attr($icon); ?>" style="color: #fff; font-size: 32px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;"></span>
+        <div class="tk-hero-content">
+            <div class="tk-hero-main">
+                <div class="tk-hero-icon">
+                    <span class="dashicons <?php echo esc_attr($icon); ?>"></span>
                 </div>
                 <div>
                     <h1 class="tk-hero-title"><?php echo esc_html($title); ?></h1>

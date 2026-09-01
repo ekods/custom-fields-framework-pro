@@ -2,6 +2,79 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+### Added
+- Added a Global Settings toggle for disabling CFF REST API writes while keeping REST reads enabled.
+
+### Changed
+- Refined admin and content editor styling with cleaner surfaces, tighter radii, restrained shadows, improved headers, tabs, forms, tables, field rows, and metabox panels.
+- Restricted internal CFF post types and settings saves to the configurable CFF admin capability.
+- Reused request-level field group settings cache across editor matching and REST schema generation.
+- Hardened JSON import handling with upload, size, extension, JSON, and payload-shape validation.
+- Moved reorder AJAX handling into a dedicated `Reorder_Manager` while preserving existing plugin wrapper methods.
+- Moved lookup AJAX handling into a dedicated `Ajax_Controller` while preserving existing plugin wrapper methods.
+- Moved dynamic post type and taxonomy registration into a dedicated `Dynamic_Content_Manager` while preserving existing plugin wrapper methods.
+- Moved public taxonomy term meta UI and save handling into a dedicated `Term_Meta_Manager` while preserving existing plugin wrapper methods.
+- Moved content field save handling out of `render.php` into a dedicated `Content_Field_Saver`.
+
+### Tests
+- Added unit coverage for REST write toggle behavior and JSON import payload validation.
+- Added unit coverage for content field ordering, hidden-section saves, sanitized value saves, and empty-value deletes.
+
+## 2.5.17
+
+### Fixed
+- Included bundled Select2 assets in the release ZIP so admin field builder pages no longer load missing JS/CSS files.
+
+## 2.5.16
+
+### Fixed
+- Prevented the Select2 initializer from throwing when the Select2 plugin is unavailable during field builder refresh.
+
+## 2.5.15
+
+### Fixed
+- Made field builder rendering tolerate missing jQuery UI sortable/droppable helpers.
+- Normalized legacy choice, field, subfield, layout, and relational data before rendering.
+- Added the underlying render exception message to field builder error notices.
+
+## 2.5.14
+
+### Fixed
+- Reused the shared field renderer for initial builder rows so saved fields appear consistently in Builder and Reorder views.
+- Added a render-failure guard so broken admin rendering does not overwrite saved field definitions with an empty array.
+- Preserved existing field definitions when a save request submits an empty field payload unexpectedly.
+
+## 2.5.13
+
+### Fixed
+- Restored Gallery Preview Fit values when reopening saved field groups.
+- Added a legacy field JSON fallback so field rows can still render if `_cff_settings` fields are empty.
+- Mirrored sanitized field definitions back to the legacy `cff_fields_json` meta for compatibility.
+
+## 2.5.12
+
+### Fixed
+- Forced Gallery Preview Fit changes to sync into saved field JSON before save and publish actions.
+- Ensured Contain gallery previews override later cover rules.
+- Preserved the Field Reorder View hide option through presentation sanitization.
+
+## 2.5.11
+
+### Added
+- Added Gallery Preview Fit persistence for gallery fields with Cover and Contain preview modes.
+- Added hide support for the `.cff-field-reorder-view` field builder reorder panel.
+
+### Fixed
+- Synced gallery preview fit changes into saved field JSON immediately when the select value changes.
+
+## 2.5.10
+
+### Fixed
+- Synced per-post field reorder UI with rendered field order and frontend ordered field helpers.
+- Kept normal content saves aligned with the Field Group setting order unless a post-specific reorder is explicitly edited.
+
 ## 2.5.9
 
 ### Fixed

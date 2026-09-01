@@ -386,7 +386,8 @@ if (!function_exists(__NAMESPACE__ . '\cff_get_ordered_fields')) {
     if (!$fields) return [];
     $hidden_sections = cff_get_post_hidden_sections($post_id);
 
-    $saved = cff_get_cached_post_meta($post_id, '_cff_group_field_order_' . $group_id, true);
+    $has_custom_order = (bool) cff_get_cached_post_meta($post_id, '_cff_group_field_order_custom_' . $group_id, true);
+    $saved = $has_custom_order ? cff_get_cached_post_meta($post_id, '_cff_group_field_order_' . $group_id, true) : [];
     if (is_string($saved)) {
       $saved = array_filter(array_map('sanitize_key', explode(',', $saved)));
     }
@@ -591,7 +592,8 @@ if (!function_exists(__NAMESPACE__ . '\cff_get_ordered_field_names')) {
           $best_group_by_fields = $group_id_current;
         }
 
-        $saved = cff_get_cached_post_meta($post_id, '_cff_group_field_order_' . $group_id_current, true);
+        $has_custom_order = (bool) cff_get_cached_post_meta($post_id, '_cff_group_field_order_custom_' . $group_id_current, true);
+        $saved = $has_custom_order ? cff_get_cached_post_meta($post_id, '_cff_group_field_order_' . $group_id_current, true) : [];
         if (is_string($saved)) {
           $saved = array_filter(array_map('sanitize_key', explode(',', $saved)));
         } elseif (is_array($saved)) {

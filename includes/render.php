@@ -377,15 +377,21 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     echo '</div>';
   }
 
-  function cff_render_gallery_field($name_attr, $value) {
+  function cff_gallery_preview_fit($field = []) {
+    $fit = is_array($field) ? sanitize_key($field['gallery_preview_fit'] ?? '') : '';
+    return in_array($fit, ['cover', 'contain'], true) ? $fit : 'cover';
+  }
+
+  function cff_render_gallery_field($name_attr, $value, $field = []) {
     $items = [];
     foreach ((array) $value as $item) {
       $id = absint(is_array($item) ? ($item['id'] ?? 0) : $item);
       if ($id && get_post_type($id) === 'attachment') $items[] = $id;
     }
     $items = array_values(array_unique($items));
+    $preview_fit = cff_gallery_preview_fit($field);
 
-    echo '<div class="cff-gallery" data-type="gallery" data-name="' . esc_attr($name_attr) . '">';
+    echo '<div class="cff-gallery is-fit-' . esc_attr($preview_fit) . '" data-type="gallery" data-name="' . esc_attr($name_attr) . '" data-preview-fit="' . esc_attr($preview_fit) . '">';
     echo '<input type="hidden" class="cff-gallery-present" name="' . esc_attr($name_attr) . '[__cff_present]" value="1">';
     echo '<div class="cff-gallery-items">';
     foreach ($items as $id) {
@@ -560,7 +566,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       echo cff_media_limit_label_html($f);
       echo '</div>';
     } elseif ($type === 'gallery') {
-      cff_render_gallery_field('cff_values[' . $name . ']', $val);
+      cff_render_gallery_field('cff_values[' . $name . ']', $val, $f);
     } elseif ($type === 'repeater') {
       $rows = is_array($val) ? $val : [];
       $subs = isset($f['sub_fields']) ? $f['sub_fields'] : [];
@@ -904,7 +910,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
           echo cff_media_limit_label_html($s);
           echo '</div>';
         } elseif ($stype === 'gallery') {
-          cff_render_gallery_field($name_attr, $v);
+          cff_render_gallery_field($name_attr, $v, $s);
         } elseif ($stype === 'repeater') {
           $rsubs = isset($s['sub_fields']) ? $s['sub_fields'] : [];
           $rows = is_array($v) ? $v : [];
@@ -1085,7 +1091,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         echo cff_media_limit_label_html($s);
         echo '</div>';
       } elseif ($stype === 'gallery') {
-        cff_render_gallery_field($name_attr, $v);
+        cff_render_gallery_field($name_attr, $v, $s);
       } elseif ($stype === 'repeater') {
         $rsubs = isset($s['sub_fields']) ? $s['sub_fields'] : [];
         $rows = is_array($v) ? $v : [];
@@ -1241,7 +1247,7 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
         echo cff_media_limit_label_html($s);
         echo '</div>';
       } elseif ($stype === 'gallery') {
-        cff_render_gallery_field($name_attr, $v);
+        cff_render_gallery_field($name_attr, $v, $s);
       } elseif ($stype === 'repeater') {
         $rsubs = isset($s['sub_fields']) ? $s['sub_fields'] : [];
         $rows = is_array($v) ? $v : [];
@@ -1589,7 +1595,7 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
           echo cff_media_limit_label_html($sf);
           echo '</div>';
         } elseif ($stype === 'gallery') {
-          cff_render_gallery_field($name_attr, $v);
+          cff_render_gallery_field($name_attr, $v, $s);
         } elseif ($stype === 'group') {
           $gsubs = isset($sf['sub_fields']) ? $sf['sub_fields'] : [];
           $gvals = is_array($v) ? $v : [];
@@ -1615,116 +1621,8 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
   }
 
   function save_content_fields_impl($plugin, $post_id, $post) {
-    if ($post->post_type === 'cff_group') return;
-    if (!isset($_POST['cff_content_nonce']) || !wp_verify_nonce($_POST['cff_content_nonce'], 'cff_content_save')) return;
-    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
-    if (!current_user_can('edit_post', $post_id)) return;
-    $copy_all_to_translations = !empty($_POST['cff_copy_all_to_translations_trigger']);
-    $copy_field_to_translations = isset($_POST['cff_copy_field_to_translations']) ? wp_unslash((string) $_POST['cff_copy_field_to_translations']) : '';
-
-    if (isset($_POST['cff_group_field_order']) && is_array($_POST['cff_group_field_order'])) {
-      foreach ((array) $_POST['cff_group_field_order'] as $group_id => $raw_order) {
-        $group_id = absint($group_id);
-        if (!$group_id) continue;
-
-        $items = [];
-        $raw_order = wp_unslash($raw_order);
-        if (is_array($raw_order)) {
-          $items = array_map('sanitize_key', $raw_order);
-        } elseif (is_string($raw_order)) {
-          $items = array_map('sanitize_key', explode(',', $raw_order));
-        }
-        $items = array_values(array_filter(array_unique($items)));
-
-        $meta_key = '_cff_group_field_order_' . $group_id;
-        if ($items) {
-          update_post_meta($post_id, $meta_key, $items);
-        } else {
-          delete_post_meta($post_id, $meta_key);
-        }
-      }
-    }
-
-    $definitions = $plugin->get_field_definitions_for_post($post);
-    $posted_hidden_sections = isset($_POST['cff_hidden_sections']) && is_array($_POST['cff_hidden_sections'])
-      ? wp_unslash($_POST['cff_hidden_sections'])
-      : [];
-    $hidden_sections = [];
-    foreach ($posted_hidden_sections as $section_name => $hidden) {
-      $section_name = sanitize_key($section_name);
-      if (!$section_name || !isset($definitions[$section_name])) continue;
-      if (!empty($hidden)) {
-        $hidden_sections[$section_name] = true;
-      }
-    }
-    if ($hidden_sections) {
-      update_post_meta($post_id, '_cff_hidden_sections', $hidden_sections);
-      $hidden_sections_marker = '1';
-      if (function_exists('pll_get_post_language')) {
-        $post_lang = pll_get_post_language($post_id, 'slug');
-        if (is_string($post_lang) && $post_lang !== '') {
-          $hidden_sections_marker = sanitize_key($post_lang);
-        }
-      }
-      update_post_meta($post_id, '_cff_hidden_sections_local', $hidden_sections_marker);
-    } else {
-      delete_post_meta($post_id, '_cff_hidden_sections');
-      delete_post_meta($post_id, '_cff_hidden_sections_local');
-    }
-
-    if (!isset($_POST['cff_values']) || !is_array($_POST['cff_values'])) {
-      if ($copy_all_to_translations) {
-        cff_copy_values_to_polylang_translations($post_id);
-      } elseif ($copy_field_to_translations) {
-        cff_copy_field_to_polylang_translations($plugin, $post_id, $copy_field_to_translations);
-      }
-      return;
-    }
-
-    $vals = wp_unslash($_POST['cff_values']);
-
-    foreach ($vals as $name => $value) {
-      $name = sanitize_key($name);
-      if (!$name || !isset($definitions[$name])) continue;
-
-      $key  = $plugin->meta_key($name);
-      $field = $definitions[$name];
-      $is_media_field = in_array(($field['type'] ?? ''), ['image', 'file'], true);
-      if ($is_media_field && isset($vals[$name . '_url'])) {
-        $value = [
-          'id' => $value,
-          'url' => $vals[$name . '_url'],
-        ];
-      }
-      $value = $plugin->field_sanitizer()->sanitize($field, $value);
-
-      if ($is_media_field) {
-        delete_post_meta($post_id, $plugin->meta_key($name . '_url'));
-        if (!absint($value)) {
-          delete_post_meta($post_id, $key);
-          continue;
-        }
-      }
-
-      // Preserve nested values that were not submitted because a conditional
-      // sub-field was hidden in the editor.
-      if (($field['type'] ?? '') === 'group' && is_array($value)) {
-        $existing = get_post_meta($post_id, $key, true);
-        if (is_array($existing)) $value = deep_merge_assoc($existing, $value);
-      }
-
-      if ($value === null || $value === '' || (is_array($value) && !$value)) {
-        delete_post_meta($post_id, $key);
-        continue;
-      }
-      update_post_meta($post_id, $key, $value);
-    }
-
-    if ($copy_all_to_translations) {
-      cff_copy_values_to_polylang_translations($post_id);
-    } elseif ($copy_field_to_translations) {
-      cff_copy_field_to_polylang_translations($plugin, $post_id, $copy_field_to_translations);
-    }
+    $saver = new Content_Field_Saver($plugin);
+    $saver->save($post_id, $post);
   }
 
   function cff_store_copy_to_translations_result($status) {

@@ -130,7 +130,7 @@ Kemampuan utama:
 
 Plugin juga membuat submenu reorder per post type secara dinamis.
 
-Pada panel **Editor UI Settings**, Anda juga bisa menentukan apakah data CFF tetap disimpan atau dihapus saat plugin di-uninstall.
+Pada panel **Editor UI Settings**, Anda juga bisa mengatur Gutenberg Sidebar, akses tulis REST API, dan apakah data CFF tetap disimpan atau dihapus saat plugin di-uninstall.
 
 ### 1.4 Instalasi
 
@@ -360,6 +360,8 @@ Filter yang tersedia:
 - `cff_rest_fields_format_value` untuk mengatur format output value.
 - `cff_rest_fields_readonly` untuk menandai field tertentu readonly saat update.
 
+Write access REST API juga bisa dimatikan dari `Custom Fields > Global Settings > Editor UI Settings` lewat toggle `REST API Writes`. Toggle ini menyimpan option `cffp_rest_writes_enabled`.
+
 ### 1.10 Gutenberg Sidebar (Opsional)
 
 - Buka `Custom Fields > Global Settings`.
@@ -394,7 +396,7 @@ add_filter('cff_block_sidebar_enabled', function($enabled, $screen){
 
 ### 1.13 Versi
 
-- Versi plugin saat ini: `2.5.9`
+- Versi plugin saat ini: `2.5.17`
 
 ---
 
@@ -642,6 +644,8 @@ Available filters:
 - `cff_rest_fields_format_value` to control formatted output value.
 - `cff_rest_fields_readonly` to make specific fields readonly on update.
 
+REST API write access can also be disabled from `Custom Fields > Global Settings > Editor UI Settings` with the `REST API Writes` toggle. This stores the `cffp_rest_writes_enabled` option.
+
 ### 2.9 Gutenberg Sidebar (Optional)
 
 - Open `Custom Fields > Global Settings`.
@@ -676,4 +680,4 @@ add_filter('cff_block_sidebar_enabled', function($enabled, $screen){
 
 ### 2.12 Version
 
-- Current plugin version: `2.5.9`
+- Current plugin version: `2.5.17`
