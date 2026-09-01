@@ -6,8 +6,13 @@ class Plugin {
   private static $instance = null;
   private $tools_page = null;
   private $rest_fields = null;
+  private $reorder_manager = null;
+  private $ajax_controller = null;
+  private $dynamic_content_manager = null;
+  private $term_meta_manager = null;
   private $field_sanitizer = null;
   private $group_settings_cache = [];
+  private $published_field_groups_cache = null;
 
   public static function instance() {
     if (self::$instance === null) self::$instance = new self();
@@ -28,11 +33,75 @@ class Plugin {
     return $this->rest_fields;
   }
 
+  private function reorder_manager() {
+    if ($this->reorder_manager === null) {
+      $this->reorder_manager = new Reorder_Manager($this);
+    }
+    return $this->reorder_manager;
+  }
+
+  private function ajax_controller() {
+    if ($this->ajax_controller === null) {
+      $this->ajax_controller = new Ajax_Controller();
+    }
+    return $this->ajax_controller;
+  }
+
+  private function dynamic_content_manager() {
+    if ($this->dynamic_content_manager === null) {
+      $this->dynamic_content_manager = new Dynamic_Content_Manager();
+    }
+    return $this->dynamic_content_manager;
+  }
+
+  private function term_meta_manager() {
+    if ($this->term_meta_manager === null) {
+      $this->term_meta_manager = new Term_Meta_Manager();
+    }
+    return $this->term_meta_manager;
+  }
+
   public function field_sanitizer() {
     if ($this->field_sanitizer === null) {
       $this->field_sanitizer = new Field_Sanitizer();
     }
     return $this->field_sanitizer;
+  }
+
+  public function get_published_field_groups() {
+    if (is_array($this->published_field_groups_cache)) {
+      return $this->published_field_groups_cache;
+    }
+
+    $groups = get_posts([
+      'post_type' => 'cff_group',
+      'post_status' => 'publish',
+      'numberposts' => -1,
+      'no_found_rows' => true,
+    ]);
+
+    $this->published_field_groups_cache = is_array($groups) ? $groups : [];
+    return $this->published_field_groups_cache;
+  }
+
+  public static function admin_capability() {
+    return (string) apply_filters('cff_admin_capability', 'manage_options');
+  }
+
+  private static function internal_post_type_capabilities() {
+    $cap = self::admin_capability();
+    return [
+      'edit_post' => $cap,
+      'read_post' => $cap,
+      'delete_post' => $cap,
+      'edit_posts' => $cap,
+      'edit_others_posts' => $cap,
+      'delete_posts' => $cap,
+      'delete_others_posts' => $cap,
+      'publish_posts' => $cap,
+      'read_private_posts' => $cap,
+      'create_posts' => $cap,
+    ];
   }
 
   public static function register_cpt() {
@@ -49,7 +118,9 @@ class Plugin {
       'show_in_menu' => false,
       'supports' => ['title'],
       'menu_icon' => 'dashicons-feedback',
-      'capability_type' => 'post',
+      'capability_type' => 'cff_group',
+      'capabilities' => self::internal_post_type_capabilities(),
+      'map_meta_cap' => false,
     ]);
   }
 
@@ -63,159 +134,18 @@ class Plugin {
       'show_ui' => false,
       'show_in_menu' => false,
       'supports' => ['title'],
-      'capability_type' => 'post',
+      'capability_type' => 'cff_options',
+      'capabilities' => self::internal_post_type_capabilities(),
+      'map_meta_cap' => false,
     ]);
   }
 
   public function register_dynamic_cpts() {
-    $defs = get_option('cffp_post_types', []);
-    if (!is_array($defs)) return;
-
-    foreach ($defs as $key => $def) {
-      $key = sanitize_key($key);
-      if (!$key) continue;
-
-      $singular = sanitize_text_field($def['singular'] ?? ucfirst($key));
-      $plural   = sanitize_text_field($def['plural'] ?? $singular . 's');
-      $slug     = sanitize_title($def['slug'] ?? $key);
-      $singular = $this->i18n_value($def, 'singular_i18n', $singular);
-      $plural   = $this->i18n_value($def, 'plural_i18n', $plural);
-      if (!$this->polylang_active()) {
-        $slug = $this->i18n_slug($def, 'slug_i18n', $slug);
-      }
-      $public   = !empty($def['public']);
-      $has_archive = !empty($def['has_archive']);
-      $show_in_rest = !empty($def['show_in_rest']);
-      $supports = (isset($def['supports']) && is_array($def['supports']))
-        ? array_values(array_map('sanitize_key',$def['supports']))
-        : ['title','editor'];
-
-      // ✅ ambil dari option yg tersimpan
-      $menu_icon_raw = isset($def['menu_icon']) ? trim((string)$def['menu_icon']) : '';
-      $menu_icon = '';
-
-      if ($menu_icon_raw !== '') {
-        if (strpos($menu_icon_raw, 'dashicons-') === 0) {
-          $menu_icon = preg_replace('/[^a-z0-9\-_]/i', '', $menu_icon_raw);
-        } else {
-          $menu_icon = esc_url_raw($menu_icon_raw);
-        }
-      }
-
-      register_post_type($key, [
-        'labels' => [
-          'name' => $plural,
-          'singular_name' => $singular,
-          'add_new_item' => sprintf(__('Add New %s','cff'), $singular),
-          'edit_item' => sprintf(__('Edit %s','cff'), $singular),
-        ],
-      'public' => $public,
-      'has_archive' => $has_archive,
-      'rewrite' => !empty($def['block_single']) ? false : ['slug'=>$slug],
-      'publicly_queryable' => $public && empty($def['block_single']),
-      'show_in_rest' => $show_in_rest,
-      'show_ui' => array_key_exists('show_ui',$def) ? (bool)$def['show_ui'] : $public,
-      'query_var' => array_key_exists('query_var',$def)
-        ? (bool)$def['query_var']
-        : (!empty($def['block_single']) ? false : true),
-        'show_admin_column' => array_key_exists('show_admin_column',$def) ? (bool)$def['show_admin_column'] : true,
-        'supports' => $supports,
-        'taxonomies' => (isset($def['taxonomies']) && is_array($def['taxonomies']))
-          ? array_map('sanitize_key',$def['taxonomies'])
-          : [],
-        'menu_position' => isset($def['menu_position']) ? max(0, intval($def['menu_position'])) : 25,
-        'menu_icon' => $menu_icon ?: 'dashicons-admin-post',
-      ]);
-
-      if ($public && $has_archive) {
-        $archive_slug = $slug ?: $key;
-        $archive_slug = trim((string) $archive_slug, '/');
-        if ($archive_slug !== '') {
-          add_rewrite_rule(
-            '^' . preg_quote($archive_slug, '/') . '/?$',
-            'index.php?post_type=' . $key,
-            'top'
-          );
-          add_rewrite_rule(
-            '^' . preg_quote($archive_slug, '/') . '/page/([0-9]+)/?$',
-            'index.php?post_type=' . $key . '&paged=$matches[1]',
-            'top'
-          );
-        }
-      }
-
-      if (!empty($def['list_thumbnail']) && in_array('thumbnail', $supports, true)) {
-        $this->register_admin_thumbnail_column($key);
-      }
-      if (!empty($def['block_single'])) {
-        $this->register_block_single_views($key);
-      }
-    }
-  }
-
-  private function register_admin_thumbnail_column($post_type) {
-    $label = __('Thumbnail', 'cff');
-    add_filter("manage_{$post_type}_posts_columns", function($columns) use ($label) {
-      if (isset($columns['cff_thumbnail'])) {
-        return $columns;
-      }
-      $output = [];
-      foreach ($columns as $slug => $name) {
-        $output[$slug] = $name;
-        if ($slug === 'cb') {
-          $output['cff_thumbnail'] = $label;
-        }
-      }
-      if (!isset($output['cff_thumbnail'])) {
-        $output = array_merge(['cff_thumbnail' => $label], $output);
-      }
-      return $output;
-    });
-
-    add_action('admin_head', function() use ($post_type) {
-      $screen = function_exists('get_current_screen') ? get_current_screen() : null;
-      if (!$screen || $screen->base !== 'edit' || $screen->post_type !== $post_type) {
-        return;
-      }
-      echo '<style>.wp-list-table th.column-cff_thumbnail, .wp-list-table td.column-cff_thumbnail {width:100px;}</style>';
-    });
-
-    add_action("manage_{$post_type}_posts_custom_column", function($column, $post_id) {
-      if ($column !== 'cff_thumbnail') return;
-      $image = get_the_post_thumbnail($post_id, [80, 80], ['style' => 'width:80px;height:auto;display:block;object-fit:cover;']);
-      if ($image) {
-        echo '<div style="width:80px;height:80px;display:flex;align-items:center;justify-content:center;">' . $image . '</div>';
-      } else {
-        echo '<div style="width:80px;height:80px;display:flex;align-items:center;justify-content:center;"><span class="cff-muted">—</span></div>';
-      }
-    }, 10, 2);
-  }
-
-  private function register_block_single_views($post_type) {
-    add_filter("manage_{$post_type}_posts_columns", function($columns) {
-      foreach (array_keys($columns) as $key) {
-        if ($key === 'cb') continue;
-        if (stripos($key, 'view') !== false) {
-          unset($columns[$key]);
-        }
-      }
-      return $columns;
-    }, 15);
-
-    add_action('admin_head', function() use ($post_type) {
-      $screen = function_exists('get_current_screen') ? get_current_screen() : null;
-      if (!$screen || $screen->base !== 'edit' || $screen->post_type !== $post_type) {
-        return;
-      }
-      echo '<style>.wp-list-table th[class*="column-view"], .wp-list-table td[class*="column-view"] {display:none!important;}</style>';
-    });
+    return $this->dynamic_content_manager()->register_dynamic_cpts();
   }
 
   public function remove_post_views_id() {
-    $screen = function_exists('get_current_screen') ? get_current_screen() : null;
-    if (!$screen || $screen->base !== 'edit' || empty($screen->post_type)) return;
-    if (!$this->is_block_single_post_type($screen->post_type)) return;
-    echo '<script>(function(){document.addEventListener("DOMContentLoaded",function(){var el=document.getElementById("post-views");if(el){el.removeAttribute("id");}});})();</script>';
+    return $this->dynamic_content_manager()->remove_post_views_id();
   }
 
   private function is_block_single_post_type($post_type) {
@@ -231,53 +161,15 @@ class Plugin {
   }
 
   public function register_dynamic_taxonomies() {
-    $defs = get_option('cffp_taxonomies', []);
-    if (!is_array($defs)) return;
-
-    foreach ($defs as $key => $def) {
-      $tax = sanitize_key($key);
-      if (!$tax) continue;
-
-      $singular = sanitize_text_field($def['singular'] ?? ucfirst($tax));
-      $plural   = sanitize_text_field($def['plural'] ?? $singular . 's');
-      $singular = $this->i18n_value($def, 'singular_i18n', $singular);
-      $plural   = $this->i18n_value($def, 'plural_i18n', $plural);
-      $public   = !empty($def['public']);
-      $hier     = !empty($def['hierarchical']);
-      $show_in_rest = !empty($def['show_in_rest']);
-      $ptypes = isset($def['post_types']) && is_array($def['post_types'])
-        ? array_map('sanitize_key',$def['post_types'])
-        : ['post'];
-
-      register_taxonomy($tax, $ptypes, [
-        'labels' => [
-          'name' => $plural,
-          'singular_name' => $singular,
-          'add_new_item' => sprintf(__('Add New %s','cff'), $singular),
-          'edit_item' => sprintf(__('Edit %s','cff'), $singular),
-        ],
-        'public' => $public,
-        'hierarchical' => $hier,
-        'show_in_rest' => $show_in_rest,
-        'show_ui' => array_key_exists('show_ui',$def) ? (bool)$def['show_ui'] : $public,
-        'query_var' => array_key_exists('query_var',$def) ? (bool)$def['query_var'] : true,
-        'show_admin_column' => array_key_exists('show_admin_column',$def) ? (bool)$def['show_admin_column'] : true,
-        'rewrite' => [
-          'slug' => $this->polylang_active()
-            ? sanitize_title($def['slug'] ?? $tax)
-            : $this->i18n_slug($def, 'slug_i18n', sanitize_title($def['slug'] ?? $tax)),
-          'with_front' => !empty($def['with_front']),
-        ],
-      ]);
-    }
+    return $this->dynamic_content_manager()->register_dynamic_taxonomies();
   }
 
   private function __construct() {
     add_action('init', [__CLASS__, 'register_cpt']);
     add_action('init', [__CLASS__, 'register_options_cpt'], 15);
-    add_action('init', [$this, 'register_dynamic_cpts'], 20);
-    add_action('init', [$this, 'register_dynamic_taxonomies'], 25);
-    add_action('init', [$this, 'register_term_meta_fields'], 30);
+    add_action('init', [$this->dynamic_content_manager(), 'register_dynamic_cpts'], 20);
+    add_action('init', [$this->dynamic_content_manager(), 'register_dynamic_taxonomies'], 25);
+    add_action('init', [$this->term_meta_manager(), 'register_term_meta_fields'], 30);
     add_action('init', [$this, 'add_polylang_rewrite_rules'], 100);
 
     add_action('admin_menu', [$this, 'admin_menu']);
@@ -291,7 +183,7 @@ class Plugin {
 
     add_action('admin_enqueue_scripts', [$this, 'assets']);
     add_action('enqueue_block_editor_assets', [$this, 'enqueue_block_editor_assets']);
-    add_action('admin_head-edit.php', [$this, 'remove_post_views_id']);
+    add_action('admin_head-edit.php', [$this->dynamic_content_manager(), 'remove_post_views_id']);
     add_action('admin_notices', [$this, 'maybe_render_copy_to_translations_notice']);
     add_action('admin_head', [$this, 'suppress_external_notices']);
     add_action('admin_head', [$this, 'output_global_editor_ui_css']);
@@ -309,16 +201,16 @@ class Plugin {
     add_filter('pll_the_language_link', [$this, 'pll_fix_taxonomy_lang_link'], 10, 3);
     add_filter('redirect_post_location', [$this, 'add_copy_notice_flag_to_redirect'], 10, 2);
 
-    add_action('wp_ajax_cff_search_posts', [$this, 'ajax_search_posts']);
-    add_action('wp_ajax_cff_search_relational', [$this, 'ajax_search_relational']);
-    add_action('wp_ajax_cff_get_templates', [$this, 'ajax_get_templates']);
-    add_action('wp_ajax_cff_get_post_types', [$this, 'ajax_get_post_types']);
-    add_action('wp_ajax_cff_reorder_get_posts', [$this, 'ajax_reorder_get_posts']);
-    add_action('wp_ajax_cff_reorder_save_posts', [$this, 'ajax_reorder_save_posts']);
-    add_action('wp_ajax_cff_reorder_get_terms', [$this, 'ajax_reorder_get_terms']);
-    add_action('wp_ajax_cff_reorder_save_terms', [$this, 'ajax_reorder_save_terms']);
-    add_action('wp_ajax_cff_reorder_get_groups', [$this, 'ajax_reorder_get_groups']);
-    add_action('wp_ajax_cff_reorder_save_groups', [$this, 'ajax_reorder_save_groups']);
+    add_action('wp_ajax_cff_search_posts', [$this->ajax_controller(), 'ajax_search_posts']);
+    add_action('wp_ajax_cff_search_relational', [$this->ajax_controller(), 'ajax_search_relational']);
+    add_action('wp_ajax_cff_get_templates', [$this->ajax_controller(), 'ajax_get_templates']);
+    add_action('wp_ajax_cff_get_post_types', [$this->ajax_controller(), 'ajax_get_post_types']);
+    add_action('wp_ajax_cff_reorder_get_posts', [$this->reorder_manager(), 'ajax_reorder_get_posts']);
+    add_action('wp_ajax_cff_reorder_save_posts', [$this->reorder_manager(), 'ajax_reorder_save_posts']);
+    add_action('wp_ajax_cff_reorder_get_terms', [$this->reorder_manager(), 'ajax_reorder_get_terms']);
+    add_action('wp_ajax_cff_reorder_save_terms', [$this->reorder_manager(), 'ajax_reorder_save_terms']);
+    add_action('wp_ajax_cff_reorder_get_groups', [$this->reorder_manager(), 'ajax_reorder_get_groups']);
+    add_action('wp_ajax_cff_reorder_save_groups', [$this->reorder_manager(), 'ajax_reorder_save_groups']);
     add_action('admin_post_cff_duplicate_post', [$this, 'admin_post_duplicate_post']);
     add_filter('post_row_actions', [$this, 'filter_duplicate_row_action'], 10, 2);
     add_filter('post_row_actions', [$this, 'ensure_quick_edit_row_action'], 99, 2);
@@ -331,7 +223,7 @@ class Plugin {
   }
 
   public function admin_menu() {
-    $cap = 'manage_options';
+    $cap = self::admin_capability();
     add_menu_page(__('Custom Fields', 'cff'), __('Custom Fields', 'cff'), $cap, 'cff', [$this,'page_dashboard'], 'dashicons-feedback', 58);
     add_submenu_page('cff', __('Field Groups','cff'), __('Field Groups','cff'), $cap, 'edit.php?post_type=cff_group');
     add_submenu_page('cff', __('Post Types','cff'), __('Post Types','cff'), $cap, 'cff-post-types', [$this,'page_post_types']);
@@ -1663,6 +1555,9 @@ TEXT;
       $selectors[] = '#cff-field-view-mode';
       $selectors[] = '.cff-field-view-mode';
     }
+    if (!empty(get_option('cffp_hide_field_reorder_view', 0))) {
+      $selectors[] = '.cff-field-reorder-view';
+    }
 
     if (!$selectors) return;
 
@@ -1788,91 +1683,19 @@ TEXT;
   }
 
   public function register_term_meta_fields() {
-    $taxonomies = get_taxonomies(['public'=>true], 'names');
-    foreach ($taxonomies as $tax) {
-      add_action($tax . '_add_form_fields', [$this, 'render_term_fields_add'], 10, 1);
-      add_action($tax . '_edit_form_fields', [$this, 'render_term_fields_edit'], 10, 2);
-      add_action('created_' . $tax, [$this, 'save_term_fields'], 10, 2);
-      add_action('edited_' . $tax, [$this, 'save_term_fields'], 10, 2);
-    }
-  }
-
-  private function term_image_preview($image_id) {
-    if ($image_id) {
-      $img = wp_get_attachment_image($image_id, 'thumbnail', false, ['class' => 'cff-term-thumb']);
-      if ($img) return $img;
-    }
-    return '<span class="description">No image selected</span>';
+    return $this->term_meta_manager()->register_term_meta_fields();
   }
 
   public function render_term_fields_add($taxonomy) {
-    echo '<div class="form-field cff-term-field">';
-    echo '<label>Image</label>';
-    echo '<div class="cff-term-image">';
-    echo '<input type="hidden" class="cff-term-image-id" name="cffp_term_image_id" value="">';
-    echo '<div class="cff-term-image-preview">' . $this->term_image_preview(0) . '</div>';
-    echo '<p><button type="button" class="button cff-term-image-select">Select</button> ';
-    echo '<button type="button" class="button cff-term-image-clear">Clear</button></p>';
-    echo '</div>';
-    echo '</div>';
-
-    echo '<div class="form-field cff-term-field">';
-    echo '<label>Short Description</label>';
-    echo '<textarea name="cffp_term_short_description" rows="3"></textarea>';
-    echo '</div>';
-
-    echo '<div class="form-field cff-term-field">';
-    echo '<label>Description</label>';
-    echo '<textarea name="cffp_term_description" rows="5"></textarea>';
-    echo '</div>';
+    return $this->term_meta_manager()->render_term_fields_add($taxonomy);
   }
 
   public function render_term_fields_edit($term, $taxonomy) {
-    $image_id = (int) get_term_meta($term->term_id, 'cffp_term_image_id', true);
-    $short = (string) get_term_meta($term->term_id, 'cffp_term_short_description', true);
-    $desc = (string) get_term_meta($term->term_id, 'cffp_term_description', true);
-
-    echo '<tr class="form-field cff-term-field"><th scope="row"><label>Image</label></th><td>';
-    echo '<div class="cff-term-image">';
-    echo '<input type="hidden" class="cff-term-image-id" name="cffp_term_image_id" value="' . esc_attr($image_id) . '">';
-    echo '<div class="cff-term-image-preview">' . $this->term_image_preview($image_id) . '</div>';
-    echo '<p><button type="button" class="button cff-term-image-select">Select</button> ';
-    echo '<button type="button" class="button cff-term-image-clear">Clear</button></p>';
-    echo '</div>';
-    echo '</td></tr>';
-
-    echo '<tr class="form-field cff-term-field"><th scope="row"><label>Short Description</label></th><td>';
-    echo '<textarea name="cffp_term_short_description" rows="3">' . esc_textarea($short) . '</textarea>';
-    echo '</td></tr>';
-
-    echo '<tr class="form-field cff-term-field"><th scope="row"><label>Description</label></th><td>';
-    echo '<textarea name="cffp_term_description" rows="5">' . esc_textarea($desc) . '</textarea>';
-    echo '</td></tr>';
+    return $this->term_meta_manager()->render_term_fields_edit($term, $taxonomy);
   }
 
   public function save_term_fields($term_id, $tt_id = 0) {
-    if (!current_user_can('manage_categories')) return;
-    $image_id = isset($_POST['cffp_term_image_id']) ? absint($_POST['cffp_term_image_id']) : 0;
-    $short = isset($_POST['cffp_term_short_description']) ? wp_kses_post(wp_unslash($_POST['cffp_term_short_description'])) : '';
-    $desc = isset($_POST['cffp_term_description']) ? wp_kses_post(wp_unslash($_POST['cffp_term_description'])) : '';
-
-    if ($image_id) {
-      update_term_meta($term_id, 'cffp_term_image_id', $image_id);
-    } else {
-      delete_term_meta($term_id, 'cffp_term_image_id');
-    }
-
-    if ($short !== '') {
-      update_term_meta($term_id, 'cffp_term_short_description', $short);
-    } else {
-      delete_term_meta($term_id, 'cffp_term_short_description');
-    }
-
-    if ($desc !== '') {
-      update_term_meta($term_id, 'cffp_term_description', $desc);
-    } else {
-      delete_term_meta($term_id, 'cffp_term_description');
-    }
+    return $this->term_meta_manager()->save_term_fields($term_id, $tt_id);
   }
 
   public function apply_reorder_post_types($q) {
@@ -1945,281 +1768,27 @@ TEXT;
   }
 
   public function ajax_reorder_get_posts() {
-    check_ajax_referer('cffp', 'nonce');
-    if (!current_user_can('manage_options')) wp_send_json_error(['message'=>'Forbidden'], 403);
-
-    $pt = sanitize_key($_POST['post_type'] ?? '');
-    if (!$pt || !post_type_exists($pt)) wp_send_json_error(['message'=>'Invalid post_type'], 400);
-
-    $posts = get_posts([
-      'post_type' => $pt,
-      'post_status' => 'any',
-      'orderby' => 'menu_order',
-      'order' => 'ASC',
-      'numberposts' => -1,
-      'no_found_rows' => true,
-      'update_post_meta_cache' => false,
-      'update_post_term_cache' => false,
-    ]);
-
-    $post_type_object = get_post_type_object($pt);
-    $is_hierarchical = $post_type_object && !empty($post_type_object->hierarchical);
-
-    if ($is_hierarchical) {
-      $posts = $this->sort_posts_hierarchically($posts);
-    }
-
-    $out = [];
-    foreach ($posts as $p) {
-      $out[] = [
-        'id' => $p->ID,
-        'title' => $p->post_title ?: '(no title)',
-        'status' => $p->post_status,
-        'parent' => (int) $p->post_parent,
-        'depth' => (int) ($p->cffp_depth ?? 0),
-      ];
-    }
-    wp_send_json_success($out);
+    return $this->reorder_manager()->ajax_reorder_get_posts();
   }
 
   public function ajax_reorder_save_posts() {
-    check_ajax_referer('cffp', 'nonce');
-    if (!current_user_can('manage_options')) wp_send_json_error(['message'=>'Forbidden'], 403);
-
-    $pt = sanitize_key($_POST['post_type'] ?? '');
-    $order = isset($_POST['order']) && is_array($_POST['order']) ? array_map('absint', $_POST['order']) : [];
-    if (!$pt || !post_type_exists($pt) || !$order) wp_send_json_error(['message'=>'Invalid payload'], 400);
-
-    $posts = get_posts([
-      'post_type' => $pt,
-      'post_status' => 'any',
-      'post__in' => $order,
-      'numberposts' => -1,
-      'orderby' => 'post__in',
-      'no_found_rows' => true,
-      'update_post_meta_cache' => false,
-      'update_post_term_cache' => false,
-    ]);
-
-    $posts_by_id = [];
-    foreach ($posts as $post) {
-      $posts_by_id[(int) $post->ID] = $post;
-    }
-
-    $parent_counts = [];
-    foreach ($posts as $post) {
-      $parent_counts[(int) $post->post_parent] = 0;
-    }
-
-    $updates = [];
-    foreach ($order as $id) {
-      $id = absint($id);
-      if (!$id) continue;
-
-      $post = $posts_by_id[$id] ?? null;
-      if (!$post || $post->post_type !== $pt) continue;
-
-      $parent_id = (int) $post->post_parent;
-      $menu_order = $parent_counts[$parent_id] ?? 0;
-      $updates[$id] = $menu_order;
-      $parent_counts[$parent_id] = $menu_order + 1;
-    }
-
-    $this->persist_post_menu_order($updates);
-
-    $enabled = get_option('cffp_reorder_post_types', []);
-    if (!is_array($enabled)) $enabled = [];
-    if (!in_array($pt, $enabled, true)) {
-      $enabled[] = $pt;
-      update_option('cffp_reorder_post_types', $enabled);
-    }
-
-    wp_send_json_success(['count' => count($order)]);
-  }
-
-  private function persist_post_menu_order($updates) {
-    if (!$updates) return;
-
-    // Keep normal WordPress hooks for small lists. Large reorder operations use
-    // bounded SQL chunks and explicitly invalidate each post cache.
-    if (count($updates) < 100) {
-      foreach ($updates as $id => $menu_order) {
-        wp_update_post(['ID' => $id, 'menu_order' => $menu_order]);
-      }
-      return;
-    }
-
-    global $wpdb;
-    foreach (array_chunk($updates, 200, true) as $chunk) {
-      $case = [];
-      $case_values = [];
-      $ids = [];
-      foreach ($chunk as $id => $menu_order) {
-        $case[] = 'WHEN %d THEN %d';
-        $case_values[] = absint($id);
-        $case_values[] = intval($menu_order);
-        $ids[] = absint($id);
-      }
-      if (!$ids) continue;
-
-      $id_placeholders = implode(',', array_fill(0, count($ids), '%d'));
-      $sql = "UPDATE {$wpdb->posts} SET menu_order = CASE ID " . implode(' ', $case)
-        . " ELSE menu_order END WHERE ID IN ({$id_placeholders})";
-      $wpdb->query($wpdb->prepare($sql, array_merge($case_values, $ids)));
-      foreach ($ids as $id) clean_post_cache($id);
-    }
-  }
-
-  private function sort_posts_hierarchically(array $posts) {
-    if (!$posts) return [];
-
-    $children = [];
-    $indexed = [];
-
-    foreach ($posts as $post) {
-      $post_id = (int) $post->ID;
-      $indexed[$post_id] = $post;
-      $parent_id = (int) $post->post_parent;
-      $children[$parent_id][] = $post;
-    }
-
-    $sorted = [];
-    $visited = [];
-    $walk = function($parent_id, $depth) use (&$walk, &$children, &$sorted, &$visited, &$indexed) {
-      if (empty($children[$parent_id])) return;
-      foreach ($children[$parent_id] as $child) {
-        $child_id = (int) $child->ID;
-        if (isset($visited[$child_id])) continue;
-        $visited[$child_id] = true;
-        $child->cffp_depth = $depth;
-        $sorted[] = $child;
-        $walk($child_id, $depth + 1);
-      }
-    };
-
-    $walk(0, 0);
-
-    foreach ($indexed as $post_id => $post) {
-      if (isset($visited[$post_id])) continue;
-      $post->cffp_depth = 0;
-      $sorted[] = $post;
-      $walk($post_id, 1);
-    }
-
-    return $sorted;
+    return $this->reorder_manager()->ajax_reorder_save_posts();
   }
 
   public function ajax_reorder_get_terms() {
-    check_ajax_referer('cffp', 'nonce');
-    if (!current_user_can('manage_options')) wp_send_json_error(['message'=>'Forbidden'], 403);
-
-    $tax = sanitize_key($_POST['taxonomy'] ?? '');
-    if (!$tax || !taxonomy_exists($tax)) wp_send_json_error(['message'=>'Invalid taxonomy'], 400);
-
-    $terms = get_terms([
-      'taxonomy' => $tax,
-      'hide_empty' => false,
-      'update_term_meta_cache' => true,
-    ]);
-    if (is_wp_error($terms)) wp_send_json_error(['message'=>'Failed to load terms'], 500);
-
-    $term_orders = [];
-    foreach ($terms as $term) {
-      $term_orders[(int) $term->term_id] = (int) get_term_meta($term->term_id, 'cffp_term_order', true);
-    }
-
-    usort($terms, function($a, $b) use ($term_orders) {
-      $oa = $term_orders[(int) $a->term_id] ?? 0;
-      $ob = $term_orders[(int) $b->term_id] ?? 0;
-      if ($oa === $ob) return strcasecmp($a->name, $b->name);
-      return ($oa < $ob) ? -1 : 1;
-    });
-
-    $out = [];
-    foreach ($terms as $t) {
-      $out[] = [
-        'id' => $t->term_id,
-        'title' => $t->name,
-        'count' => $t->count,
-      ];
-    }
-    wp_send_json_success($out);
+    return $this->reorder_manager()->ajax_reorder_get_terms();
   }
 
   public function ajax_reorder_save_terms() {
-    check_ajax_referer('cffp', 'nonce');
-    if (!current_user_can('manage_options')) wp_send_json_error(['message'=>'Forbidden'], 403);
-
-    $tax = sanitize_key($_POST['taxonomy'] ?? '');
-    $order = isset($_POST['order']) && is_array($_POST['order']) ? array_map('absint', $_POST['order']) : [];
-    if (!$tax || !taxonomy_exists($tax) || !$order) wp_send_json_error(['message'=>'Invalid payload'], 400);
-
-    foreach ($order as $i => $id) {
-      if ($id) update_term_meta($id, 'cffp_term_order', $i);
-    }
-
-    $enabled = get_option('cffp_reorder_taxonomies', []);
-    if (!is_array($enabled)) $enabled = [];
-    if (!in_array($tax, $enabled, true)) {
-      $enabled[] = $tax;
-      update_option('cffp_reorder_taxonomies', $enabled);
-    }
-
-    wp_send_json_success(['count' => count($order)]);
+    return $this->reorder_manager()->ajax_reorder_save_terms();
   }
 
   public function ajax_reorder_get_groups() {
-    check_ajax_referer('cffp', 'nonce');
-    if (!current_user_can('manage_options')) wp_send_json_error(['message'=>'Forbidden'], 403);
-
-    $groups = get_posts([
-      'post_type' => 'cff_group',
-      'post_status' => 'any',
-      'numberposts' => -1,
-      'orderby' => 'title',
-      'order' => 'ASC',
-      'no_found_rows' => true,
-    ]);
-
-    if (is_wp_error($groups)) wp_send_json_error(['message' => 'Failed to load field groups'], 500);
-
-    $this->sort_field_groups_by_setting_order($groups);
-
-    $out = [];
-    foreach ($groups as $g) {
-      $settings = get_post_meta($g->ID, '_cff_settings', true);
-      $presentation = is_array($settings['presentation'] ?? []) ? $settings['presentation'] : [];
-      $out[] = [
-        'id' => $g->ID,
-        'title' => $g->post_title ? $g->post_title : '(no title)',
-        'status' => $g->post_status,
-        'order' => intval($presentation['order'] ?? 0),
-      ];
-    }
-
-    wp_send_json_success($out);
+    return $this->reorder_manager()->ajax_reorder_get_groups();
   }
 
   public function ajax_reorder_save_groups() {
-    check_ajax_referer('cffp', 'nonce');
-    if (!current_user_can('manage_options')) wp_send_json_error(['message'=>'Forbidden'], 403);
-
-    $order = isset($_POST['order']) && is_array($_POST['order']) ? array_map('absint', $_POST['order']) : [];
-    if (!$order) wp_send_json_error(['message'=>'Invalid payload'], 400);
-
-    foreach ($order as $i => $id) {
-      if (!$id) continue;
-      $group = get_post($id);
-      if (!$group || $group->post_type !== 'cff_group') continue;
-      $settings = get_post_meta($id, '_cff_settings', true);
-      if (!is_array($settings)) $settings = [];
-      $presentation = isset($settings['presentation']) && is_array($settings['presentation']) ? $settings['presentation'] : [];
-      $presentation['order'] = $i;
-      $settings['presentation'] = $this->sanitize_presentation($presentation);
-      update_post_meta($id, '_cff_settings', $settings);
-    }
-
-    wp_send_json_success(['count' => count($order)]);
+    return $this->reorder_manager()->ajax_reorder_save_groups();
   }
 
   private function current_lang() {
@@ -2513,11 +2082,13 @@ TEXT;
     wp_nonce_field('cff_global_ui_settings_save', 'cff_global_ui_settings_nonce');
 
     $enabled = !empty(get_option('cffp_block_sidebar_enabled', 0));
+    $rest_writes_enabled = !empty(get_option('cffp_rest_writes_enabled', 1));
     $keep_data = !empty(get_option('cffp_keep_data_on_uninstall', 1));
     $hide_field_copy_actions = !empty(get_option('cffp_hide_field_copy_actions', 0));
     $hide_field_view_controls = !empty(get_option('cffp_hide_field_view_controls', 0));
     $hide_field_view_copy = !empty(get_option('cffp_hide_field_view_copy', 0));
     $hide_field_view_mode = !empty(get_option('cffp_hide_field_view_mode', 0));
+    $hide_field_reorder_view = !empty(get_option('cffp_hide_field_reorder_view', 0));
 
     echo '<div class="cff-global-settings-stack">';
 
@@ -2529,6 +2100,18 @@ TEXT;
     echo '</div>';
     echo '<label class="cff-switch" aria-label="' . esc_attr__('Enable CFF panels in Gutenberg document sidebar.', 'cff') . '">';
     echo '<input type="checkbox" name="cffp_block_sidebar_enabled" value="1" ' . checked($enabled, true, false) . '>';
+    echo '<span class="cff-slider"></span>';
+    echo '</label>';
+    echo '</section>';
+
+    echo '<section class="cff-setting-card">';
+    echo '<div class="cff-setting-copy">';
+    echo '<h3>' . esc_html__('REST API Writes', 'cff') . '</h3>';
+    echo '<p>' . esc_html__('Allow authenticated REST API requests with edit permission to update CFF field values.', 'cff') . '</p>';
+    echo '<p class="description">' . esc_html__('Disable this to expose CFF values as read-only in REST. Developers can still override this via the `cff_rest_fields_writable` filter.', 'cff') . '</p>';
+    echo '</div>';
+    echo '<label class="cff-switch" aria-label="' . esc_attr__('Allow CFF field writes through the REST API.', 'cff') . '">';
+    echo '<input type="checkbox" name="cffp_rest_writes_enabled" value="1" ' . checked($rest_writes_enabled, true, false) . '>';
     echo '<span class="cff-slider"></span>';
     echo '</label>';
     echo '</section>';
@@ -2549,12 +2132,13 @@ TEXT;
     echo '<div class="cff-setting-copy">';
     echo '<h3>' . esc_html__('Field View Controls', 'cff') . '</h3>';
     echo '<p>' . esc_html__('Hide parts of the field view switcher in field group and content editors.', 'cff') . '</p>';
-    echo '<p class="description">' . esc_html__('These settings target .cff-field-view-controls, .cff-field-view-copy, and .cff-field-view-mode.', 'cff') . '</p>';
+    echo '<p class="description">' . esc_html__('These settings target .cff-field-view-controls, .cff-field-view-copy, .cff-field-view-mode, and .cff-field-reorder-view.', 'cff') . '</p>';
     echo '</div>';
     echo '<div class="cff-setting-actions">';
     echo '<label class="cff-check"><input type="checkbox" name="cffp_hide_field_view_controls" value="1" ' . checked($hide_field_view_controls, true, false) . '> <span>' . esc_html__('Hide controls wrapper', 'cff') . '</span></label>';
     echo '<label class="cff-check"><input type="checkbox" name="cffp_hide_field_view_copy" value="1" ' . checked($hide_field_view_copy, true, false) . '> <span>' . esc_html__('Hide copy text', 'cff') . '</span></label>';
     echo '<label class="cff-check"><input type="checkbox" name="cffp_hide_field_view_mode" value="1" ' . checked($hide_field_view_mode, true, false) . '> <span>' . esc_html__('Hide view mode select', 'cff') . '</span></label>';
+    echo '<label class="cff-check"><input type="checkbox" name="cffp_hide_field_reorder_view" value="1" ' . checked($hide_field_reorder_view, true, false) . '> <span>' . esc_html__('Hide reorder view', 'cff') . '</span></label>';
     echo '</div>';
     echo '</section>';
 
@@ -2601,21 +2185,25 @@ TEXT;
     if (!$post || $post->post_type !== 'cff_options') return;
     if (!isset($_POST['cff_global_ui_settings_nonce']) || !wp_verify_nonce($_POST['cff_global_ui_settings_nonce'], 'cff_global_ui_settings_save')) return;
     if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
-    if (!current_user_can('edit_post', $post_id)) return;
+    if (!current_user_can(self::admin_capability())) return;
 
     $enabled = !empty($_POST['cffp_block_sidebar_enabled']) ? 1 : 0;
+    $rest_writes_enabled = !empty($_POST['cffp_rest_writes_enabled']) ? 1 : 0;
     $keep_data = !empty($_POST['cffp_keep_data_on_uninstall']) ? 1 : 0;
     $hide_field_copy_actions = !empty($_POST['cffp_hide_field_copy_actions']) ? 1 : 0;
     $hide_field_view_controls = !empty($_POST['cffp_hide_field_view_controls']) ? 1 : 0;
     $hide_field_view_copy = !empty($_POST['cffp_hide_field_view_copy']) ? 1 : 0;
     $hide_field_view_mode = !empty($_POST['cffp_hide_field_view_mode']) ? 1 : 0;
+    $hide_field_reorder_view = !empty($_POST['cffp_hide_field_reorder_view']) ? 1 : 0;
 
     update_option('cffp_block_sidebar_enabled', $enabled);
+    update_option('cffp_rest_writes_enabled', $rest_writes_enabled);
     update_option('cffp_keep_data_on_uninstall', $keep_data);
     update_option('cffp_hide_field_copy_actions', $hide_field_copy_actions);
     update_option('cffp_hide_field_view_controls', $hide_field_view_controls);
     update_option('cffp_hide_field_view_copy', $hide_field_view_copy);
     update_option('cffp_hide_field_view_mode', $hide_field_view_mode);
+    update_option('cffp_hide_field_reorder_view', $hide_field_reorder_view);
   }
 
   public function render_group_settings($post) {
@@ -2625,6 +2213,15 @@ TEXT;
     if (!is_array($settings)) $settings = [];
 
     $fields = isset($settings['fields']) && is_array($settings['fields']) ? $settings['fields'] : [];
+    if (!$fields) {
+      $legacy_fields_json = get_post_meta($post->ID, 'cff_fields_json', true);
+      if (is_string($legacy_fields_json) && $legacy_fields_json !== '') {
+        $legacy_fields = json_decode($legacy_fields_json, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($legacy_fields)) {
+          $fields = $legacy_fields;
+        }
+      }
+    }
     $fields_json = wp_json_encode($fields);
 
     $location = isset($settings['location']) && is_array($settings['location']) ? $settings['location'] : [
@@ -2656,7 +2253,7 @@ TEXT;
 
     echo '<div class="tk-tab-panel is-active" data-panel="fields">';
     echo '<input type="hidden" id="cff_fields_json" name="cff_fields_json" value="'.esc_attr($fields_json).'">';
-    echo '<div id="cff-fields-builder"></div>';
+    echo '<div id="cff-fields-builder" class="cff-fields-builder"></div>';
     echo '</div>';
 
     echo '<div class="tk-tab-panel" data-panel="location">';
@@ -2749,6 +2346,7 @@ TEXT;
       'field_view_controls' => 'Field View Controls',
       'field_view_copy' => 'Field View Copy',
       'field_view_mode' => 'Field View Mode',
+      'field_reorder_view' => 'Field Reorder View',
       'copy_to_translations' => 'Save + Copy All CFF to Translations Button',
     ];
 
@@ -2885,6 +2483,14 @@ TEXT;
               <input type="number" class="cff-input cff-max-upload-mb" min="1" step="1" value="2">
               <p class="description">Default 2 MB. Set a larger value for this image or file field only.</p>
             </div>
+            <div class="cff-row-gallery-options">
+              <label>Gallery Preview Fit</label>
+              <select class="cff-input cff-gallery-preview-fit cff-select2">
+                <option value="cover">Cover</option>
+                <option value="contain">Contain</option>
+              </select>
+              <p class="description">Choose how images fit inside gallery item previews.</p>
+            </div>
             <div class="cff-row-rules">
               <div class="cff-row-required">
                 <span class="cff-tools-toggles">
@@ -2927,7 +2533,7 @@ TEXT;
               </div>
               <div class="cff-row-hide">
                 <span class="cff-tools-toggles">
-                  <div><strong>Hide</strong><div class="description">Do not render this field in the editor.</div></div>
+                  <div><strong>Hide Section</strong><div class="description">Do not render this field in the editor or frontend section loops.</div></div>
                   <label class="cff-switch">
                     <input type="checkbox" class="cff-hide-toggle">
                     <span class="cff-slider"></span>
@@ -3153,6 +2759,14 @@ TEXT;
               <input type="number" class="cff-input cff-max-upload-mb" min="1" step="1" value="2">
               <p class="description">Default 2 MB. Set a larger value for this image or file field only.</p>
             </div>
+            <div class="cff-row-gallery-options">
+              <label>Gallery Preview Fit</label>
+              <select class="cff-input cff-gallery-preview-fit cff-select2">
+                <option value="cover">Cover</option>
+                <option value="contain">Contain</option>
+              </select>
+              <p class="description">Choose how images fit inside gallery item previews.</p>
+            </div>
             <div class="cff-row-rules">
               <div class="cff-row-required">
                 <span class="cff-tools-toggles">
@@ -3195,7 +2809,7 @@ TEXT;
               </div>
               <div class="cff-row-hide">
                 <span class="cff-tools-toggles">
-                  <div><strong>Hide</strong><div class="description">Do not render this field in the editor.</div></div>
+                  <div><strong>Hide Section</strong><div class="description">Do not render this field in the editor or frontend section loops.</div></div>
                   <label class="cff-switch">
                     <input type="checkbox" class="cff-hide-toggle">
                     <span class="cff-slider"></span>
@@ -3366,13 +2980,21 @@ TEXT;
   public function save_group($post_id, $post) {
     if (!isset($_POST['cff_group_nonce']) || !wp_verify_nonce($_POST['cff_group_nonce'], 'cff_group_save')) return;
     if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
-    if (!current_user_can('edit_post', $post_id)) return;
+    if (!current_user_can(self::admin_capability())) return;
 
     $settings = [];
+    $existing_settings = get_post_meta($post_id, '_cff_settings', true);
+    if (!is_array($existing_settings)) $existing_settings = [];
 
     $fields_json = isset($_POST['cff_fields_json']) ? wp_unslash($_POST['cff_fields_json']) : '[]';
     $fields = json_decode($fields_json, true);
+    if (is_array($fields) && isset($fields['fields']) && is_array($fields['fields'])) {
+      $fields = $fields['fields'];
+    }
     if (!is_array($fields)) $fields = [];
+    if (!$fields && !empty($existing_settings['fields']) && is_array($existing_settings['fields'])) {
+      $fields = $existing_settings['fields'];
+    }
 
     $location_json = isset($_POST['cff_location_json']) ? wp_unslash($_POST['cff_location_json']) : '[]';
     $location = json_decode($location_json, true);
@@ -3410,6 +3032,9 @@ TEXT;
       if ($type === 'image' || $type === 'file') {
         $item['file_library'] = $this->sanitize_file_library($f['file_library'] ?? 'document');
         $item['max_upload_mb'] = $this->sanitize_media_max_upload_mb($f['max_upload_mb'] ?? 2);
+      }
+      if ($type === 'gallery') {
+        $item['gallery_preview_fit'] = $this->sanitize_gallery_preview_fit($f['gallery_preview_fit'] ?? 'cover');
       }
       $aliases = $this->sanitize_field_aliases($f['aliases'] ?? [], $name);
       if ($aliases) {
@@ -3483,9 +3108,12 @@ TEXT;
     $settings['presentation'] = $presentation;
 
     update_post_meta($post_id, '_cff_settings', $settings);
+    update_post_meta($post_id, 'cff_fields_json', wp_json_encode($clean));
+    $this->group_settings_cache[$post_id] = $settings;
+    $this->published_field_groups_cache = null;
   }
 
-  private function sanitize_presentation($p) {
+  public function sanitize_presentation($p) {
     $style = in_array(($p['style'] ?? 'standard'), ['standard','seamless'], true) ? $p['style'] : 'standard';
     $position = in_array(($p['position'] ?? 'normal'), ['high','normal','side'], true) ? $p['position'] : 'normal';
     $label = in_array(($p['label_placement'] ?? 'top'), ['top','left'], true) ? $p['label_placement'] : 'top';
@@ -3497,7 +3125,7 @@ TEXT;
       'permalink','editor','excerpt','discussion','comments','revisions','slug',
       'author','format','page_attributes','featured_image','categories','tags','trackbacks',
       'custom_fields',
-      'field_actions','field_view_controls','field_view_copy','field_view_mode','copy_to_translations'
+      'field_actions','field_view_controls','field_view_copy','field_view_mode','field_reorder_view','copy_to_translations'
     ];
 
     $hide = [];
@@ -3555,6 +3183,11 @@ TEXT;
     $allowed = ['document', 'all', 'pdf', 'excel', 'word', 'image', 'video'];
     $library = sanitize_key($value ?? '');
     return in_array($library, $allowed, true) ? $library : 'document';
+  }
+
+  private function sanitize_gallery_preview_fit($value) {
+    $fit = sanitize_key($value ?? '');
+    return in_array($fit, ['cover', 'contain'], true) ? $fit : 'cover';
   }
 
   private function sanitize_repeater_row_label($value, $sub_fields = []) {
@@ -3615,6 +3248,9 @@ TEXT;
       if ($type === 'image' || $type === 'file') {
         $item['file_library'] = $this->sanitize_file_library($s['file_library'] ?? 'document');
         $item['max_upload_mb'] = $this->sanitize_media_max_upload_mb($s['max_upload_mb'] ?? 2);
+      }
+      if ($type === 'gallery') {
+        $item['gallery_preview_fit'] = $this->sanitize_gallery_preview_fit($s['gallery_preview_fit'] ?? 'cover');
       }
       $aliases = $this->sanitize_field_aliases($s['aliases'] ?? [], $name);
       if ($aliases) {
@@ -3727,6 +3363,7 @@ TEXT;
       'field_view_controls' => '.cff-field-view-controls',
       'field_view_copy' => '.cff-field-view-copy',
       'field_view_mode' => '#cff-field-view-mode, .cff-field-view-mode',
+      'field_reorder_view' => '.cff-field-reorder-view',
       'copy_to_translations' => '.cff-copy-all-action, .cff-copy-field-action, .cff-copy-field-indicator',
     ];
 
@@ -3845,6 +3482,7 @@ TEXT;
           echo '<p class="cff-metabox-reorder-note">' . esc_html__('This only changes the sequence inside this field group for the current post.', 'cff') . '</p>';
           echo '<ul class="cff-metabox-reorder-list"></ul>';
           echo '<input type="hidden" class="cff-metabox-order-input" name="cff_group_field_order[' . intval($g->ID) . ']" value="' . esc_attr(implode(',', $field_order)) . '">';
+          echo '<input type="hidden" class="cff-metabox-order-active" name="cff_group_field_order_active[' . intval($g->ID) . ']" value="0">';
           echo '</div>';
           echo '<div class="cff-metabox-fields">';
           foreach ($fields as $f) $this->render_field($post, $f);
@@ -3908,6 +3546,11 @@ TEXT;
     if (!is_array($fields) || !$fields) return [];
 
     $meta_key = '_cff_group_field_order_' . intval($group_id);
+    $custom_meta_key = '_cff_group_field_order_custom_' . intval($group_id);
+    if (!get_post_meta($post_id, $custom_meta_key, true)) {
+      return $fields;
+    }
+
     $saved = get_post_meta($post_id, $meta_key, true);
     if (is_string($saved)) {
       $saved = array_filter(array_map('sanitize_key', explode(',', $saved)));
@@ -3964,12 +3607,7 @@ TEXT;
     $cache_key = intval($post->ID ?? 0) . '_' . $post->post_type;
     if (isset($cache[$cache_key])) return $cache[$cache_key];
 
-    $groups = get_posts([
-      'post_type' => 'cff_group',
-      'post_status' => 'publish',
-      'numberposts' => -1,
-      'no_found_rows' => true,
-    ]);
+    $groups = $this->get_published_field_groups();
     $out = [];
     foreach ($groups as $g) {
       $settings = $this->get_group_settings($g->ID);
@@ -3993,7 +3631,7 @@ TEXT;
     return !empty($settings['presentation']['super_priority']);
   }
 
-  private function get_group_settings($group_id) {
+  public function get_group_settings($group_id) {
     $group_id = absint($group_id);
     if (!$group_id) return [];
     if (array_key_exists($group_id, $this->group_settings_cache)) {
@@ -4003,6 +3641,12 @@ TEXT;
     $settings = get_post_meta($group_id, '_cff_settings', true);
     $this->group_settings_cache[$group_id] = is_array($settings) ? $settings : [];
     return $this->group_settings_cache[$group_id];
+  }
+
+  public function set_group_settings_cache($group_id, $settings) {
+    $group_id = absint($group_id);
+    if (!$group_id) return;
+    $this->group_settings_cache[$group_id] = is_array($settings) ? $settings : [];
   }
 
   private function sort_field_groups_by_setting_order(&$groups) {
@@ -4028,7 +3672,7 @@ TEXT;
     $definitions = [];
     $groups = $this->get_groups_for_context($post);
     foreach ($groups as $g) {
-      $settings = get_post_meta($g->ID, '_cff_settings', true);
+      $settings = $this->get_group_settings($g->ID);
       $fields = isset($settings['fields']) && is_array($settings['fields']) ? $settings['fields'] : [];
       $fields = $this->get_ordered_group_fields_for_post($post->ID, $g->ID, $fields);
       foreach ($fields as $field) {
@@ -4105,153 +3749,19 @@ TEXT;
   public function save_content_fields($post_id, $post) { require_once __DIR__ . '/render.php'; \CFF\save_content_fields_impl($this, $post_id, $post); }
 
   public function ajax_search_posts() {
-    check_ajax_referer('cffp', 'nonce');
-    if (!current_user_can('edit_posts')) {
-      wp_send_json_error(['message' => __('Forbidden', 'cff')], 403);
-    }
-
-    $q = isset($_POST['q']) ? sanitize_text_field(wp_unslash($_POST['q'])) : '';
-    $type = sanitize_key($_POST['post_type'] ?? 'post');
-    $exclude = isset($_POST['exclude']) ? sanitize_text_field(wp_unslash($_POST['exclude'])) : '';
-    $ex = array_filter(array_map('intval', explode(',', $exclude)));
-    $posts = get_posts([
-      's' => $q,
-      'post_type' => $type,
-      'post_status' => 'publish',
-      'numberposts' => 20,
-      'post__not_in' => $ex,
-    ]);
-    $out = [];
-    foreach ($posts as $p) {
-      $pt = get_post_type($p->ID);
-      $pt_obj = $pt ? get_post_type_object($pt) : null;
-      $pt_label = $pt_obj && !empty($pt_obj->labels->singular_name) ? $pt_obj->labels->singular_name : $pt;
-      $label = trim($pt_label . ' - ' . $p->post_title);
-      $out[] = [
-        'id' => $p->ID,
-        'text' => $label,
-        'title' => $p->post_title,
-        'meta' => '',
-        'url' => get_permalink($p->ID),
-      ];
-    }
-    wp_send_json_success($out);
+    return $this->ajax_controller()->ajax_search_posts();
   }
 
   public function ajax_search_relational() {
-    check_ajax_referer('cffp', 'nonce');
-    if (!current_user_can('edit_posts')) {
-      wp_send_json_error(['message' => __('Forbidden', 'cff')], 403);
-    }
-
-    $type = sanitize_key($_POST['relational_type'] ?? 'post');
-    $subtype = sanitize_key($_POST['relational_subtype'] ?? '');
-    $query = sanitize_text_field(wp_unslash($_POST['q'] ?? ''));
-    $page = max(1, absint($_POST['page'] ?? 1));
-    $limit = 20;
-    $results = [];
-    $more = false;
-
-    if ($type === 'taxonomy') {
-      if (!$subtype || !taxonomy_exists($subtype)) wp_send_json_error(['message' => __('Invalid taxonomy.', 'cff')], 400);
-      $terms = get_terms([
-        'taxonomy' => $subtype,
-        'hide_empty' => false,
-        'search' => $query,
-        'number' => $limit + 1,
-        'offset' => ($page - 1) * $limit,
-        'orderby' => 'name',
-      ]);
-      if (is_wp_error($terms)) wp_send_json_error(['message' => $terms->get_error_message()], 400);
-      $more = count($terms) > $limit;
-      foreach (array_slice($terms, 0, $limit) as $term) {
-        $results[] = ['id' => $term->term_id, 'text' => $term->name];
-      }
-    } elseif ($type === 'user') {
-      if (!current_user_can('list_users')) {
-        wp_send_json_error(['message' => __('You are not allowed to list users.', 'cff')], 403);
-      }
-      $users = get_users([
-        'number' => $limit + 1,
-        'offset' => ($page - 1) * $limit,
-        'orderby' => 'display_name',
-        'search' => $query === '' ? '' : '*' . $query . '*',
-        'search_columns' => ['user_login', 'user_nicename', 'display_name'],
-        'fields' => ['ID', 'display_name'],
-      ]);
-      $more = count($users) > $limit;
-      foreach (array_slice($users, 0, $limit) as $user) {
-        $results[] = ['id' => $user->ID, 'text' => $user->display_name];
-      }
-    } else {
-      $post_types = ['post'];
-      if ($type === 'page') $post_types = ['page'];
-      if ($type === 'post_and_page') $post_types = ['post', 'page'];
-      if ($type === 'post_type') {
-        if (!$subtype || !post_type_exists($subtype)) wp_send_json_error(['message' => __('Invalid post type.', 'cff')], 400);
-        $post_types = [$subtype];
-      }
-      if (!in_array($type, ['post', 'page', 'post_and_page', 'post_type'], true)) {
-        wp_send_json_error(['message' => __('Invalid relational type.', 'cff')], 400);
-      }
-
-      $posts = get_posts([
-        'post_type' => $post_types,
-        'post_status' => 'publish',
-        's' => $query,
-        'posts_per_page' => $limit + 1,
-        'offset' => ($page - 1) * $limit,
-        'orderby' => 'title',
-        'order' => 'ASC',
-        'no_found_rows' => true,
-        'update_post_meta_cache' => false,
-        'update_post_term_cache' => false,
-      ]);
-      $more = count($posts) > $limit;
-      foreach (array_slice($posts, 0, $limit) as $item) {
-        $results[] = ['id' => $item->ID, 'text' => $item->post_title ?: __('(no title)', 'cff')];
-      }
-    }
-
-    wp_send_json_success(['results' => $results, 'pagination' => ['more' => $more]]);
+    return $this->ajax_controller()->ajax_search_relational();
   }
 
   public function ajax_get_templates() {
-    check_ajax_referer('cffp', 'nonce');
-    if (!current_user_can('edit_theme_options')) {
-      wp_send_json_error(['message' => __('Forbidden', 'cff')], 403);
-    }
-
-    $t = wp_get_theme();
-    $templates = $t->get_page_templates();
-
-    $out = [['id'=>'default','text'=>'Default Template','meta'=>'']];
-
-    foreach ($templates as $file => $name) {
-      $out[] = [
-        'id'   => $file,
-        'text' => $name,
-        'meta' => $file
-      ];
-    }
-
-    wp_send_json_success($out);
+    return $this->ajax_controller()->ajax_get_templates();
   }
 
   public function ajax_get_post_types() {
-    check_ajax_referer('cffp', 'nonce');
-    if (!current_user_can('edit_posts')) {
-      wp_send_json_error(['message' => __('Forbidden', 'cff')], 403);
-    }
-
-    $pts = get_post_types(['show_ui' => true], 'objects');
-
-    $out = [];
-    foreach ($pts as $pt) {
-      if ($pt->name === 'cff_group') continue;
-      $out[] = ['id'=>$pt->name, 'text'=>$pt->labels->singular_name, 'meta'=>$pt->name];
-    }
-    wp_send_json_success($out);
+    return $this->ajax_controller()->ajax_get_post_types();
   }
 
   /* =========================
@@ -4831,6 +4341,9 @@ TEXT;
       if ($type === 'datetime_picker') {
         $item['datetime_use_time'] = !array_key_exists('datetime_use_time', $f) ? true : !empty($f['datetime_use_time']);
       }
+      if ($type === 'gallery') {
+        $item['gallery_preview_fit'] = $this->sanitize_gallery_preview_fit($f['gallery_preview_fit'] ?? 'cover');
+      }
 
       $out[] = $item;
     }
@@ -5061,14 +4574,24 @@ TEXT;
 
     if ($type === 'link') {
       if (is_array($value)) {
+        $mode = sanitize_key($value['mode'] ?? '');
+        $mode = in_array($mode, ['internal', 'custom'], true) ? $mode : (!empty($value['internal_id']) ? 'internal' : 'custom');
+        $parameter = isset($value['parameter']) && is_scalar($value['parameter']) ? ltrim(trim(sanitize_text_field((string) $value['parameter'])), "?& \t\n\r\0\x0B") : '';
+        $hash = isset($value['hash']) && is_scalar($value['hash']) ? ltrim(trim(sanitize_text_field((string) $value['hash'])), "# \t\n\r\0\x0B") : '';
+
         return [
+          'mode' => $mode,
           'url' => isset($value['url']) ? (string) $value['url'] : '',
           'title' => isset($value['title']) ? (string) $value['title'] : '',
           'target' => isset($value['target']) ? (string) $value['target'] : '',
+          'internal_id' => absint($value['internal_id'] ?? 0),
+          'post_type_filter' => sanitize_key($value['post_type_filter'] ?? 'any') ?: 'any',
+          'parameter' => $parameter,
+          'hash' => $hash,
         ];
       }
       if (is_string($value) && $value !== '') {
-        return ['url' => $value, 'title' => '', 'target' => ''];
+        return ['mode' => 'custom', 'url' => $value, 'title' => '', 'target' => '', 'internal_id' => 0, 'post_type_filter' => 'any', 'parameter' => '', 'hash' => ''];
       }
       return [];
     }

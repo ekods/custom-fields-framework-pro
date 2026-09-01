@@ -169,9 +169,9 @@ jQuery(function($){
    * Media picker (tetap, aman)
    * ------------------------- */
   function renderMedia($wrap, id){
-    var $id = $wrap.find('.cff-media-id');
-    var $url = $wrap.find('.cff-media-url');
-    var $preview = $wrap.find('.cff-media-preview');
+    var $id = $wrap.children('.cff-media-id').first();
+    var $url = $wrap.children('.cff-media-url').first();
+    var $preview = $wrap.children('.cff-media-preview').first();
     var $actions = $preview.find('.cff-media-actions').detach();
 
     $id.val(id || '');
@@ -563,12 +563,22 @@ jQuery(function($){
     // can snapshot plupload settings during construction.
     setMediaFrameUploadLimit(null, maxUploadMb);
 
-    var frame = wp.media({
+    var frameOptions = {
       title: (type === 'image') ? 'Select media' : 'Select file',
       button: { text: 'Use this' },
       multiple: false,
       library: libraryTypes.length ? { type: libraryTypes } : {}
-    });
+    };
+    var frame;
+    try {
+      frame = wp.media(frameOptions);
+    } catch (err) {
+      if (window.console && typeof window.console.warn === 'function') {
+        window.console.warn('CFF media frame failed with library filter; retrying without filter.', err);
+      }
+      frameOptions.library = {};
+      frame = wp.media(frameOptions);
+    }
 
     frame.on('open', function(){
       setMediaFrameUploadLimit(frame, maxUploadMb);
@@ -620,10 +630,10 @@ jQuery(function($){
       }
 
       clearMediaNotice($wrap);
-      $wrap.find('input.cff-media-id').val(att.id).trigger('change');
-      $wrap.find('input.cff-media-url').val(att.url || '');
+      $wrap.children('input.cff-media-id').first().val(att.id).trigger('change');
+      $wrap.children('input.cff-media-url').first().val(att.url || '');
 
-      var $preview = $wrap.find('.cff-media-preview');
+      var $preview = $wrap.children('.cff-media-preview').first();
       var $actions = $preview.find('.cff-media-actions').detach();
       $preview.empty();
 
@@ -758,7 +768,7 @@ jQuery(function($){
   /* -------------------------
    * Link picker (internal/custom)
    * ------------------------- */
-   function initLinkPickers($scope){
+  function initLinkPickers($scope){
      $scope = $scope && $scope.length ? $scope : $(document);
 
      $scope.find('.cff-link-picker').each(function(){
@@ -771,6 +781,8 @@ jQuery(function($){
        var $postTypeFilter = $wrap.find('.cff-link-post-type-select');
        var $internalId = $wrap.find('.cff-link-internal-id');
        var $url        = $wrap.find('input[name$="[url]"]');
+       var $parameter  = $wrap.find('.cff-link-parameter');
+       var $hash       = $wrap.find('.cff-link-hash');
 
        // 🔒 TITLE INPUTS — berdiri sendiri
        var $internalTitle = $wrap.find('.cff-title-internal');
@@ -788,6 +800,12 @@ jQuery(function($){
          // disable title yang tidak aktif
          if ($internalTitle.length) $internalTitle.prop('disabled', !isInternal);
          if ($customTitle.length)   $customTitle.prop('disabled', isInternal);
+         if ($parameter.length) $parameter.prop('disabled', !isInternal);
+         if ($hash.length) $hash.prop('disabled', !isInternal);
+
+         if (isInternal) {
+           updateInternalUrl();
+         }
 
          // custom mode: kosongkan internal_id & select
          if (!isInternal) {
@@ -802,9 +820,44 @@ jQuery(function($){
          return ($postTypeFilter.val() || $select.data('post-type') || 'any');
        }
 
+       function cleanParameter(value){
+         return String(value || '').trim().replace(/^[?&\s]+/, '');
+       }
+
+       function cleanHash(value){
+         return String(value || '').trim().replace(/^[#\s]+/, '');
+       }
+
+       function buildInternalUrl(baseUrl){
+         var url = String(baseUrl || '');
+         var parameter = cleanParameter($parameter.val());
+         var hash = cleanHash($hash.val());
+
+         if (hash) {
+           url = url.replace(/#.*$/, '');
+         }
+
+         if (parameter) {
+           url += (url.indexOf('?') === -1 ? '?' : '&') + parameter;
+         }
+
+         if (hash) {
+           url += '#' + hash;
+         }
+
+         return url;
+       }
+
+       function updateInternalUrl(){
+         var baseUrl = String($select.data('base-url') || $select.attr('data-base-url') || '');
+         if (!baseUrl) return;
+         $url.val(buildInternalUrl(baseUrl));
+       }
+
        function clearInternalSelection(){
          $internalId.val('');
          if ($internalTitle.length) $internalTitle.val('');
+         $select.attr('data-base-url', '').data('base-url', '');
          if ($select.data('select2')) {
            $select.val(null).trigger('change');
          } else {
@@ -855,7 +908,10 @@ jQuery(function($){
        $select.on('select2:select.cffLink', function(e){
          var data = e.params && e.params.data ? e.params.data : {};
          $internalId.val(data.id || '');
-         if (data.url) $url.val(data.url);
+         if (data.url) {
+           $select.attr('data-base-url', data.url).data('base-url', data.url);
+           $url.val(buildInternalUrl(data.url));
+         }
 
          // auto pindah ke internal mode
          $modeInputs.filter('[value="internal"]').prop('checked', true);
@@ -864,6 +920,7 @@ jQuery(function($){
 
        $select.on('select2:clear.cffLink', function(){
          $internalId.val('');
+         $select.attr('data-base-url', '').data('base-url', '');
        });
 
        $postTypeFilter.off('.cffLink');
@@ -881,8 +938,108 @@ jQuery(function($){
          var m = $modeInputs.filter(':checked').val() || 'custom';
          applyMode(m);
        });
+
+       $parameter.add($hash).off('.cffLink');
+       $parameter.add($hash).on('input.cffLink change.cffLink', function(){
+         if (($modeInputs.filter(':checked').val() || 'custom') !== 'internal') return;
+         updateInternalUrl();
+       });
      });
    }
+
+  function getFieldTitle($field){
+    var label = $.trim($field.find('> .cff-label label, > .postbox-header .cff-hndle-label').first().text() || '');
+    if (label) return label.replace(/\s*\*$/, '');
+    return String($field.data('field-name') || $field.attr('data-field-name') || '');
+  }
+
+  function syncMetaboxOrderInput($metabox){
+    var order = [];
+    $metabox.find('> .cff-metabox-reorder .cff-metabox-reorder-list > .cff-metabox-reorder-item').each(function(){
+      var name = String($(this).attr('data-field-name') || '');
+      if (name) order.push(name);
+    });
+    $metabox.find('> .cff-metabox-reorder .cff-metabox-order-input').val(order.join(','));
+  }
+
+  function markMetaboxOrderActive($metabox){
+    $metabox.find('> .cff-metabox-reorder .cff-metabox-order-active').val('1');
+  }
+
+  function buildMetaboxReorderList($metabox){
+    var $list = $metabox.find('> .cff-metabox-reorder .cff-metabox-reorder-list').first();
+    if (!$list.length) return;
+
+    $list.empty();
+    $metabox.find('> .cff-metabox-fields > .cff-field').each(function(){
+      var $field = $(this);
+      var name = String($field.attr('data-field-name') || '');
+      if (!name) return;
+
+      var type = $.trim($field.find('> .cff-label .cff-meta-badge.type, > .postbox-header .cff-meta-badge.type').first().text() || '');
+      var title = getFieldTitle($field);
+      var $item = $('<li/>', {
+        'class': 'cff-metabox-reorder-item',
+        'data-field-name': name
+      });
+
+      $('<span/>', {
+        'class': 'dashicons dashicons-menu cff-metabox-reorder-handle',
+        'aria-hidden': 'true'
+      }).appendTo($item);
+      $('<span/>', {
+        'class': 'cff-metabox-reorder-title',
+        text: title || name
+      }).appendTo($item);
+      $('<code/>', {
+        'class': 'cff-metabox-reorder-name',
+        text: name
+      }).appendTo($item);
+      if (type) {
+        $('<span/>', {
+          'class': 'cff-metabox-reorder-type',
+          text: type
+        }).appendTo($item);
+      }
+
+      $list.append($item);
+    });
+
+    if ($.fn.sortable) {
+      if ($list.data('ui-sortable')) {
+        try { $list.sortable('destroy'); } catch(e){}
+      }
+      $list.sortable({
+        handle: '.cff-metabox-reorder-handle',
+        items: '> .cff-metabox-reorder-item',
+        update: function(){
+          markMetaboxOrderActive($metabox);
+          syncMetaboxOrderInput($metabox);
+          $metabox.closest('form').trigger('change');
+        }
+      });
+    }
+
+    syncMetaboxOrderInput($metabox);
+  }
+
+  function setMetaboxView($metabox, mode){
+    var reorder = mode === 'reorder';
+    $metabox.find('> .cff-metabox-reorder').attr('aria-hidden', reorder ? 'false' : 'true').toggle(reorder);
+    $metabox.find('> .cff-metabox-fields').toggle(!reorder);
+    if (reorder) {
+      markMetaboxOrderActive($metabox);
+      syncMetaboxOrderInput($metabox);
+    }
+  }
+
+  function initMetaboxReorder($scope){
+    ($scope && $scope.length ? $scope : $(document)).find('.cff-metabox').each(function(){
+      var $metabox = $(this);
+      buildMetaboxReorderList($metabox);
+      setMetaboxView($metabox, $metabox.find('> .cff-metabox-view .cff-field-view-mode').val() || 'builder');
+    });
+  }
 
   /* -------------------------
    * Field accordion
@@ -1277,6 +1434,7 @@ jQuery(function($){
   ensureFlexibleRowIds($(document));
   window.cffInitWysiwyg($(document)); // sekali saja
   initLinkPickers($(document));
+  initMetaboxReorder($(document));
 
   $('.cff-repeater').each(function(){
     var $rep = $(this);
@@ -1382,6 +1540,22 @@ jQuery(function($){
           reindexFlexible($flex);
         }
       });
+    });
+
+  $(document)
+    .off('change.cffSectionHide', '.cff-section-hide-toggle')
+    .on('change.cffSectionHide', '.cff-section-hide-toggle', function(){
+      var hidden = $(this).is(':checked');
+      var $field = $(this).closest('.cff-field');
+      $field.toggleClass('cff-section-hidden', hidden);
+      $field.children('[data-cff-section-body="1"]').attr('style', hidden ? 'display:none!important' : '');
+      $field.closest('form').trigger('change');
+    });
+
+  $(document)
+    .off('change.cffMetaboxView', '.cff-field-view-mode--metabox')
+    .on('change.cffMetaboxView', '.cff-field-view-mode--metabox', function(){
+      setMetaboxView($(this).closest('.cff-metabox'), $(this).val() || 'builder');
     });
 
   /* -------------------------

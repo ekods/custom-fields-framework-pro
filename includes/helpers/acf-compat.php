@@ -38,6 +38,74 @@ function cff_get_cached_post_meta($post_id, $meta_key, $single = true) {
   return $value === '' ? [] : [$value];
 }
 
+function cff_hidden_sections_meta_is_local($post_id) {
+  $post_id = absint($post_id);
+  if (!$post_id) return false;
+  $marker = get_post_meta($post_id, '_cff_hidden_sections_local', true);
+  if ($marker === '' || $marker === null || $marker === false) return false;
+
+  if (function_exists('pll_get_post_language')) {
+    $lang = pll_get_post_language($post_id, 'slug');
+    if (is_string($lang) && $lang !== '') {
+      if ((string) $marker === $lang) return true;
+
+      if ((string) $marker === '1' && function_exists('pll_default_language')) {
+        $default_lang = pll_default_language('slug');
+        return is_string($default_lang) && $default_lang !== '' && $lang === $default_lang;
+      }
+
+      return false;
+    }
+  }
+
+  return !empty($marker);
+}
+
+function cff_should_honor_hidden_sections($post_id) {
+  $post_id = absint($post_id);
+  if (!$post_id) return false;
+  if (cff_hidden_sections_meta_is_local($post_id)) return true;
+
+  if (function_exists('pll_get_post_language') && function_exists('pll_default_language')) {
+    $lang = pll_get_post_language($post_id, 'slug');
+    $default_lang = pll_default_language('slug');
+    if (is_string($lang) && $lang !== '' && is_string($default_lang) && $default_lang !== '' && $lang !== $default_lang) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function cff_get_post_hidden_sections($post_id) {
+  $post_id = absint($post_id);
+  if (!$post_id || !cff_should_honor_hidden_sections($post_id)) {
+    return [];
+  }
+
+  $hidden = get_post_meta($post_id, '_cff_hidden_sections', true);
+  return is_array($hidden) ? $hidden : [];
+}
+
+function cff_field_is_hidden_for_post($post_id, $field_name) {
+  $post_id = absint($post_id);
+  $field_name = sanitize_key($field_name);
+  if (!$post_id || !$field_name) return false;
+
+  $hidden = cff_get_post_hidden_sections($post_id);
+  if (!is_array($hidden) || !$hidden) return false;
+  if (!empty($hidden[$field_name])) return true;
+
+  foreach (array_keys($hidden) as $hidden_name) {
+    $hidden_name = sanitize_key($hidden_name);
+    if (!$hidden_name || empty($hidden[$hidden_name])) continue;
+    $aliases = cff_get_field_aliases($hidden_name);
+    if (in_array($field_name, $aliases, true)) return true;
+  }
+
+  return false;
+}
+
 function cff_get_cached_group_ids($post_status = ['publish']) {
   static $cache = [];
 
@@ -138,6 +206,21 @@ function cff_format_value($val, $format_value = true) {
   if (is_array($val)) {
     $out = [];
     foreach ($val as $k => $v) {
+      if (
+        is_string($k)
+        && array_key_exists($k . '_url', $val)
+        && ($v === null || $v === '' || (is_numeric($v) && (int) $v === 0))
+      ) {
+        continue;
+      }
+
+      if (is_string($k) && substr($k, -4) === '_url') {
+        $media_key = substr($k, 0, -4);
+        if (array_key_exists($media_key, $val)) {
+          continue;
+        }
+      }
+
       if (is_array($v)) {
         $out[$k] = cff_format_value($v, true);
         continue;
@@ -148,6 +231,10 @@ function cff_format_value($val, $format_value = true) {
         if ($id) {
           $url_key = $k . '_url';
           $url = (isset($val[$url_key]) && is_string($val[$url_key])) ? $val[$url_key] : '';
+          if ($url && function_exists('attachment_url_to_postid')) {
+            $url_id = absint(attachment_url_to_postid($url));
+            if ($url_id) $id = $url_id;
+          }
           if (!$url) $url = wp_get_attachment_url($id);
           if ($url) {
             $out[$k] = [
@@ -185,6 +272,8 @@ if (!function_exists('get_field')) {
     if (!$selector) return null;
     $post_id = $post_id ? $post_id : get_the_ID();
     if (!$post_id) return null;
+    if (cff_field_is_hidden_for_post($post_id, $selector)) return null;
+
     $val = cff_get_cached_post_meta($post_id, cff_meta_key($selector), true);
     if (!cff_value_not_empty($val)) {
       $aliases = cff_get_field_aliases($selector);
@@ -295,8 +384,10 @@ if (!function_exists(__NAMESPACE__ . '\cff_get_ordered_fields')) {
     $settings = cff_get_cached_group_settings($group_id);
     $fields = isset($settings['fields']) && is_array($settings['fields']) ? $settings['fields'] : [];
     if (!$fields) return [];
+    $hidden_sections = cff_get_post_hidden_sections($post_id);
 
-    $saved = cff_get_cached_post_meta($post_id, '_cff_group_field_order_' . $group_id, true);
+    $has_custom_order = (bool) cff_get_cached_post_meta($post_id, '_cff_group_field_order_custom_' . $group_id, true);
+    $saved = $has_custom_order ? cff_get_cached_post_meta($post_id, '_cff_group_field_order_' . $group_id, true) : [];
     if (is_string($saved)) {
       $saved = array_filter(array_map('sanitize_key', explode(',', $saved)));
     }
@@ -344,13 +435,19 @@ if (!function_exists(__NAMESPACE__ . '\cff_get_ordered_fields')) {
     }
 
     if (!$include_values) {
-      return $fields;
+      return array_values(array_filter($fields, function($field) use ($hidden_sections) {
+        if (!is_array($field) || !empty($field['hide'])) return false;
+        $name = sanitize_key($field['name'] ?? '');
+        return $name && empty($hidden_sections[$name]);
+      }));
     }
 
     $out = [];
     foreach ($fields as $field) {
+      if (!is_array($field) || !empty($field['hide'])) continue;
       $name = sanitize_key($field['name'] ?? '');
       if (!$name) continue;
+      if (!empty($hidden_sections[$name])) continue;
       $field['value'] = get_field($name, $post_id, $format_value);
       $out[] = $field;
     }
@@ -372,6 +469,7 @@ if (!function_exists(__NAMESPACE__ . '\cff_render_ordered_fields')) {
 
     echo '<div class="cff-frontend-fields">';
     foreach ($items as $item) {
+      if (!empty($item['hide'])) continue;
       $name = sanitize_key($item['name'] ?? '');
       if (!$name) continue;
 
@@ -469,19 +567,33 @@ if (!function_exists(__NAMESPACE__ . '\cff_get_ordered_field_names')) {
         $group_id_current = (int) $group_id_current;
         $settings = cff_get_cached_group_settings($group_id_current);
         $fields = isset($settings['fields']) && is_array($settings['fields']) ? $settings['fields'] : [];
+        $hidden_sections = cff_get_post_hidden_sections($post_id);
 
         $field_names = [];
+        $hidden_candidate_names = [];
         foreach ($fields as $field) {
+          if (!is_array($field)) continue;
           $name = sanitize_key($field['name'] ?? '');
-          if ($name) $field_names[] = $name;
+          if (!$name) continue;
+          if (!empty($field['hide']) || !empty($hidden_sections[$name])) {
+            $hidden_names = array_merge([$name], array_map('sanitize_key', (array) ($field['aliases'] ?? [])));
+            foreach (array_filter(array_unique($hidden_names)) as $hidden_name) {
+              $matched_hidden = $match_candidate($hidden_name);
+              if ($matched_hidden) $hidden_candidate_names[] = $matched_hidden;
+            }
+            continue;
+          }
+          $field_names[] = $name;
         }
+        $hidden_candidate_names = array_unique($hidden_candidate_names);
         $field_score = count(array_intersect($candidate_names, array_unique($field_names)));
         if ($field_score > $best_field_score) {
           $best_field_score = $field_score;
           $best_group_by_fields = $group_id_current;
         }
 
-        $saved = cff_get_cached_post_meta($post_id, '_cff_group_field_order_' . $group_id_current, true);
+        $has_custom_order = (bool) cff_get_cached_post_meta($post_id, '_cff_group_field_order_custom_' . $group_id_current, true);
+        $saved = $has_custom_order ? cff_get_cached_post_meta($post_id, '_cff_group_field_order_' . $group_id_current, true) : [];
         if (is_string($saved)) {
           $saved = array_filter(array_map('sanitize_key', explode(',', $saved)));
         } elseif (is_array($saved)) {
@@ -493,6 +605,7 @@ if (!function_exists(__NAMESPACE__ . '\cff_get_ordered_field_names')) {
         $saved_filtered = [];
         foreach ($saved as $name) {
           $matched = $match_candidate($name);
+          if ($matched && in_array($matched, $hidden_candidate_names, true)) continue;
           if ($matched && !in_array($matched, $saved_filtered, true)) {
             $saved_filtered[] = $matched;
           }
@@ -517,6 +630,7 @@ if (!function_exists(__NAMESPACE__ . '\cff_get_ordered_field_names')) {
     $defs = cff_get_ordered_fields($post_id, $group_id, false);
     $ordered = [];
     foreach ((array) $defs as $def) {
+      if (!is_array($def) || !empty($def['hide'])) continue;
       $name = sanitize_key($def['name'] ?? '');
       $matched = $match_candidate($name);
       if ($matched && !in_array($matched, $ordered, true)) {

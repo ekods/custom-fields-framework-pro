@@ -18,7 +18,8 @@ class Rest_Fields {
       if (!$post_type) continue;
       if (in_array($post_type, ['cff_group', 'revision'], true)) continue;
 
-      $writable = (bool) apply_filters('cff_rest_fields_writable', true, $post_type);
+      $writable_default = !empty(get_option('cffp_rest_writes_enabled', 1));
+      $writable = (bool) apply_filters('cff_rest_fields_writable', $writable_default, $post_type);
       $schema_properties = $this->build_schema_properties_for_post_type($post_type);
 
       register_rest_field($post_type, 'cff', [
@@ -96,7 +97,16 @@ class Rest_Fields {
 
       $sanitized = $this->sanitize_field_value($definitions[$field_name], $raw_field_value);
       $meta_key = $this->plugin->meta_key($field_name);
-      if ($sanitized === null || $sanitized === '' || (is_array($sanitized) && empty($sanitized))) {
+      $is_media_field = in_array(sanitize_key($definitions[$field_name]['type'] ?? ''), ['image', 'file'], true);
+      if ($is_media_field) {
+        delete_post_meta($post_id, $this->plugin->meta_key($field_name . '_url'));
+      }
+      if (
+        $sanitized === null
+        || $sanitized === ''
+        || (is_array($sanitized) && empty($sanitized))
+        || ($is_media_field && !absint($sanitized))
+      ) {
         delete_post_meta($post_id, $meta_key);
       } else {
         update_post_meta($post_id, $meta_key, $sanitized);
@@ -115,17 +125,12 @@ class Rest_Fields {
       'post_type' => $post_type,
     ];
 
-    $groups = get_posts([
-      'post_type' => 'cff_group',
-      'post_status' => 'publish',
-      'numberposts' => -1,
-      'no_found_rows' => true,
-    ]);
+    $groups = $this->plugin->get_published_field_groups();
     $this->sort_groups_by_setting_order($groups);
 
     $definitions = [];
     foreach ($groups as $group) {
-      $settings = get_post_meta($group->ID, '_cff_settings', true);
+      $settings = $this->plugin->get_group_settings($group->ID);
       $location = is_array($settings['location'] ?? null) ? $settings['location'] : [];
       if (!$this->plugin->rest_match_location($probe, $location)) continue;
       foreach ((array) ($settings['fields'] ?? []) as $field) {
@@ -140,8 +145,8 @@ class Rest_Fields {
     if (!is_array($groups) || count($groups) < 2) return;
 
     usort($groups, function($a, $b) {
-      $settings_a = get_post_meta($a->ID ?? 0, '_cff_settings', true);
-      $settings_b = get_post_meta($b->ID ?? 0, '_cff_settings', true);
+      $settings_a = $this->plugin->get_group_settings($a->ID ?? 0);
+      $settings_b = $this->plugin->get_group_settings($b->ID ?? 0);
       $order_a = is_array($settings_a) ? intval($settings_a['presentation']['order'] ?? 0) : 0;
       $order_b = is_array($settings_b) ? intval($settings_b['presentation']['order'] ?? 0) : 0;
       if ($order_a !== $order_b) return $order_a <=> $order_b;
@@ -199,9 +204,14 @@ class Rest_Fields {
     if ($type === 'link') {
       $schema['type'] = 'object';
       $schema['properties'] = [
+        'mode' => ['type' => 'string', 'enum' => ['internal', 'custom']],
         'url' => ['type' => 'string'],
         'title' => ['type' => 'string'],
         'target' => ['type' => 'string'],
+        'internal_id' => ['type' => 'integer'],
+        'post_type_filter' => ['type' => 'string'],
+        'parameter' => ['type' => 'string'],
+        'hash' => ['type' => 'string'],
       ];
       return $schema;
     }

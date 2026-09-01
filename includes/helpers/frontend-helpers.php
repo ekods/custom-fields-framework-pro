@@ -18,6 +18,10 @@ if (!function_exists(__NAMESPACE__ . '\cff_get_value')) {
     $post_id = cff_resolve_post_id($post_id);
     if (!$post_id) return $default;
 
+    if (function_exists(__NAMESPACE__ . '\cff_field_is_hidden_for_post') && cff_field_is_hidden_for_post($post_id, $field_name)) {
+      return $default;
+    }
+
     $value = function_exists(__NAMESPACE__ . '\get_field')
       ? get_field($field_name, $post_id, $format_value)
       : get_post_meta($post_id, '_cff_' . $field_name, true);

@@ -253,11 +253,14 @@ class Tools_Page {
     $action = sanitize_key($_POST['cff_tools_action'] ?? '');
 
     if ($action === 'import' && !empty($_FILES['cff_json']['tmp_name'])) {
-      $raw = file_get_contents($_FILES['cff_json']['tmp_name']);
-      $data = json_decode($raw, true);
+      $upload = $_FILES['cff_json'];
+      $data = $this->decode_import_upload($upload);
 
       if (!is_array($data)) {
-        add_settings_error('cff_tools', 'badjson', __('Invalid JSON file.', 'cff'), 'error');
+        return;
+      }
+
+      if (!$this->validate_import_payload($data)) {
         return;
       }
 
@@ -295,6 +298,87 @@ class Tools_Page {
       $migrated = $this->plugin->tools_migrate_from_acf();
       add_settings_error('cff_tools', 'migrated', sprintf(__('ACF migration finished. Imported %d field groups.', 'cff'), intval($migrated)), 'updated');
     }
+  }
+
+  private function decode_import_upload($upload) {
+    if (!is_array($upload) || empty($upload['tmp_name'])) {
+      add_settings_error('cff_tools', 'missing_upload', __('No import file was uploaded.', 'cff'), 'error');
+      return null;
+    }
+
+    $error = isset($upload['error']) ? intval($upload['error']) : UPLOAD_ERR_OK;
+    if ($error !== UPLOAD_ERR_OK) {
+      add_settings_error('cff_tools', 'upload_error', __('The import file could not be uploaded.', 'cff'), 'error');
+      return null;
+    }
+
+    $tmp_name = (string) $upload['tmp_name'];
+    if (!is_readable($tmp_name)) {
+      add_settings_error('cff_tools', 'unreadable_upload', __('The import file is not readable.', 'cff'), 'error');
+      return null;
+    }
+
+    $max_size = (int) apply_filters('cff_import_max_file_size', 5 * 1024 * 1024);
+    $size = isset($upload['size']) ? intval($upload['size']) : (file_exists($tmp_name) ? filesize($tmp_name) : 0);
+    if ($max_size > 0 && $size > $max_size) {
+      add_settings_error('cff_tools', 'upload_too_large', __('The import file is too large.', 'cff'), 'error');
+      return null;
+    }
+
+    $filename = isset($upload['name']) ? (string) $upload['name'] : '';
+    if ($filename !== '' && strtolower(pathinfo($filename, PATHINFO_EXTENSION)) !== 'json') {
+      add_settings_error('cff_tools', 'bad_extension', __('Import requires a JSON file.', 'cff'), 'error');
+      return null;
+    }
+
+    $raw = file_get_contents($tmp_name);
+    if (!is_string($raw) || trim($raw) === '') {
+      add_settings_error('cff_tools', 'empty_file', __('The import file is empty.', 'cff'), 'error');
+      return null;
+    }
+
+    $data = json_decode($raw, true);
+    if (!is_array($data)) {
+      $message = function_exists('json_last_error_msg') ? json_last_error_msg() : __('Invalid JSON file.', 'cff');
+      add_settings_error('cff_tools', 'badjson', sprintf(__('Invalid JSON file: %s', 'cff'), $message), 'error');
+      return null;
+    }
+
+    return $data;
+  }
+
+  private function validate_import_payload($data) {
+    if ($this->plugin->tools_looks_like_acf_json($data)) {
+      return true;
+    }
+
+    $has_known_section = false;
+    foreach (['post_types', 'taxonomies', 'field_groups'] as $section) {
+      if (!array_key_exists($section, $data)) {
+        continue;
+      }
+      if (!is_array($data[$section])) {
+        add_settings_error('cff_tools', 'invalid_' . $section, sprintf(__('Import section "%s" must be an array.', 'cff'), $section), 'error');
+        return false;
+      }
+      $has_known_section = true;
+    }
+
+    if (!$has_known_section) {
+      add_settings_error('cff_tools', 'unknown_payload', __('The JSON file does not look like a CFF export or supported ACF JSON file.', 'cff'), 'error');
+      return false;
+    }
+
+    if (isset($data['field_groups'])) {
+      foreach ((array) $data['field_groups'] as $group) {
+        if (!is_array($group) || !isset($group['settings']) || !is_array($group['settings'])) {
+          add_settings_error('cff_tools', 'invalid_field_groups', __('Field group imports must include settings for each group.', 'cff'), 'error');
+          return false;
+        }
+      }
+    }
+
+    return true;
   }
 
   private function render_export_toggle($name, $label, $target, $items, $input_name) {

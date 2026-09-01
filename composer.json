@@ -3,11 +3,7 @@
   "description": "Development tooling for Custom Fields Framework Pro",
   "type": "wordpress-plugin",
   "license": "proprietary",
-  "require-dev": {
-    "phpunit/phpunit": "^9.6"
-  },
   "scripts": {
-    "test": "phpunit",
     "lint": "find includes -name '*.php' -print0 | xargs -0 -n1 php -l",
     "release:zip": "bash scripts/build-release-zip.sh"
   }

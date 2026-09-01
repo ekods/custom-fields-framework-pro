@@ -130,7 +130,7 @@ Kemampuan utama:
 
 Plugin juga membuat submenu reorder per post type secara dinamis.
 
-Pada panel **Editor UI Settings**, Anda juga bisa menentukan apakah data CFF tetap disimpan atau dihapus saat plugin di-uninstall.
+Pada panel **Editor UI Settings**, Anda juga bisa mengatur Gutenberg Sidebar, akses tulis REST API, dan apakah data CFF tetap disimpan atau dihapus saat plugin di-uninstall.
 
 ### 1.4 Instalasi
 
@@ -140,7 +140,29 @@ Pada panel **Editor UI Settings**, Anda juga bisa menentukan apakah data CFF tet
 4. Buat Field Group lalu atur location rules.
 5. Buka editor post/page/CPT yang sesuai dan isi field.
 
-### 1.5 Quick Start
+### 1.5 Build Release ZIP
+
+Jalankan dari root plugin `custom-fields-framework-pro`:
+
+```bash
+cd plugins/custom-fields-framework-pro
+bash scripts/build-release-zip.sh
+```
+
+Output default akan dibuat di:
+
+```text
+plugins/custom-fields-framework-pro.zip
+```
+
+Untuk menentukan output manual:
+
+```bash
+cd plugins/custom-fields-framework-pro
+bash scripts/build-release-zip.sh /tmp/custom-fields-framework-pro.zip
+```
+
+### 1.6 Quick Start
 
 1. Buat Field Group baru.
 2. Tambahkan field (`text`, `image`, `repeater`, dll).
@@ -149,7 +171,7 @@ Pada panel **Editor UI Settings**, Anda juga bisa menentukan apakah data CFF tet
 5. Edit konten target dan isi nilai field.
 6. Ambil nilai di theme lewat helper function.
 
-### 1.6 API Helper Frontend
+### 1.7 API Helper Frontend
 
 Dari `includes/helpers/acf-compat.php`:
 - `get_field($selector, $post_id = false, $format_value = true)`
@@ -195,7 +217,7 @@ Shortcode di frontend PHP:
 - `echo do_shortcode('[cff_item name="hero_media" class="hero-media" alt="Hero media"]');`
 - `echo do_shortcode('[cff_items group_id="123"]<section>[cff_item]</section>[/cff_items]');`
 
-### 1.7 Contoh Penggunaan (Frontend Helper)
+### 1.8 Contoh Penggunaan (Frontend Helper)
 
 ```php
 <?php
@@ -294,7 +316,7 @@ Contoh cross-page + bilingual Polylang:
 [/cff_items]
 ```
 
-### 1.7.1 Rekomendasi Optimasi Frontend
+### 1.8.1 Rekomendasi Optimasi Frontend
 
 - Untuk field tunggal, utamakan helper langsung seperti `cff_get_text()` atau shortcode `[cff_value]`; jangan scan semua group jika tidak perlu.
 - Untuk layout yang mengikuti reorder, pakai `[cff_loop group_id="..."]` bila `group_id` sudah diketahui. Ini lebih ringan dibanding auto-detect.
@@ -304,7 +326,7 @@ Contoh cross-page + bilingual Polylang:
   - daftar `cff_group`
 - Hindari memanggil loop reorder berulang untuk post yang sama dalam satu template. Ambil sekali, lalu render.
 
-### 1.8 REST API (`cff`)
+### 1.9 REST API (`cff`)
 
 - Field REST `cff` otomatis tersedia pada post type yang `show_in_rest = true`.
 - Endpoint mengikuti post type REST default WordPress.
@@ -338,7 +360,9 @@ Filter yang tersedia:
 - `cff_rest_fields_format_value` untuk mengatur format output value.
 - `cff_rest_fields_readonly` untuk menandai field tertentu readonly saat update.
 
-### 1.9 Gutenberg Sidebar (Opsional)
+Write access REST API juga bisa dimatikan dari `Custom Fields > Global Settings > Editor UI Settings` lewat toggle `REST API Writes`. Toggle ini menyimpan option `cffp_rest_writes_enabled`.
+
+### 1.10 Gutenberg Sidebar (Opsional)
 
 - Buka `Custom Fields > Global Settings`.
 - Pada panel **Editor UI Settings**, aktifkan:
@@ -354,7 +378,7 @@ add_filter('cff_block_sidebar_enabled', function($enabled, $screen){
 }, 10, 2);
 ```
 
-### 1.10 Alur Import/Export (Disarankan)
+### 1.11 Alur Import/Export (Disarankan)
 
 1. Export dari site sumber (`Tools > Export`).
 2. Import JSON di site tujuan (`Tools > Import`).
@@ -362,7 +386,7 @@ add_filter('cff_block_sidebar_enabled', function($enabled, $screen){
 4. Verifikasi location rules dan render field di editor.
 5. Jika migrasi value ACF, gunakan alur export SQL dan eksekusi dengan aman.
 
-### 1.11 Troubleshooting
+### 1.12 Troubleshooting
 
 - URL jadi 404 setelah ubah CPT/taxonomy: re-save `Settings > Permalinks`.
 - Field group tidak muncul: cek location rules dan kecocokan post type/template.
@@ -370,9 +394,9 @@ add_filter('cff_block_sidebar_enabled', function($enabled, $screen){
 - Media picker bermasalah: cek konflik script/style dari plugin optimasi.
 - Hasil migrasi ACF belum lengkap: tinjau field type ACF yang tidak punya mapping langsung lalu sesuaikan manual.
 
-### 1.12 Versi
+### 1.13 Versi
 
-- Versi plugin saat ini: `2.5.0`
+- Versi plugin saat ini: `2.5.17`
 
 ---
 
@@ -620,6 +644,8 @@ Available filters:
 - `cff_rest_fields_format_value` to control formatted output value.
 - `cff_rest_fields_readonly` to make specific fields readonly on update.
 
+REST API write access can also be disabled from `Custom Fields > Global Settings > Editor UI Settings` with the `REST API Writes` toggle. This stores the `cffp_rest_writes_enabled` option.
+
 ### 2.9 Gutenberg Sidebar (Optional)
 
 - Open `Custom Fields > Global Settings`.
@@ -654,4 +680,4 @@ add_filter('cff_block_sidebar_enabled', function($enabled, $screen){
 
 ### 2.12 Version
 
-- Current plugin version: `2.5.0`
+- Current plugin version: `2.5.17`
