@@ -39,11 +39,19 @@
   flex-wrap: wrap;
   gap: 12px;
   row-gap: 6px;
-  align-items: flex-start;
+  align-items: center;
   border-radius: 12px;
   border: 1px solid #dfe7f4;
   box-sizing: border-box;
   width: 100%;
+}
+
+.cff-field-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1 1 160px;
+  min-width: 0;
 }
 
 .cff-label-head {
@@ -58,6 +66,7 @@
   font-weight: 700;
   margin: 0;
   font-size: 15px;
+  overflow-wrap: anywhere;
 }
 
 .cff-label-meta {
@@ -65,7 +74,7 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  margin-left: auto;
+  margin: 0;
 }
 
 .cff-meta-badge {
@@ -79,9 +88,19 @@
   font-size: 11px;
   font-weight: 700;
   line-height: 1.2;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
-.cff-section-hide-switch {
+.cff-meta-badge.name {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.cff-section-hide-switch.cff-switch {
   width: auto;
   min-width: 0;
   height: 24px;
@@ -89,6 +108,8 @@
   align-items: center;
   gap: 6px;
   vertical-align: middle;
+  margin: 0;
+  cursor: pointer;
 }
 
 .cff-section-hide-switch input {
@@ -128,6 +149,11 @@
 
 .cff-section-hide-switch input:checked + .cff-slider:before {
   transform: translateX(20px);
+}
+
+.cff-section-hide-switch input:focus-visible + .cff-slider {
+  outline: 2px solid var(--cff-editor-primary, #135e96);
+  outline-offset: 3px;
 }
 
 .cff-section-hide-label {
@@ -590,10 +616,12 @@
   margin: 0;
   font-weight: 600;
   font-size: 16px;
+  min-width: 0;
 }
 
 .cff-field.cff-postbox .postbox-header .handle-actions {
   margin-left: auto;
+  flex: 0 0 auto;
 }
 
 .cff-field.cff-postbox .postbox-header .cff-handlediv {
@@ -604,6 +632,27 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+}
+
+.cff-field.cff-postbox.closed .cff-acc-toggle:before {
+  content: "\f140";
+}
+
+.cff-field.cff-postbox:not(.closed) .cff-acc-toggle:before {
+  content: "\f142";
+}
+
+.cff-field.cff-postbox .cff-handlediv:hover {
+  border-color: #135e96;
+  background: #eef4ff;
+}
+
+.cff-field.cff-postbox .cff-handlediv:focus-visible {
+  outline: 2px solid #135e96;
+  outline-offset: 2px;
 }
 
 .cff-field.cff-postbox .inside {
@@ -1561,30 +1610,33 @@
 
 .cff-field.cff-postbox .postbox-header {
   box-shadow: 0 4px 10px rgba(15, 23, 42, .055);
-  padding: 10px 12px;
+  padding: 12px 14px;
 }
 
 .cff-field.cff-postbox .postbox-header .cff-hndle {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  width: 100%;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  flex: 1 1 0;
 }
 
 .cff-hndle-label {
   font-size: 15px;
   line-height: 1.35;
   color: #132238;
+  overflow-wrap: anywhere;
 }
 
 .cff-hndle-meta {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-  min-width: 140px;
-  text-align: right;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  text-align: left;
 }
 
 .cff-hndle-meta .description {
@@ -1654,14 +1706,28 @@
   }
 
   .cff-field.cff-postbox .postbox-header .cff-hndle {
-    flex-direction: column;
+    gap: 10px;
+  }
+
+  .cff-field.cff-postbox .postbox-header {
+    padding: 12px;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .cff-field.cff-postbox .postbox-header,
+  .cff-field.cff-postbox .postbox-header .cff-hndle {
     align-items: flex-start;
   }
 
-  .cff-hndle-meta {
-    align-items: flex-start;
-    text-align: left;
-    min-width: 0;
+  .cff-field.cff-postbox .postbox-header .cff-hndle {
+    flex-direction: column;
+  }
+
+  .cff-field-identity {
+    flex: 0 1 auto;
+    width: 100%;
   }
 }
 
@@ -1712,6 +1778,19 @@
     linear-gradient(90deg, rgba(19, 94, 150, .07), transparent 50%),
     var(--cff-editor-soft);
   border-color: var(--cff-editor-border);
+}
+
+.cff-field.cff-postbox {
+  margin-bottom: 0;
+}
+
+.cff-field.cff-postbox .postbox-header {
+  border: 0;
+  box-shadow: none;
+}
+
+.cff-field.cff-postbox:not(.closed) .postbox-header {
+  border-bottom: 1px solid var(--cff-editor-border-soft);
 }
 
 .cff-label label,

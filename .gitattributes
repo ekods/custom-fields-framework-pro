@@ -2,8 +2,12 @@
 /.github export-ignore
 /.gitignore export-ignore
 /composer.json export-ignore
+/composer.lock export-ignore
+/vendor export-ignore
+/node_modules export-ignore
 /phpunit.xml.dist export-ignore
 /scripts export-ignore
 /tests export-ignore
 .DS_Store export-ignore
 *.md export-ignore
+*.zip export-ignore

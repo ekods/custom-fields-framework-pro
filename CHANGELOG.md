@@ -22,6 +22,15 @@ All notable changes to this project will be documented in this file.
 - Added unit coverage for REST write toggle behavior and JSON import payload validation.
 - Added unit coverage for content field ordering, hidden-section saves, sanitized value saves, and empty-value deletes.
 
+## 2.5.18
+
+### Added
+- Added Tool Kits-style release tooling: source synchronization, metadata checks, ZIP validation, packaged readme.txt, CI packaging checks, and GitHub releases on version tags.
+
+### Changed
+- Aligned section titles, badges, hide switches, and accordion controls in the content editor, with fallback titles for empty labels and responsive layouts.
+- Reduced header spacing, normalized field-card gaps, and added keyboard focus indicators for section controls.
+
 ## 2.5.17
 
 ### Fixed

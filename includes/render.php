@@ -42,13 +42,14 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     return !empty($hidden[$field_name]);
   }
 
-  function cff_render_section_hide_switch($field_name, $hidden) {
+  function cff_render_section_hide_switch($field_name, $hidden, $field_label = '') {
     $field_name = sanitize_key($field_name);
     if (!$field_name) return;
 
     echo '<label class="cff-section-hide-switch cff-switch" title="' . esc_attr__('Hide this section on frontend output.', 'cff') . '">';
     echo '<input type="hidden" name="cff_hidden_sections[' . esc_attr($field_name) . ']" value="0">';
-    echo '<input type="checkbox" class="cff-section-hide-toggle" name="cff_hidden_sections[' . esc_attr($field_name) . ']" value="1" ' . checked($hidden, true, false) . '>';
+    $switch_label = sprintf(__('Hide section: %s', 'cff'), $field_label ?: $field_name);
+    echo '<input type="checkbox" class="cff-section-hide-toggle" name="cff_hidden_sections[' . esc_attr($field_name) . ']" value="1" aria-label="' . esc_attr($switch_label) . '" ' . checked($hidden, true, false) . '>';
     echo '<span class="cff-slider"></span>';
     echo '<span class="cff-section-hide-label">' . esc_html__('Hide Section', 'cff') . '</span>';
     echo '</label>';
@@ -435,7 +436,10 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
   function render_field_impl($plugin, $post, $f) {
     $type = $f['type'];
     $name = $f['name'];
-    $label = $f['label'] ?? $name;
+    $label = trim((string) ($f['label'] ?? ''));
+    if ($label === '') {
+      $label = ucfirst(str_replace(['_', '-'], ' ', $name));
+    }
     $val = cff_get_value_with_aliases($plugin, $post->ID, $name, $f);
 
     $required = !empty($f['required']);
@@ -479,12 +483,14 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     if ($is_accordion) {
       echo '<div class="postbox-header">';
       echo '<div class="cff-hndle" role="heading" aria-level="2">';
+      echo '<div class="cff-field-identity">';
       echo '<div class="cff-hndle-label">' . $label_text . '</div>';
       echo '<div class="cff-hndle-meta">';
-      cff_render_section_hide_switch($field_attr_name, $section_hidden);
       echo '<span class="cff-meta-badge type">' . esc_html($type_label) . '</span>';
       echo '<span class="cff-meta-badge name">' . esc_html($name) . '</span>';
       echo '</div>';
+      echo '</div>';
+      cff_render_section_hide_switch($field_attr_name, $section_hidden, $label);
       echo '</div>';
       echo '<div class="handle-actions hide-if-no-js">';
       echo '<button type="button" class="cff-handlediv cff-acc-toggle" aria-expanded="' . ($is_initially_closed ? 'false' : 'true') . '">';
@@ -495,12 +501,14 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       echo '<div class="inside cff-input"' . $section_body_attrs . '>';
     } else {
       echo '<div class="cff-label">';
+      echo '<div class="cff-field-identity">';
       echo '<label>' . $label_text . '</label>';
       echo '<div class="cff-label-meta">';
-      cff_render_section_hide_switch($field_attr_name, $section_hidden);
       echo '<span class="cff-meta-badge type">' . esc_html($type_label) . '</span>';
       echo '<span class="cff-meta-badge name">' . esc_html($name) . '</span>';
       echo '</div>';
+      echo '</div>';
+      cff_render_section_hide_switch($field_attr_name, $section_hidden, $label);
       echo '</div>';
       echo '<div class="cff-input"' . $section_body_attrs . '>';
     }

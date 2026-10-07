@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v6
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          coverage: none
+      - name: Validate tag and plugin versions
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: bash scripts/check-release-metadata.sh "$RELEASE_TAG"
+      - name: Lint plugin PHP
+        run: |
+          composer validate --no-check-publish --no-interaction
+          composer lint
+      - name: Build and validate ZIP
+        env:
+          CFFP_SKIP_SYNC: '1'
+        run: bash scripts/build-release-zip.sh "$RUNNER_TEMP/custom-fields-framework-pro.zip"
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          awk -v version="${RELEASE_TAG#v}" '
+            $0 == "= " version " =" { active = 1; next }
+            active && /^=/ { exit }
+            active { print }
+          ' readme.txt > "$RUNNER_TEMP/release-notes.md"
+          gh release create "$RELEASE_TAG" "$RUNNER_TEMP/custom-fields-framework-pro.zip" \
+            --verify-tag --title "Custom Fields Framework Pro $RELEASE_TAG" \
+            --notes-file "$RUNNER_TEMP/release-notes.md"

@@ -142,7 +142,8 @@ Pada panel **Editor UI Settings**, Anda juga bisa mengatur Gutenberg Sidebar, ak
 
 ### 1.5 Build Release ZIP
 
-Jalankan dari root plugin `custom-fields-framework-pro`:
+Alurnya mengikuti Tool Kits: edit di folder kerja, sinkronkan ke repo rilis,
+cek metadata, lalu build dan validasi ZIP. Jalankan dari root plugin:
 
 ```bash
 cd plugins/custom-fields-framework-pro
@@ -155,12 +156,34 @@ Output default akan dibuat di:
 plugins/custom-fields-framework-pro.zip
 ```
 
-Untuk menentukan output manual:
+Build otomatis menyinkronkan source ke repo rilis
+`~/Sites/localhost/ekodwis/wp-content/plugins/custom-fields-framework-pro`.
+Folder kerja tetap memiliki Git-nya sendiri; commit dan tag untuk publikasi
+dilakukan di repo rilis tersebut. Preview perubahan sebelum sinkronisasi:
+
+```bash
+bash scripts/sync-to-release-repo.sh --dry-run
+```
+
+Untuk build tanpa sinkronisasi atau menentukan output manual:
 
 ```bash
 cd plugins/custom-fields-framework-pro
-bash scripts/build-release-zip.sh /tmp/custom-fields-framework-pro.zip
+CFFP_SKIP_SYNC=1 bash scripts/build-release-zip.sh /tmp/custom-fields-framework-pro.zip
 ```
+
+Tujuan sinkronisasi bisa diganti lewat `CFFP_RELEASE_REPO`.
+Build memeriksa kecocokan `Version`, `CFFP_VERSION`, dan `Stable tag` di
+`readme.txt`, kemudian memastikan folder ZIP, file PHP, dan aset Select2 lengkap.
+ZIP lama baru diganti setelah hasil build lolos validasi.
+
+Untuk rilis, naikkan versi di ketiga lokasi tersebut, tambahkan changelog di
+`readme.txt` dan `CHANGELOG.md`, lalu build, commit, dan push tag `v<VERSION>`
+dari repo rilis. Workflow `.github/workflows/release.yml` akan melakukan lint,
+build, validasi, dan membuat GitHub Release dengan aset
+`custom-fields-framework-pro.zip`.
+
+Panduan lengkap dan perintah Composer tersedia di [scripts/RELEASE.md](scripts/RELEASE.md).
 
 ### 1.6 Quick Start
 
