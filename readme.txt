@@ -1,6 +1,6 @@
 === Custom Fields Framework Pro ===
 Contributors: ekods
-Stable tag: 2.5.18
+Stable tag: 2.5.19
 
 Custom fields with Field Groups, Repeater, Flexible Content, Location rules, and CFF-compatible frontend helpers.
 
@@ -16,6 +16,10 @@ Build structured WordPress content with custom fields, nested repeaters, groups,
 
 == Changelog ==
 
+= 2.5.19 =
+* Explicitly arrange section metadata with flex-direction: row.
+* Set secondary button min-height to 30px, including field view controls.
+
 = 2.5.18 =
 * Align section titles and badges on the left, with hide switches and accordion controls on the right.
 * Reduce header spacing, add fallback titles for empty labels, and improve mobile layouts and keyboard focus.
@@ -25,6 +29,9 @@ Build structured WordPress content with custom fields, nested repeaters, groups,
 * Include bundled Select2 assets in release packages.
 
 == Upgrade Notice ==
+
+= 2.5.19 =
+Uses horizontal section metadata and a 30px minimum height for secondary buttons.
 
 = 2.5.18 =
 Improves section headers in the content editor and adds validated release packaging.

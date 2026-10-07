@@ -22,6 +22,12 @@ All notable changes to this project will be documented in this file.
 - Added unit coverage for REST write toggle behavior and JSON import payload validation.
 - Added unit coverage for content field ordering, hidden-section saves, sanitized value saves, and empty-value deletes.
 
+## 2.5.19
+
+### Changed
+- Explicitly set section metadata to `flex-direction: row` in admin and content editor styles.
+- Set WordPress secondary button minimum height to 30px, including field view controls.
+
 ## 2.5.18
 
 ### Added

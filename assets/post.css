@@ -1438,6 +1438,10 @@
   border-radius: 8px;
 }
 
+.wp-core-ui .cff-field-view-controls .button-secondary {
+  min-height: 30px;
+}
+
 .cff-metabox-reorder {
   margin-top: 2px;
   padding: 14px 16px 16px;
@@ -1631,6 +1635,7 @@
 
 .cff-hndle-meta {
   display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
