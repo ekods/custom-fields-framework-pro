@@ -4,6 +4,7 @@
   "type": "wordpress-plugin",
   "license": "proprietary",
   "scripts": {
+    "test:language-clone": "php tests/language-clone.php",
     "lint": "find . -path './vendor' -prune -o -name '*.php' -print0 | xargs -0 -n1 php -l",
     "release:check": "bash scripts/check-release-metadata.sh",
     "release:zip": "bash scripts/build-release-zip.sh",

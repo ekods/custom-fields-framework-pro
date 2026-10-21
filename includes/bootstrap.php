@@ -13,6 +13,7 @@ require_once __DIR__ . '/class-ajax-controller.php';
 require_once __DIR__ . '/class-dynamic-content-manager.php';
 require_once __DIR__ . '/class-term-meta-manager.php';
 require_once __DIR__ . '/class-content-field-saver.php';
+require_once __DIR__ . '/class-language-clone.php';
 require_once __DIR__ . '/helpers/acf-compat.php';
 require_once __DIR__ . '/helpers/frontend-helpers.php';
 require_once __DIR__ . '/helpers/frontend-shortcodes.php';

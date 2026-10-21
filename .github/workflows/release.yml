@@ -31,6 +31,7 @@ jobs:
         run: |
           composer validate --no-check-publish --no-interaction
           composer lint
+          composer test:language-clone
       - name: Build and validate ZIP
         env:
           CFFP_SKIP_SYNC: '1'

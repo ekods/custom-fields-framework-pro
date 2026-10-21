@@ -22,6 +22,46 @@ All notable changes to this project will be documented in this file.
 - Added unit coverage for REST write toggle behavior and JSON import payload validation.
 - Added unit coverage for content field ordering, hidden-section saves, sanitized value saves, and empty-value deletes.
 
+## 2.5.23
+
+### Changed
+- Show the Language Clone submenu only when Polylang APIs are available and at least two languages are configured, including languages with no content yet.
+
+## 2.5.22
+
+### Added
+- Add an enabled-by-default checkbox to fill empty selected data in existing Polylang translations. Uncheck it to retain skip-only behavior.
+- Fill missing body/excerpt/title, selected metadata and CFF values, featured images, empty taxonomy assignments and missing hierarchy without duplicating target pages.
+- Detect empty CFF group, repeater and flexible-layout skeletons while preserving populated field containers and intentional numeric/checkbox values.
+- Preview and count existing translations to fill separately from newly created translations, and include them in reference finalization and result links.
+
+### Fixed
+- Require edit permission on existing targets and preserve their IDs, slugs, language links, status, dates and populated values.
+- Suspend Polylang core-field synchronization during existing content updates and limit CFF reference remapping to fields copied by the current job.
+- Roll back touched empty meta on failure and never delete an existing translation during failure cleanup.
+
+## 2.5.21
+
+### Changed
+- Language Clone preserves each source post's status (publish, draft, pending, private or future) and local/GMT publication dates, including its scheduled publication time.
+- Require the post type's publishing capability before copying publish, private or future content. Existing translations continue to be skipped.
+- Update clone summaries and documentation to describe the preserved status instead of draft-only output.
+
+### Tests
+- Verify status and publication dates across batches and finalization for every supported status, plus publishing permission checks.
+
+## 2.5.20
+
+### Added
+- Added Custom Fields > Language Clone for one-time copies of all content in selected Polylang post types from a source language to a target language.
+- Added independent checkboxes for titles, main content, excerpts, CFF values and section settings, other custom meta, featured images, attached taxonomy terms and term fields, and page hierarchy.
+- Added a read-only preview, user-scoped jobs, serialized batch processing, progress, item errors, and retry support. New translations are drafts and existing translations are skipped.
+- Added standalone regression coverage for language validation, checkbox isolation, nested field values, taxonomy copies, parent mapping, translation links, permissions, job locking and failure cleanup.
+
+### Fixed
+- Match page/post-specific field group rules against Polylang translations so cloned values remain editable without duplicating field definitions.
+- Preserve quotes, backslashes, repeated meta rows and row IDs while copying; resolve nested CFF relations and internal links after all drafts have been created.
+
 ## 2.5.19
 
 ### Changed

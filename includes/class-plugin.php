@@ -10,6 +10,7 @@ class Plugin {
   private $ajax_controller = null;
   private $dynamic_content_manager = null;
   private $term_meta_manager = null;
+  private $language_clone = null;
   private $field_sanitizer = null;
   private $group_settings_cache = [];
   private $published_field_groups_cache = null;
@@ -165,6 +166,8 @@ class Plugin {
   }
 
   private function __construct() {
+    $this->language_clone = new Language_Clone($this);
+    $this->language_clone->register();
     add_action('init', [__CLASS__, 'register_cpt']);
     add_action('init', [__CLASS__, 'register_options_cpt'], 15);
     add_action('init', [$this->dynamic_content_manager(), 'register_dynamic_cpts'], 20);
@@ -3739,8 +3742,14 @@ TEXT;
       if (!$tpl) $tpl = 'default';
       return $tpl === $val;
     }
-    if ($param === 'post') return intval($post->ID) === intval($val);
-    if ($param === 'page') return intval($post->ID) === intval($val);
+    if ($param === 'post' || $param === 'page') {
+      if (intval($post->ID) === intval($val)) return true;
+      if (function_exists('pll_get_post') && function_exists('pll_get_post_language')) {
+        $language = pll_get_post_language($post->ID, 'slug');
+        return $language && intval(pll_get_post(intval($val), $language)) === intval($post->ID);
+      }
+      return false;
+    }
     return false;
   }
 

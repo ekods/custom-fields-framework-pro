@@ -1,0 +1,41 @@
+.cff-language-clone-page [hidden] {
+  display: none !important;
+}
+
+.cff-language-clone-page fieldset {
+  border: 1px solid #dcdcde;
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin: 20px 0;
+}
+
+.cff-language-clone-page fieldset legend {
+  padding: 0 6px;
+}
+
+.cff-language-clone-page fieldset label {
+  font-weight: normal;
+}
+
+#cff-clone-summary {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  gap: 12px 20px;
+  max-width: 600px;
+}
+
+#cff-clone-summary dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+
+#cff-clone-errors {
+  color: #b32d2e;
+  overflow-wrap: anywhere;
+}
+
+#cff-clone-links a {
+  display: inline-block;
+  margin-top: 8px;
+}

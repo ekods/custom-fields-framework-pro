@@ -1,5 +1,70 @@
 # Custom Fields Framework Pro
 
+## Language Clone (Polylang)
+
+Menu **Language Clone** hanya muncul saat Polylang aktif dan minimal dua bahasa
+sudah dikonfigurasi, termasuk bahasa tujuan yang belum memiliki konten.
+
+Buka **Custom Fields → Language Clone**, pilih **Source Language** dan **Target
+Language**, lalu centang post type dan data yang ingin disalin. Klik **Preview
+clone** untuk melihat jumlah sumber dan terjemahan yang sudah ada, kemudian
+**Start clone** untuk menjalankan proses bertahap. Target language harus sudah
+dibuat di pengaturan Polylang; modul ini tidak membuat bahasa baru.
+
+Checkbox tersedia untuk judul, konten utama/Gutenberg, excerpt, semua field CFF
+(termasuk group, repeater, flexible content, urutan field dan pengaturan hide
+section), custom meta lain (termasuk template halaman dan SEO), featured image,
+taxonomy yang terpasang beserta field term, dan hierarki parent/child.
+
+Terjemahan baru mengikuti **status konten sumber**: publish tetap publish, draft
+tetap draft, pending tetap pending, private tetap private, dan future tetap
+terjadwal dengan tanggal/jam publikasi sumber. Tanggal publikasi lokal dan GMT
+ikut disalin. Konten sumber yang publish menghasilkan terjemahan yang langsung
+publish; pengguna harus memiliki izin publish untuk menyalin status publish,
+private, atau future. Untuk terjemahan yang sudah ada, checkbox **Fill empty
+selected data in existing translations** aktif secara default: konten dan field
+terpilih yang kosong akan diisi dari sumber, menggunakan halaman tujuan yang
+sama. ID, slug/URL, status, tanggal publikasi, dan nilai yang sudah terisi tetap
+dipertahankan. Nonaktifkan checkbox ini untuk melewati seluruh terjemahan yang
+sudah ada. Terjemahan di Trash tetap dilewati; sumber tidak ditimpa. Judul dan teks
+disalin apa adanya untuk diterjemahkan setelah clone. Jika checkbox judul tidak
+dipilih, terjemahan memakai judul sementara `Translation of #ID`. Konten sumber dengan
+status publish, draft, pending, private dan future disertakan; trash, auto-draft,
+revision, attachment dan post type internal CFF dikecualikan.
+
+Field CFF diperiksa per field utama. Group, repeater, dan flexible content yang
+sudah mempunyai isi dipertahankan sebagai satu kesatuan; bagian kosong di dalam
+container yang sudah terisi tidak digabung secara otomatis. Container yang hanya
+memiliki struktur/layout/row ID tanpa nilai dapat diisi dari sumber. Nilai angka
+`0` dan checkbox yang dinonaktifkan tetap dianggap sebagai nilai yang disengaja;
+ID media atau relasi `0` dianggap belum terpilih. Featured image, taxonomy, dan
+parent hanya diisi jika belum terpasang dan checkbox terkait dipilih.
+
+Jika penyalinan taxonomy dipilih, term yang belum memiliki terjemahan dibuat
+beserta parent dan metadata-nya. Term yang sudah diterjemahkan dipakai kembali.
+Parent post dipetakan setelah seluruh terjemahan dibuat. Relasi post/term dan internal
+link di dalam field CFF, termasuk field bertingkat, memakai terjemahan tujuan
+jika tersedia; relasi tanpa terjemahan tetap menunjuk objek sumber. Media memakai
+attachment yang sama, tanpa menggandakan file. URL manual, tautan di konten utama,
+dan struktur metadata plugin pihak ketiga disalin apa adanya.
+
+Biarkan halaman terbuka sampai selesai. Jika request gagal, gunakan **Retry /
+Continue** pada halaman yang sama; proses melanjutkan job dan tidak membuat
+terjemahan ganda. Preview menampilkan jumlah terjemahan lama yang bisa diisi.
+Ringkasan hasil membedakan terjemahan baru, terjemahan lama yang diisi, konten yang dilewati, dan
+kegagalan (maksimal 50 pesan ditampilkan). Terjemahan yang selesai dapat dibuka dari
+tautan hasil atau daftar post type dengan filter bahasa tujuan. Pekerjaan baru
+akan memeriksa field yang masih kosong jika opsi pengisian terjemahan lama aktif;
+terjemahan yang sudah lengkap akan dilewati.
+
+Field Groups dan Global Settings tetap dibagi bersama antarbahasa. Navigation
+menu, komentar, taxonomy yang tidak terpasang pada konten terpilih, terjemahan
+string Polylang, serta penggandaan library media berada di luar modul ini.
+
+Verifikasi mandiri (tanpa database WordPress): `composer test:language-clone`.
+Test ini memakai simulasi penyimpanan WordPress/Polylang; tetap uji alur admin
+pada situs WordPress dengan Polylang sebelum memproses konten produksi.
+
 ## 1. Dokumentasi Bahasa Indonesia
 
 ### 1.1 Ringkasan
