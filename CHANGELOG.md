@@ -22,6 +22,11 @@ All notable changes to this project will be documented in this file.
 - Added unit coverage for REST write toggle behavior and JSON import payload validation.
 - Added unit coverage for content field ordering, hidden-section saves, sanitized value saves, and empty-value deletes.
 
+## 2.5.25
+
+### Fixed
+- Fix a fatal error ("Call to undefined function") on post edit screens with Polylang active: the 2.5.24 Save + Copy All dropdown called a `render.php` helper before that file was lazily loaded.
+
 ## 2.5.24
 
 ### Added
