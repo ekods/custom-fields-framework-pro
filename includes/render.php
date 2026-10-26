@@ -322,6 +322,49 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     return function_exists('pll_current_language') && function_exists('pll_get_post_translations');
   }
 
+  function cff_copy_target_languages($post_id) {
+    static $cache = [];
+    $post_id = absint($post_id);
+    if (!$post_id || !function_exists('pll_get_post_translations') || !function_exists('pll_languages_list')) return [];
+    if (isset($cache[$post_id])) return $cache[$post_id];
+
+    $translations = pll_get_post_translations($post_id);
+    $slugs = pll_languages_list(['fields' => 'slug']);
+    $names = pll_languages_list(['fields' => 'name']);
+    $targets = [];
+    if (is_array($translations) && is_array($slugs)) {
+      foreach ($slugs as $i => $slug) {
+        $translated_post_id = absint($translations[$slug] ?? 0);
+        if (!$translated_post_id || $translated_post_id === $post_id) continue;
+        $targets[] = [
+          'slug' => $slug,
+          'name' => (is_array($names) && isset($names[$i])) ? $names[$i] : $slug,
+        ];
+      }
+    }
+
+    return $cache[$post_id] = $targets;
+  }
+
+  function cff_render_copy_target_select($post_id, $class, $name = '') {
+    $targets = cff_copy_target_languages($post_id);
+    if (count($targets) < 2) return;
+
+    echo '<select class="cff-copy-target ' . esc_attr($class) . '"' . ($name !== '' ? ' name="' . esc_attr($name) . '"' : '') . ' aria-label="' . esc_attr__('Translation to copy CFF values to', 'cff') . '">';
+    echo '<option value="">' . esc_html__('All translations', 'cff') . '</option>';
+    foreach ($targets as $target) {
+      echo '<option value="' . esc_attr($target['slug']) . '">' . esc_html($target['name']) . '</option>';
+    }
+    echo '</select>';
+  }
+
+  function cff_split_copy_field_target($raw) {
+    // Field copy buttons send "<payload>|<lang>" once a target language is picked.
+    $raw = is_scalar($raw) ? (string) $raw : '';
+    $parts = explode('|', $raw, 2);
+    return [$parts[0], sanitize_key($parts[1] ?? '')];
+  }
+
   function cff_render_copy_to_translations_field_action($request = []) {
     if (!empty(get_option('cffp_hide_field_copy_actions', 0))) {
       return;
@@ -365,9 +408,12 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       echo '<code>' . esc_html($copy_indicator) . '</code>';
       echo '</div>';
     }
-    echo '<button type="submit" class="button button-secondary cff-copy-field-action" name="cff_copy_field_to_translations" value="' . esc_attr($payload) . '" title="' . esc_attr__('Save + Copy This Field to Translations', 'cff') . '" aria-label="' . esc_attr__('Save + Copy This Field to Translations', 'cff') . '">';
+    echo '<div class="cff-copy-controls">';
+    cff_render_copy_target_select(get_the_ID(), 'cff-copy-field-target');
+    echo '<button type="submit" class="button button-secondary cff-copy-field-action" name="cff_copy_field_to_translations" value="' . esc_attr($payload) . '" data-payload="' . esc_attr($payload) . '" title="' . esc_attr__('Save + Copy This Field to Translations', 'cff') . '" aria-label="' . esc_attr__('Save + Copy This Field to Translations', 'cff') . '">';
     echo '<span class="dashicons dashicons-translation" aria-hidden="true"></span>';
     echo '</button>';
+    echo '</div>';
     echo '</div>';
   }
 
@@ -1638,7 +1684,7 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
     set_transient('cff_copy_to_translations_result_' . get_current_user_id(), sanitize_key((string) $status), MINUTE_IN_SECONDS * 10);
   }
 
-  function cff_copy_values_to_polylang_translations($post_id) {
+  function cff_copy_values_to_polylang_translations($post_id, $target_lang = '') {
     $source_meta = get_post_meta($post_id);
     if (!is_array($source_meta)) {
       $source_meta = [];
@@ -1651,7 +1697,7 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
       $cff_meta[$meta_key] = is_array($meta_values) ? $meta_values : [];
     }
 
-    return cff_copy_meta_to_polylang_translations($post_id, $cff_meta, 'copied_all');
+    return cff_copy_meta_to_polylang_translations($post_id, $cff_meta, 'copied_all', $target_lang);
   }
 
   function cff_row_match_key($row, $index = 0, $layout_name = '') {
@@ -1854,6 +1900,7 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
   }
 
   function cff_copy_field_to_polylang_translations($plugin, $post_id, $field_request_raw) {
+    list($field_request_raw, $target_lang) = cff_split_copy_field_target($field_request_raw);
     $request = cff_decode_copy_field_request($field_request_raw);
     $root_name = sanitize_key($request['root'] ?? '');
     if (!$root_name) {
@@ -1868,7 +1915,7 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
       $cff_meta = [
         $meta_key => is_array($meta_values) ? $meta_values : [],
       ];
-      return cff_copy_meta_to_polylang_translations($post_id, $cff_meta, 'copied_field');
+      return cff_copy_meta_to_polylang_translations($post_id, $cff_meta, 'copied_field', $target_lang);
     }
 
     if (!function_exists('pll_get_post_translations')) {
@@ -1888,7 +1935,8 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
     }
 
     $copied = 0;
-    foreach ($translations as $translated_post_id) {
+    foreach ($translations as $lang => $translated_post_id) {
+      if ($target_lang !== '' && $lang !== $target_lang) continue;
       $translated_post_id = absint($translated_post_id);
       if (!$translated_post_id || $translated_post_id === absint($post_id)) continue;
 
@@ -1911,7 +1959,7 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
     return $status;
   }
 
-  function cff_copy_meta_to_polylang_translations($post_id, $cff_meta, $success_status = 'copied_all') {
+  function cff_copy_meta_to_polylang_translations($post_id, $cff_meta, $success_status = 'copied_all', $target_lang = '') {
     if (!function_exists('pll_get_post_translations')) {
       cff_store_copy_to_translations_result('missing_polylang');
       return 'missing_polylang';
@@ -1924,8 +1972,10 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
     }
 
     $success_status = sanitize_key($success_status ?: 'copied_all');
+    $target_lang = sanitize_key((string) $target_lang);
     $copied = 0;
-    foreach ($translations as $translated_post_id) {
+    foreach ($translations as $lang => $translated_post_id) {
+      if ($target_lang !== '' && $lang !== $target_lang) continue;
       $translated_post_id = absint($translated_post_id);
       if (!$translated_post_id || $translated_post_id === absint($post_id)) continue;
 

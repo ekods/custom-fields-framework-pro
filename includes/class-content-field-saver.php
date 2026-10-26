@@ -16,6 +16,7 @@ class Content_Field_Saver {
     if (!current_user_can('edit_post', $post_id)) return;
 
     $copy_all_to_translations = !empty($_POST['cff_copy_all_to_translations_trigger']);
+    $copy_all_target_lang = $copy_all_to_translations ? $this->copy_all_target_lang() : '';
     $copy_field_to_translations = isset($_POST['cff_copy_field_to_translations']) ? wp_unslash((string) $_POST['cff_copy_field_to_translations']) : '';
 
     $this->save_field_order($post_id);
@@ -24,7 +25,7 @@ class Content_Field_Saver {
     $this->save_hidden_sections($post_id, $definitions);
 
     if (!isset($_POST['cff_values']) || !is_array($_POST['cff_values'])) {
-      $this->maybe_copy_to_translations($post_id, $copy_all_to_translations, $copy_field_to_translations);
+      $this->maybe_copy_to_translations($post_id, $copy_all_to_translations, $copy_field_to_translations, $copy_all_target_lang);
       return;
     }
 
@@ -33,7 +34,7 @@ class Content_Field_Saver {
       $this->save_field_value($post_id, $definitions, $vals, $name, $value);
     }
 
-    $this->maybe_copy_to_translations($post_id, $copy_all_to_translations, $copy_field_to_translations);
+    $this->maybe_copy_to_translations($post_id, $copy_all_to_translations, $copy_field_to_translations, $copy_all_target_lang);
   }
 
   private function save_field_order($post_id) {
@@ -147,9 +148,18 @@ class Content_Field_Saver {
     update_post_meta($post_id, $key, $value);
   }
 
-  private function maybe_copy_to_translations($post_id, $copy_all, $copy_field) {
+  private function copy_all_target_lang() {
+    // The trigger carries the group ID so the dropdown of the clicked metabox wins.
+    $group_id = absint(wp_unslash($_POST['cff_copy_all_to_translations_trigger']));
+    $targets = isset($_POST['cff_copy_all_target_lang']) && is_array($_POST['cff_copy_all_target_lang'])
+      ? wp_unslash($_POST['cff_copy_all_target_lang'])
+      : [];
+    return $group_id && isset($targets[$group_id]) ? sanitize_key((string) $targets[$group_id]) : '';
+  }
+
+  private function maybe_copy_to_translations($post_id, $copy_all, $copy_field, $target_lang = '') {
     if ($copy_all) {
-      cff_copy_values_to_polylang_translations($post_id);
+      cff_copy_values_to_polylang_translations($post_id, $target_lang);
     } elseif ($copy_field) {
       cff_copy_field_to_polylang_translations($this->plugin, $post_id, $copy_field);
     }

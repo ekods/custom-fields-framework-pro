@@ -1,6 +1,6 @@
 === Custom Fields Framework Pro ===
 Contributors: ekods
-Stable tag: 2.5.23
+Stable tag: 2.5.24
 
 Custom fields with Field Groups, Repeater, Flexible Content, Location rules, and CFF-compatible frontend helpers.
 
@@ -15,6 +15,12 @@ Build structured WordPress content with custom fields, nested repeaters, groups,
 3. Open Custom Fields and create a Field Group with location rules.
 
 == Changelog ==
+
+= 2.5.24 =
+* Add a target-language dropdown to Save + Copy All CFF to Translations when a post has more than one translation.
+* Add the same target-language dropdown to per-field Save + Copy to Translations actions, including repeater, group and layout subfields.
+* Tidy the CFF metabox layout: spacing between field cards, flush field headers and a single-row Field View toolbar.
+* Give CFF inputs, selects and textareas a consistent height, padding and full width; improve color, radio and checkbox layouts.
 
 = 2.5.23 =
 * Add Language Clone to copy selected post types and data from a Polylang source language into a target language.

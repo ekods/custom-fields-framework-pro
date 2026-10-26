@@ -3367,7 +3367,7 @@ TEXT;
       'field_view_copy' => '.cff-field-view-copy',
       'field_view_mode' => '#cff-field-view-mode, .cff-field-view-mode',
       'field_reorder_view' => '.cff-field-reorder-view',
-      'copy_to_translations' => '.cff-copy-all-action, .cff-copy-field-action, .cff-copy-field-indicator',
+      'copy_to_translations' => '.cff-copy-all-action, .cff-copy-all-target, .cff-copy-field-action, .cff-copy-field-target, .cff-copy-field-indicator',
     ];
 
     $selectors = [];
@@ -3476,7 +3476,10 @@ TEXT;
           echo '<option value="reorder">' . esc_html__('Reorder', 'cff') . '</option>';
           echo '</select>';
           if ($this->polylang_active()) {
-            echo '<button type="submit" class="button cff-copy-all-action" name="cff_copy_all_to_translations_trigger" value="1">' . esc_html__('Save + Copy All CFF to Translations', 'cff') . '</button>';
+            echo '<div class="cff-copy-controls">';
+            cff_render_copy_target_select($post->ID, 'cff-copy-all-target', 'cff_copy_all_target_lang[' . intval($g->ID) . ']');
+            echo '<button type="submit" class="button cff-copy-all-action" name="cff_copy_all_to_translations_trigger" value="' . intval($g->ID) . '">' . esc_html__('Save + Copy All CFF to Translations', 'cff') . '</button>';
+            echo '</div>';
           }
           echo '</div>';
           echo '</div>';

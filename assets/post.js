@@ -533,6 +533,13 @@ jQuery(function($){
     return items;
   }
 
+  $(document).on('change', '.cff-copy-field-target', function(){
+    var $btn = $(this).siblings('.cff-copy-field-action');
+    var payload = $btn.attr('data-payload') || '';
+    var lang = safeText($(this).val());
+    $btn.val(lang ? payload + '|' + lang : payload);
+  });
+
   $(document).on('click', '.cff-media-select', function(e){
     e.preventDefault();
 

@@ -282,7 +282,54 @@
   font-size: 11px;
 }
 
-.cff-metabox-view .cff-copy-all-action {
+/* Target-language dropdown + copy button, kept together as one control. */
+.cff-copy-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.cff-field-actions .cff-copy-field-indicator {
+  margin-right: auto;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.cff-field-actions .cff-copy-field-indicator code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cff-field .cff-copy-controls select.cff-copy-target,
+.cff-field-view-controls .cff-copy-controls select.cff-copy-target {
+  width: auto;
+  min-width: 140px;
+  max-width: 200px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0 28px 0 10px;
+  font-size: 12px;
+  line-height: 32px;
+}
+
+.cff-field-view-controls .cff-copy-controls .cff-copy-all-action {
+  height: 34px;
+  min-height: 34px;
+  line-height: 32px;
+  white-space: nowrap;
+}
+
+.cff-subfield-input>.cff-field-actions .cff-copy-controls select.cff-copy-target {
+  min-width: 120px;
+  height: 30px;
+  min-height: 30px;
+  font-size: 11px;
+  line-height: 28px;
+}
+
+.cff-metabox-view .cff-copy-controls {
   margin-left: auto;
 }
 
@@ -1687,6 +1734,20 @@
     width: 100%;
   }
 
+  .cff-copy-controls {
+    width: 100%;
+  }
+
+  .cff-metabox-view .cff-copy-controls {
+    margin-left: 0;
+  }
+
+  .cff-field .cff-copy-controls select.cff-copy-target,
+  .cff-field-view-controls .cff-copy-controls select.cff-copy-target {
+    flex: 1 1 auto;
+    max-width: none;
+  }
+
   .cff-field {
     padding: 14px;
     border-radius: 10px;
@@ -1884,4 +1945,192 @@
 .cff-flex-head {
   background: var(--cff-editor-soft);
   border-bottom-color: var(--cff-editor-border-soft);
+}
+
+/* Metabox layout + input consistency */
+.cff-metabox,
+.cff-metabox-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cff-metabox-view {
+  align-items: center;
+}
+
+.cff-metabox-view .cff-field-view-copy {
+  flex: 1 1 220px;
+}
+
+.cff-metabox-view .cff-field-view-actions {
+  flex: 0 1 auto;
+  gap: 8px;
+}
+
+.cff-metabox-view .cff-copy-controls {
+  margin-left: 0;
+}
+
+.cff-field-view-controls .cff-field-view-mode {
+  min-width: 130px;
+}
+
+.cff-field-view-controls select,
+.cff-field-view-controls .button,
+.cff-field-view-controls .cff-copy-controls select.cff-copy-target,
+.cff-field-view-controls .cff-copy-controls .cff-copy-all-action {
+  height: 36px;
+  min-height: 36px !important;
+  line-height: 34px;
+}
+
+/* Field header sits flush inside the card instead of a card-in-card. */
+.cff-field:not(.cff-postbox) {
+  gap: 0;
+  overflow: hidden;
+}
+
+.cff-field:not(.cff-postbox) > .cff-label {
+  border: 0;
+  border-bottom: 1px solid var(--cff-editor-border-soft);
+  border-radius: 0;
+  padding: 12px 16px;
+}
+
+.cff-field:not(.cff-postbox) > .cff-input {
+  border-top: 0;
+  padding: 16px;
+  gap: 12px;
+}
+
+.cff-field.cff-postbox .inside {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cff-field-actions {
+  margin-top: 0;
+}
+
+/* Inputs: one height, full width, same padding. */
+.cff-field .cff-input > .widefat,
+.cff-field .cff-input > input.widefat,
+.cff-field .cff-input > textarea.widefat,
+.cff-field .cff-input > select.widefat,
+.cff-link,
+.cff-color {
+  max-width: none;
+}
+
+.cff-field input[type=text],
+.cff-field input[type=number],
+.cff-field input[type=url],
+.cff-field input[type=email],
+.cff-field input[type=date],
+.cff-field input[type=datetime-local],
+.cff-field input[type=time],
+.cff-field select {
+  min-height: 36px;
+  padding: 0 10px;
+  font-size: 14px;
+  line-height: 34px;
+  border-color: #c3ccd8;
+  background-color: #fff;
+}
+
+.cff-field select {
+  padding-right: 28px;
+}
+
+.cff-field textarea {
+  padding: 8px 10px;
+  font-size: 14px;
+  line-height: 1.5;
+  border-color: #c3ccd8;
+}
+
+.cff-field .cff-copy-controls select.cff-copy-target {
+  font-size: 12px;
+}
+
+.cff-color-picker {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  cursor: pointer;
+}
+
+.cff-color-value {
+  max-width: 200px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.cff-choice-radios,
+.cff-choice-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 0;
+}
+
+.cff-choice-checkboxes label,
+.cff-choice-radios label {
+  margin: 0;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.cff-choice-checkboxes input,
+.cff-choice-radios input,
+.cff-field-checkbox .cff-input > label input {
+  margin: 0;
+}
+
+.cff-field-checkbox .cff-input > label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.cff-link {
+  padding: 14px;
+  gap: 10px;
+}
+
+.cff-media {
+  max-width: 360px;
+}
+
+@media (max-width: 782px) {
+  .cff-field:not(.cff-postbox) {
+    padding: 0;
+  }
+
+  .cff-field:not(.cff-postbox) > .cff-label,
+  .cff-field:not(.cff-postbox) > .cff-input {
+    padding: 12px;
+  }
+
+  .cff-metabox-view {
+    align-items: stretch;
+  }
+
+  .cff-metabox-view .cff-field-view-copy {
+    flex: 0 0 auto;
+  }
+
+  /* WP admin bumps buttons to 40px on small screens; keep the dropdown level. */
+  .cff-field .cff-copy-controls select.cff-copy-target,
+  .cff-field-view-controls .cff-copy-controls select.cff-copy-target {
+    height: 40px;
+    min-height: 40px;
+  }
+
+  .cff-metabox-view .cff-field-view-actions {
+    flex-wrap: wrap;
+  }
 }

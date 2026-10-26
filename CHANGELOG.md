@@ -22,6 +22,17 @@ All notable changes to this project will be documented in this file.
 - Added unit coverage for REST write toggle behavior and JSON import payload validation.
 - Added unit coverage for content field ordering, hidden-section saves, sanitized value saves, and empty-value deletes.
 
+## 2.5.24
+
+### Added
+- Add a target-language dropdown next to Save + Copy All CFF to Translations when the post has more than one translation; "All translations" keeps the previous behavior.
+- Add the same dropdown to per-field Save + Copy to Translations actions, including repeater, group and flexible-layout subfields.
+
+### Changed
+- Share the translation-target lookup between the metabox and per-field actions, and hide the dropdowns with the existing copy-to-translations hide option.
+- Tidy the CFF metabox layout with spacing between field cards, flush field headers and a single-row Field View toolbar.
+- Give CFF inputs, selects and textareas a consistent 36px height, padding and full width; improve color, radio and checkbox layouts and the mobile Field View toolbar.
+
 ## 2.5.23
 
 ### Changed
