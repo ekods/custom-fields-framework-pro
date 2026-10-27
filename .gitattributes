@@ -7,6 +7,7 @@
 /node_modules export-ignore
 /phpunit.xml.dist export-ignore
 /scripts export-ignore
+/dist export-ignore
 /tests export-ignore
 .DS_Store export-ignore
 *.md export-ignore

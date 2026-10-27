@@ -39,7 +39,7 @@ case "$REMOTE" in
   *) echo "Refusing to sync: unexpected origin $REMOTE" >&2; exit 1;;
 esac
 
-RSYNC_ARGS=(-a --delete --exclude .git --exclude .DS_Store --exclude '*.zip' --exclude .env --exclude '.env.*' --exclude CLAUDE.md --exclude AGENTS.md --exclude .agents --exclude .codex --exclude .idea --exclude .vscode --exclude /vendor --exclude /node_modules --exclude .phpunit.cache --exclude .phpunit.result.cache)
+RSYNC_ARGS=(-a --delete --exclude .git --exclude /dist --exclude .DS_Store --exclude '*.zip' --exclude .env --exclude '.env.*' --exclude CLAUDE.md --exclude AGENTS.md --exclude .agents --exclude .codex --exclude .idea --exclude .vscode --exclude /vendor --exclude /node_modules --exclude .phpunit.cache --exclude .phpunit.result.cache)
 if [[ "$DRY_RUN" -eq 1 ]]; then
   RSYNC_ARGS+=(--dry-run --itemize-changes)
   echo 'Dry run: no files will be written.'

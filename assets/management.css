@@ -1,0 +1,162 @@
+/* Shared navigation and content management screens. */
+.cff-admin [hidden] { display: none !important; }
+.cff-admin .tk-header-branding { margin-bottom: 16px; }
+.cff-help-link { font-size: 13px; text-decoration: none; }
+.cff-section-nav { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 24px; padding: 6px; border: 1px solid var(--cff-border); border-radius: 8px; background: #fff; }
+.cff-section-nav a { padding: 9px 13px; border-radius: 5px; color: var(--cff-muted); text-decoration: none; font-size: 13px; font-weight: 500; }
+.cff-section-nav a:hover { color: var(--cff-primary); background: #f4f7fa; }
+.cff-section-nav a[aria-current="page"] { background: #eaf3fa; color: var(--cff-primary); font-weight: 650; }
+.cff-management { max-width: 1440px; }
+.cff-management *, .cff-management *::before, .cff-management *::after { box-sizing: border-box; }
+.cff-management .tk-hero { padding: 24px; background: #fff; box-shadow: none; }
+.cff-management .tk-hero-title { font-size: 25px !important; }
+.cff-management .tk-hero-action .button { min-height: 38px; padding: 2px 16px; line-height: 32px; white-space: nowrap; }
+.cff-management .tk-card { padding: 24px; box-shadow: none; }
+.cff-management .cff-editor-main > .tk-card, .cff-management .cff-editor-sidebar > .tk-card,
+.cff-management .cff-overview-stats > .tk-card, .cff-management .cff-next-steps > .tk-card { margin: 0; }
+.cff-management h2, .cff-management h3 { color: var(--cff-text); }
+.cff-management .button { min-height: 34px; padding: 1px 12px; line-height: 30px; white-space: nowrap; font-weight: 500; }
+.cff-management .button-primary { box-shadow: none; }
+.cff-management a:focus-visible, .cff-management summary:focus-visible { outline: 2px solid var(--cff-primary); outline-offset: 3px; }
+.cff-card-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
+.cff-card-heading h2 { margin: 0 0 6px; font-size: 17px; line-height: 1.4; }
+.cff-card-heading p, .cff-form-section > .description { margin: 0; color: var(--cff-muted); font-size: 13px; line-height: 1.6; }
+.cff-total { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; min-height: 28px; border-radius: 6px; background: #f0f4f8; color: var(--cff-muted); font-weight: 600; }
+.cff-list-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 0 0 18px; }
+.cff-list-search { display: flex; position: relative; flex: 1 1 240px; max-width: 440px; }
+.cff-list-search .dashicons { position: absolute; top: 10px; left: 11px; width: 18px; height: 18px; font-size: 18px; color: var(--cff-muted); pointer-events: none; }
+.cff-management .cff-list-search input { width: 100%; min-height: 38px; padding: 6px 12px 6px 36px; margin: 0; }
+.cff-management .cff-list-tools select { flex: 0 1 180px; width: auto; min-height: 38px; min-width: 155px; margin: 0; }
+.cff-list-count { margin-left: auto; color: var(--cff-muted); font-size: 12px; }
+.cff-management-table { width: 100%; border-collapse: collapse; table-layout: auto; }
+.cff-management .cff-management-table { min-width: 0; }
+.cff-management .cff-management-table th { padding: 12px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; text-align: left; }
+.cff-management .cff-management-table td { padding: 18px 16px; vertical-align: top; font-size: 13px; line-height: 1.55; text-align: left; }
+.cff-management .cff-management-table tbody tr:last-child td { border-bottom: 0; }
+.cff-management .cff-management-table tbody tr:hover { background: #fafcfe; }
+.cff-collection-name { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.cff-collection-name strong { font-size: 14px; font-weight: 650; color: var(--cff-text); }
+.cff-collection-name a { text-decoration: none; }
+.cff-collection-name a:hover strong { color: var(--cff-primary); }
+.cff-management code { font-size: 11px; padding: 2px 5px; border-radius: 4px; background: #f0f3f7; color: #59677a; overflow-wrap: anywhere; }
+.cff-cell-note { display: block; margin-top: 7px; color: var(--cff-muted); font-size: 12px; }
+.cff-status { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 5px; font-size: 12px; font-weight: 550; white-space: nowrap; }
+.cff-status .dashicons { font-size: 14px; width: 14px; height: 14px; }
+.cff-status--public { color: #186144; background: #edf7f1; }
+.cff-status--muted { color: #526174; background: #eef1f5; }
+.cff-inline-actions, .cff-definition-actions, .cff-taxonomy-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
+.cff-inline-actions { align-items: center; gap: 12px; }
+.cff-inline-actions > a:not(.button) { text-decoration: none; white-space: nowrap; }
+.cff-more-actions { min-width: 66px; }
+.cff-more-actions > summary { display: flex; align-items: center; gap: 6px; padding: 8px 3px; color: var(--cff-muted); font-size: 12px; line-height: 18px; cursor: pointer; list-style: none; }
+.cff-more-actions > summary::-webkit-details-marker { display: none; }
+.cff-more-actions > summary .dashicons { width: 12px; height: 12px; font-size: 12px; }
+.cff-more-actions form { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.cff-more-actions .button { font-size: 12px; }
+.cff-management .cff-delete-action { color: #b32d2e; border-color: #e2c2c2; }
+.cff-technical { margin-top: 8px; color: var(--cff-muted); font-size: 12px; }
+.cff-technical summary { cursor: pointer; }
+.cff-technical > div { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 10px; }
+.cff-tag-list { display: flex; flex-wrap: wrap; gap: 5px; max-width: 250px; }
+.cff-content-tag { padding: 3px 7px; border: 1px solid var(--cff-border-soft); border-radius: 4px; font-size: 12px; color: var(--cff-muted); }
+.cff-empty-state { padding: 30px 16px; text-align: center; border: 1px dashed var(--cff-border); border-radius: 8px; }
+.cff-empty-state > .dashicons { font-size: 30px; width: 30px; height: 30px; color: var(--cff-primary); }
+.cff-empty-state h3 { margin: 15px 0 8px; }
+.cff-empty-state p { margin: 0 0 20px; color: var(--cff-muted); }
+.cff-no-results { padding: 24px; margin: 0; text-align: center; color: var(--cff-muted); background: #f7f9fc; }
+.cff-editor-disclosure { margin-top: 24px; scroll-margin-top: 52px; }
+.cff-editor-disclosure > summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 24px; border: 1px solid var(--cff-border); border-radius: 8px; background: #fff; cursor: pointer; list-style: none; }
+.cff-editor-disclosure > summary::-webkit-details-marker, .cff-advanced-section > summary::-webkit-details-marker { display: none; }
+.cff-editor-disclosure > summary strong { display: block; font-size: 17px; color: var(--cff-text); }
+.cff-editor-disclosure > summary .description { display: block; margin-top: 5px; }
+.cff-editor-disclosure[open] > summary { margin-bottom: 16px; }
+.cff-editor-disclosure[open] > summary > .dashicons { transform: rotate(180deg); }
+.cff-editor-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; align-items: start; gap: 20px; }
+.cff-editor-main, .cff-editor-sidebar { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.cff-form-section h3 { margin: 0 0 6px; font-size: 15px; line-height: 1.5; }
+.cff-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.cff-form-field { min-width: 0; margin-top: 20px; }
+.cff-form-field > label { display: block; margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--cff-text); }
+.cff-management .cff-form-field > input, .cff-management .cff-form-field > select { width: 100%; max-width: none; min-height: 40px; margin: 0; padding: 7px 10px; }
+.cff-management .cff-form-field > input[readonly] { background: #f5f7fa; color: var(--cff-muted); }
+.cff-form-field .description { margin: 7px 0 0; font-size: 12px; line-height: 1.6; }
+.cff-form-field .select2-container { width: 100% !important; }
+.cff-management .required { color: #b32d2e; }
+.cff-key-preview { margin: 18px 0 0; font-size: 12px; color: var(--cff-muted); }
+.cff-check-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 18px; }
+.cff-check-grid label { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--cff-border-soft); border-radius: 6px; font-size: 13px; cursor: pointer; }
+.cff-management .cff-check-grid input, .cff-management .cff-setting-toggle > input { flex: 0 0 auto; margin: 2px 0 0; }
+.cff-check-grid label:has(input:checked) { border-color: #b7cddd; background: #f6fafd; }
+.cff-management .cff-setting-toggle { display: flex; align-items: flex-start; gap: 10px; padding: 16px 0; margin-bottom: 0; border-bottom: 1px solid var(--cff-border-soft); cursor: pointer; font-weight: 400; }
+.cff-setting-toggle:last-child { border-bottom: 0; padding-bottom: 0; }
+.cff-setting-toggle strong { display: block; font-size: 13px; line-height: 1.5; }
+.cff-setting-toggle .description { display: block; margin-top: 4px; font-size: 12px; font-weight: 400; line-height: 1.6; }
+.cff-visibility-note { padding: 12px; border-radius: 6px; background: #edf6fd; color: #245a81; font-size: 12px; line-height: 1.65; }
+.cff-visibility-note.is-hidden { background: #f1f4f7; color: #526174; }
+[data-cff-public-settings].is-overridden { padding-left: 12px; border-left: 2px solid #d6dde6; }
+[data-cff-public-settings].is-overridden .description { color: #64748b; }
+.cff-management .cff-advanced-section { padding: 0; }
+.cff-advanced-section > summary { padding: 20px 24px; font-size: 14px; font-weight: 600; color: var(--cff-text); cursor: pointer; }
+.cff-advanced-body { padding: 0 24px 24px; border-top: 1px solid var(--cff-border-soft); }
+.cff-advanced-body .cff-lang-tabs { margin-top: 20px; box-shadow: none; }
+.cff-editor-footer { position: sticky; top: 42px; z-index: 50; display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0 0 20px; padding: 16px 20px; border: 1px solid var(--cff-border); border-radius: 8px; background: #fff; box-shadow: 0 3px 12px rgba(15, 23, 42, .04); }
+.cff-editor-footer > div { display: flex; gap: 8px; }
+.cff-save-status { font-size: 12px; color: var(--cff-muted); }
+.cff-save-status.is-dirty { color: #8c5700; }
+.cff-save-status.is-dirty::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 7px; border-radius: 50%; background: #b7780b; }
+.cff-overview-stats, .cff-next-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 0 0 24px; }
+.cff-management .cff-overview-stat { display: flex; align-items: center; gap: 14px; text-decoration: none; }
+.cff-stat-icon { display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 42px; border-radius: 8px; background: #edf4fa; color: var(--cff-primary); font-size: 22px; }
+.cff-stat-label { display: block; font-size: 12px; color: var(--cff-muted); }
+.cff-stat-value { display: block; margin-top: 4px; font-size: 25px; font-weight: 650; line-height: 1.2; color: var(--cff-text); }
+.cff-overview-stat > .dashicons:last-child { margin-left: auto; color: #8b98a9; }
+.cff-content-counts { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--cff-muted); }
+.cff-content-counts > span:first-child { color: var(--cff-text); }
+.cff-next-steps { margin: 24px 0; }
+.cff-next-steps > a { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; text-decoration: none; }
+.cff-next-steps .dashicons { color: var(--cff-primary); }
+.cff-next-steps strong { color: var(--cff-text); font-size: 14px; }
+.cff-next-steps a > span:last-child { color: var(--cff-muted); font-size: 13px; line-height: 1.6; }
+@media (max-width: 1100px) {
+    .cff-editor-grid { grid-template-columns: minmax(0, 1fr) 280px; gap: 16px; }
+    .cff-management .tk-card { padding: 20px; }
+    .cff-management .cff-advanced-section { padding: 0; }
+    .cff-management .cff-management-table td { padding: 14px 12px; }
+}
+@media (max-width: 960px) {
+    .cff-editor-grid { grid-template-columns: minmax(0, 1fr); }
+    .cff-editor-sidebar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+    .cff-overview-stats, .cff-next-steps { gap: 10px; }
+}
+@media (max-width: 782px) {
+    .cff-section-nav { flex-wrap: nowrap; overflow-x: auto; padding: 5px; gap: 2px; }
+    .cff-section-nav a { white-space: nowrap; padding: 9px 11px; }
+    .cff-help-link { align-self: flex-start; }
+    .cff-management .tk-hero { padding: 18px; }
+    .cff-management .tk-card { padding: 18px; }
+    .cff-management .cff-advanced-section { padding: 0; }
+    .cff-management .tk-hero-action .button { width: 100%; text-align: center; }
+    .cff-list-search { max-width: none; flex-basis: 100%; }
+    .cff-management .cff-list-tools select { flex: 1; }
+    .cff-list-count { font-size: 11px; }
+    .cff-management .tk-table-scroll { overflow: visible; }
+    .cff-management-table, .cff-management-table tbody { display: block; border: 0; overflow: visible; }
+    .cff-management-table thead { display: none; }
+    .cff-management-table tbody tr { display: block; margin-top: 12px; padding: 14px; border: 1px solid var(--cff-border); border-radius: 8px; }
+    .cff-management .cff-management-table tbody td { display: grid; grid-template-columns: 78px minmax(0, 1fr); gap: 10px; padding: 9px 0; border: 0; }
+    .cff-management-table td::before { content: attr(data-label); padding-top: 3px; color: var(--cff-muted); font-size: 11px; font-weight: 600; }
+    .cff-management-table td > * { min-width: 0; }
+    .cff-management-table td:first-child { align-items: start; }
+    .cff-management-table td:first-child .cff-technical, .cff-management-table td:first-child .cff-cell-note { grid-column: 2; }
+    .cff-management .cff-management-table .button { font-size: 12px; min-height: 36px; line-height: 32px; padding: 1px 9px; }
+    .cff-definition-actions, .cff-taxonomy-actions { gap: 6px; }
+    .cff-editor-sidebar, .cff-form-grid, .cff-check-grid { grid-template-columns: minmax(0, 1fr); }
+    .cff-form-grid { gap: 0; }
+    .cff-editor-disclosure > summary { padding: 18px; }
+    .cff-editor-footer { top: 54px; padding: 12px; flex-wrap: wrap; gap: 10px; }
+    .cff-editor-footer > div { margin-left: auto; }
+    .cff-overview-stats { grid-template-columns: minmax(0, 1fr); }
+    .cff-management .cff-overview-stat { min-height: 76px; }
+    .cff-next-steps { grid-template-columns: minmax(0, 1fr); }
+    .cff-advanced-body { padding: 0 18px 18px; }
+}

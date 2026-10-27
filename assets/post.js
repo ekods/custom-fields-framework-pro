@@ -1044,7 +1044,7 @@ jQuery(function($){
     ($scope && $scope.length ? $scope : $(document)).find('.cff-metabox').each(function(){
       var $metabox = $(this);
       buildMetaboxReorderList($metabox);
-      setMetaboxView($metabox, $metabox.find('> .cff-metabox-view .cff-field-view-mode').val() || 'builder');
+      setMetaboxView($metabox, $metabox.find('> .cff-metabox-view .cff-field-view-mode--metabox').is(':checked') ? 'reorder' : 'builder');
     });
   }
 
@@ -1562,7 +1562,7 @@ jQuery(function($){
   $(document)
     .off('change.cffMetaboxView', '.cff-field-view-mode--metabox')
     .on('change.cffMetaboxView', '.cff-field-view-mode--metabox', function(){
-      setMetaboxView($(this).closest('.cff-metabox'), $(this).val() || 'builder');
+      setMetaboxView($(this).closest('.cff-metabox'), $(this).is(':checked') ? 'reorder' : 'builder');
     });
 
   /* -------------------------

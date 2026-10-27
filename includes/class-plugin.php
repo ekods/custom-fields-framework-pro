@@ -174,6 +174,12 @@ class Plugin {
     add_action('init', [$this->dynamic_content_manager(), 'register_dynamic_taxonomies'], 25);
     add_action('init', [$this->term_meta_manager(), 'register_term_meta_fields'], 30);
     add_action('init', [$this, 'add_polylang_rewrite_rules'], 100);
+    add_action('wp_loaded', [$this->dynamic_content_manager(), 'flush_pending_rewrite_rules']);
+    add_action('template_redirect', [$this->dynamic_content_manager(), 'block_hidden_frontend_views'], 1);
+    foreach (['cffp_post_types', 'cffp_taxonomies'] as $option) {
+      add_action('add_option_' . $option, [$this->dynamic_content_manager(), 'schedule_rewrite_flush']);
+      add_action('update_option_' . $option, [$this->dynamic_content_manager(), 'schedule_rewrite_flush']);
+    }
 
     add_action('admin_menu', [$this, 'admin_menu']);
     add_action('add_meta_boxes', [$this, 'meta_boxes']);
@@ -270,58 +276,15 @@ class Plugin {
   }
 
   public function page_dashboard() {
-    echo '<div class="wrap tk-wrap cff-admin">';
-    cff_render_header_branding();
-    cff_render_page_hero(
-      __('Custom Fields Framework', 'cff'),
-      __('Manage your dynamic content structure, create field groups, and explore the advanced custom field types.', 'cff'),
-      'dashicons-feedback',
-      '<a href="'.esc_url(admin_url('edit.php?post_type=cff_group')).'" class="button button-primary button-hero" style="color: #fff; border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); backdrop-filter: blur(10px);">'.__('Manage Field Groups', 'cff').'</a>'
-    );
-
-    // Quick Stats
-    $total_groups = wp_count_posts('cff_group')->publish;
-    $custom_pts = count(get_option('cffp_post_types', []));
-    $custom_tax = count(get_option('cffp_taxonomies', []));
-
-    echo '<div class="tk-grid tk-grid-3" style="margin-top: 24px; margin-bottom: 24px;">';
-    $this->render_stat_card(__('Field Groups', 'cff'), $total_groups, 'dashicons-layout', admin_url('edit.php?post_type=cff_group'));
-    $this->render_stat_card(__('Custom Post Types', 'cff'), $custom_pts, 'dashicons-admin-post', admin_url('admin.php?page=cff-post-types'));
-    $this->render_stat_card(__('Custom Taxonomies', 'cff'), $custom_tax, 'dashicons-tag', admin_url('admin.php?page=cff-taxonomies'));
-    echo '</div>';
-
-    $pts = get_post_types(['public'=>true], 'objects');
-    echo '<div class="tk-card">';
-    echo '<h2>All Post Types</h2>';
-    echo '<p class="description">Reference list (built-in + your CPT). Use these keys in Location Rules (Post Type).</p>';
-    echo '<div class="tk-table-scroll"><table class="tk-table tk-pairs-table"><thead><tr><th>Key</th><th>Label</th><th>Menu</th><th>REST</th><th>Archive</th></tr></thead><tbody>';
-    foreach ($pts as $pt) {
-      $menu = $pt->show_ui ? '<a href="'.esc_url(admin_url('edit.php?post_type='.$pt->name)).'">Open</a>' : '—';
-      echo '<tr>';
-      echo '<td><code>'.esc_html($pt->name).'</code></td>';
-      echo '<td>'.esc_html($pt->labels->name).'</td>';
-      echo '<td>'.$menu.'</td>';
-      echo '<td>'.($pt->show_in_rest ? '<span class="tk-badge tk-on">Yes</span>' : '<span class="tk-badge">No</span>').'</td>';
-      echo '<td>'.($pt->has_archive ? '<span class="tk-badge tk-on">Yes</span>' : '<span class="tk-badge">No</span>').'</td>';
-      echo '</tr>';
-    }
-    echo '</tbody></table></div>';
-    echo '</div>';
-    echo '</div>';
+    if (!current_user_can(self::admin_capability())) return;
+    include __DIR__ . '/admin/views/dashboard.php';
   }
 
   private function render_stat_card($label, $value, $icon, $link = '') {
-    echo '<a href="' . esc_url($link ?: '#') . '" class="tk-card tk-stat-card" style="text-decoration: none; transition: transform 0.2s ease, box-shadow 0.2s ease; display: block;">';
-    echo '<div style="display: flex; align-items: center; gap: 16px;">';
-    echo '<div style="background: #eff6ff; color: #1d4ed8; padding: 12px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">';
-    echo '<span class="dashicons ' . esc_attr($icon) . '" style="font-size: 24px; width: 24px; height: 24px;"></span>';
-    echo '</div>';
-    echo '<div>';
-    echo '<div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">' . esc_html($label) . '</div>';
-    echo '<div style="font-size: 24px; font-weight: 800; color: #1e293b; margin-top: 2px;">' . esc_html($value) . '</div>';
-    echo '</div>';
-    echo '</div>';
-    echo '</a>';
+    echo '<a href="'.esc_url($link ?: '#').'" class="tk-card tk-stat-card cff-overview-stat">';
+    echo '<span class="cff-stat-icon dashicons '.esc_attr($icon).'" aria-hidden="true"></span>';
+    echo '<span><span class="cff-stat-label">'.esc_html($label).'</span><strong class="cff-stat-value">'.esc_html($value).'</strong></span>';
+    echo '<span class="dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span></a>';
   }
 
   private function ensure_global_settings_post() {
@@ -805,6 +768,9 @@ TEXT;
 
     if (in_array($action, ['add','update'], true)) {
       $key = sanitize_key($_POST['cpt_key'] ?? '');
+      if (!$key && $action === 'add') {
+        $key = substr(sanitize_key(str_replace('-', '_', sanitize_title($_POST['cpt_singular'] ?? ''))), 0, 20);
+      }
       if ($key) {
         $menu_icon_raw = isset($_POST['cpt_menu_icon']) ? trim(wp_unslash($_POST['cpt_menu_icon'])) : '';
         $menu_icon = '';
@@ -841,6 +807,7 @@ TEXT;
           'plural'   => $plural,
           'slug'     => $slug_input,
             'public'   => !empty($_POST['cpt_public']),
+            'hide_frontend' => !empty($_POST['cpt_hide_frontend']),
             'has_archive' => !empty($_POST['cpt_archive']),
             'show_in_rest' => !empty($_POST['cpt_rest']),
           'supports' => $supports,
@@ -849,7 +816,7 @@ TEXT;
           'duplicate_status' => $duplicate_status,
           'taxonomies' => isset($_POST['cpt_taxonomies'])
             ? array_values(array_filter(array_map('sanitize_key',(array)$_POST['cpt_taxonomies'])))
-            : [],
+            : (array) ($defs[$key]['taxonomies'] ?? []),
           'menu_icon' => $menu_icon,
           'menu_position' => isset($_POST['cpt_menu_position']) ? intval($_POST['cpt_menu_position']) : 25,
         ];
@@ -869,7 +836,6 @@ TEXT;
           }
 
           update_option('cffp_post_types', $defs);
-          flush_rewrite_rules();
 
           // redirect aman tanpa header (biar sidebar icon ikut refresh)
           echo '<div class="notice notice-success"><p>Custom Post Type saved.</p></div>';
@@ -913,7 +879,6 @@ TEXT;
         if ($key && isset($defs[$key])) {
           unset($defs[$key]);
           update_option('cffp_post_types', $defs);
-          flush_rewrite_rules();
 
           echo '<div class="notice notice-success"><p>Custom Post Type removed.</p></div>';
           echo '<script>window.location = ' . wp_json_encode( admin_url('admin.php?page=cff-post-types&deleted=1') ) . ';</script>';
@@ -935,199 +900,7 @@ TEXT;
       'custom-fields' => 'Custom Fields',
     ];
 
-    echo '<div class="wrap tk-wrap cff-admin">';
-    cff_render_header_branding();
-    cff_render_page_hero(
-      __('Post Types', 'cff'),
-      __('Create and manage Custom Post Types. Automatically registers URLs, REST API endpoints, and admin UI.', 'cff'),
-      'dashicons-admin-post'
-    );
-
-    echo '<div class="tk-card">';
-    echo '<h2 style="margin-top:0">Existing Post Types</h2>';
-
-    if (!$defs) {
-      echo '<p class="tk-empty">No custom post types yet.</p>';
-    } else {
-      echo '<div class="tk-table-scroll"><table class="tk-table tk-pairs-table"><thead><tr><th>Key</th><th>Label</th><th>Slug</th><th>Template Files</th><th>Icon</th><th>Thumbnail</th><th>Views</th><th>Public</th><th>Actions</th></tr></thead><tbody>';
-
-      foreach ($defs as $key => $def) {
-        $label = esc_html(($def['plural'] ?? $key));
-
-        $icon = is_string($def['menu_icon'] ?? '') ? trim((string)$def['menu_icon']) : '';
-        $icon_html = '—';
-        if ($icon) {
-          if (strpos($icon, 'dashicons-') === 0) {
-            $icon_html = '<span class="dashicons '.esc_attr($icon).'" style="vertical-align:middle;"></span> <code>'.esc_html($icon).'</code>';
-          } else {
-            $icon_html = '<img src="'.esc_url($icon).'" style="width:18px;height:18px;vertical-align:middle;" /> <code>'.esc_html($icon).'</code>';
-          }
-        }
-
-        $edit_url = add_query_arg(['page'=>'cff-post-types','edit'=>$key], admin_url('admin.php'));
-
-        echo '<tr>';
-        echo '<td><code>'.esc_html($key).'</code></td>';
-        echo '<td>'.$label.'</td>';
-        $slug_value = $def['slug'] ?? $key;
-        $template_slug = sanitize_title($slug_value ?: $key);
-        $archive_tpl = 'archive-' . ($template_slug ?: 'post-type') . '.php';
-        $single_tpl = 'single-' . ($template_slug ?: 'post-type') . '.php';
-        echo '<td><code>'.esc_html($slug_value).'</code></td>';
-        $has_archive_view = !empty($def['has_archive']);
-        $block_single = !empty($def['block_single']);
-        $tpl_parts = [];
-        if ($has_archive_view) {
-          $tpl_parts[] = '<code>' . esc_html($archive_tpl) . '</code>';
-        }
-        if (!$block_single) {
-          $tpl_parts[] = '<code>' . esc_html($single_tpl) . '</code>';
-        }
-        $tpl_cell = $tpl_parts ? implode('<br>', $tpl_parts) : '<span class="cff-muted">—</span>';
-        echo '<td>' . $tpl_cell . '</td>';
-        echo '<td>'.$icon_html.'</td>';
-        $thumb_icon = !empty($def['list_thumbnail']) ? '<span class="dashicons dashicons-yes"></span>' : '<span class="dashicons dashicons-no-alt"></span>';
-        $archive_icon = !empty($def['has_archive']) ? 'dashicons-yes' : 'dashicons-no-alt';
-        $block_icon = !empty($def['block_single']) ? 'dashicons-yes' : 'dashicons-no-alt';
-        $views_html = '<div style="font-size:12px;line-height:1.4;">'
-          . '<span class="dashicons ' . esc_attr($archive_icon) . '"></span> ' . esc_html__('Archive', 'cff') . '<br>'
-          . '<span class="dashicons ' . esc_attr($block_icon) . '"></span> ' . esc_html__('No single', 'cff')
-          . '</div>';
-        echo '<td style="text-align:center;">'.$thumb_icon.'</td>';
-        echo '<td>'.$views_html.'</td>';
-        echo '<td>'.(!empty($def['public']) ? 'Yes' : 'No').'</td>';
-        echo '<td>';
-        echo '<div class="cff-cpt-actions" role="group" aria-label="'.esc_attr__('Post type actions','cff').'">';
-        echo '<a class="cff-cpt-action cff-cpt-action-link" href="'.esc_url($edit_url).'" title="'.esc_attr__('Edit','cff').' '.esc_attr($label).'">';
-        echo '<span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="screen-reader-text">'.esc_html__('Edit','cff').'</span>';
-        echo '</a>';
-        echo '<form method="post" class="cff-cpt-action-form">';
-        wp_nonce_field('cffp_cpt_save','cffp_cpt_nonce');
-        echo '<input type="hidden" name="cpt_key" value="'.esc_attr($key).'">';
-        echo '<button class="cff-cpt-action" name="cffp_action" value="duplicate" title="'.esc_attr__('Duplicate','cff').' '.esc_attr($label).'">';
-        echo '<span class="dashicons dashicons-admin-page" aria-hidden="true"></span><span class="screen-reader-text">'.esc_html__('Duplicate','cff').'</span>';
-        echo '</button>';
-        echo '<button class="cff-cpt-action cff-cpt-action-destructive cff-requires-confirm" name="cffp_action" value="delete" data-confirm-title="'.esc_attr__('Delete Post Type', 'cff').'" data-confirm-message="'.esc_attr(sprintf(__('Delete the post type "%s"? This only removes the CFF definition and does not delete existing posts.', 'cff'), wp_strip_all_tags($label))).'" data-confirm-submit="1" title="'.esc_attr__('Delete','cff').' '.esc_attr($label).'">';
-        echo '<span class="dashicons dashicons-trash" aria-hidden="true"></span><span class="screen-reader-text">'.esc_html__('Delete','cff').'</span>';
-        echo '</button>';
-        echo '</form>';
-        echo '</div>';
-        echo '</td>';
-        echo '</tr>';
-      }
-
-      echo '</tbody></table></div>';
-    }
-    echo '</div>'; // end tk-card
-
-    // =========================
-    // ADD / EDIT FORM
-    // =========================
-    echo '<div class="tk-card tk-card--custom" style="margin-top: 24px;">';
-    echo '<h2 style="margin-top:0">'.($editing ? 'Edit Post Type' : 'Add New Post Type').'</h2>';
-
-    $pub = $editing ? !empty($edit_def['public']) : true;
-    $arc = $editing ? !empty($edit_def['has_archive']) : true;
-    $rst = $editing ? !empty($edit_def['show_in_rest']) : true;
-    $block_single = $editing ? !empty($edit_def['block_single']) : false;
-    $dup_status = $editing ? ($edit_def['duplicate_status'] ?? 'active') : 'active';
-    $current_key = $editing ? sanitize_key($edit_key) : '';
-    $current_slug = $editing ? sanitize_title($edit_def['slug'] ?? $edit_key) : '';
-    $menu_position_value = $editing ? intval($edit_def['menu_position'] ?? 25) : 25;
-
-    $supports_selected = $editing && isset($edit_def['supports']) && is_array($edit_def['supports'])
-      ? array_values(array_map('sanitize_key', $edit_def['supports']))
-      : ['title','editor'];
-    $list_thumb_selected = $editing ? !empty($edit_def['list_thumbnail']) : false;
-    if ($list_thumb_selected && !in_array('thumbnail', $supports_selected, true)) {
-      $supports_selected[] = 'thumbnail';
-    }
-
-    echo '<form method="post" class="cff-cpt-form">';
-    wp_nonce_field('cffp_cpt_save','cffp_cpt_nonce');
-    echo '<input type="hidden" name="cffp_action" value="'.($editing ? 'update' : 'add').'">';
-
-    echo '<table class="form-table"><tbody>';
-
-    echo '<tr class="cff-cpt-key-row"><th><label>Key</label></th><td>';
-    echo '<input type="hidden" name="cpt_key" value="'.esc_attr($editing ? $edit_key : '').'">';
-    echo $current_key ? '<code>'.esc_html($current_key).'</code>' : '<span class="cff-muted">Generated from Singular label</span>';
-    echo '</td></tr>';
-    $langs = $this->polylang_languages();
-    echo '<tr><th><label>Singular</label></th><td><input name="cpt_singular" class="regular-text" placeholder="Custom Post" value="'.esc_attr($edit_def['singular'] ?? '').'"></td></tr>';
-    echo '<tr><th><label>Plural</label></th><td><input name="cpt_plural" class="regular-text" placeholder="Custom Posts" value="'.esc_attr($edit_def['plural'] ?? '').'"></td></tr>';
-    echo '<tr class="cff-cpt-slug-row"><th><label>Slug</label></th><td>';
-    echo '<input type="text" name="cpt_slug" class="regular-text" placeholder="custom-post" value="'.esc_attr($current_slug).'">';
-    echo '<p class="description">Enter the URL slug for this CPT (auto-generated from the plural label if left blank).</p>';
-    echo '</td></tr>';
-    if ($langs) {
-      echo '<tr><th><label>Translations</label></th><td>';
-      echo '<div class="cff-lang-tabs" data-default="'.esc_attr($langs[0]['slug']).'">';
-      echo '<div class="cff-lang-tabbar">';
-      foreach ($langs as $lang) {
-        echo '<button type="button" class="cff-lang-tab" data-lang="'.esc_attr($lang['slug']).'">'.esc_html($lang['name'] ?: $lang['slug']).'</button>';
-      }
-      echo '</div>';
-      foreach ($langs as $lang) {
-        $slug = $lang['slug'];
-        echo '<div class="cff-lang-panel" data-lang="'.esc_attr($slug).'">';
-        echo '<p><label>Singular</label><br><input class="regular-text" placeholder="Custom Post" name="cpt_singular_i18n['.esc_attr($slug).']" value="'.esc_attr(($edit_def['singular_i18n'][$slug] ?? '')).'"></p>';
-        echo '<p><label>Plural</label><br><input class="regular-text" placeholder="Custom Posts" name="cpt_plural_i18n['.esc_attr($slug).']" value="'.esc_attr(($edit_def['plural_i18n'][$slug] ?? '')).'"></p>';
-        echo '<p><label>Slug</label><br><input class="regular-text" placeholder="custom-post" name="cpt_slug_i18n['.esc_attr($slug).']" value="'.esc_attr(($edit_def['slug_i18n'][$slug] ?? '')).'"></p>';
-        echo '</div>';
-      }
-      echo '</div>';
-      echo '</td></tr>';
-    }
-
-    echo '<tr><th><label>Options</label></th><td>';
-    echo '<label><input type="checkbox" name="cpt_public" value="1" '.($pub?'checked':'').'> '.esc_html__('Public', 'cff').'</label> &nbsp; ';
-    echo '<label><input type="checkbox" name="cpt_rest" value="1" '.($rst?'checked':'').'> '.esc_html__('REST API', 'cff').'</label>';
-    echo '</td></tr>';
-    echo '<tr><th><label>'.esc_html__('Views', 'cff').'</label></th><td>';
-    echo '<label><input type="checkbox" name="cpt_archive" value="1" '.($arc?'checked':'').'> '.esc_html__('Archive view', 'cff').'</label> &nbsp; ';
-    echo '<label><input type="checkbox" name="cpt_block_single" value="1" '.($block_single?'checked':'').'> '.esc_html__('No single view', 'cff').'</label>';
-    echo '<p class="description">'.esc_html__('Archive view controls whether the CPT has an archive listing. No single view prevents individual permalinks from being publicly accessible.', 'cff').'</p>';
-    echo '</td></tr>';
-
-    echo '<tr><th><label>'.esc_html__('Duplicate status', 'cff').'</label></th><td>';
-    echo '<label style="margin-right:12px;"><input type="radio" name="cpt_duplicate_status" value="active" '.($dup_status === 'active' ? 'checked' : '').'> '.esc_html__('Active', 'cff').'</label>';
-    echo '<label style="margin-right:12px;"><input type="radio" name="cpt_duplicate_status" value="inactive" '.($dup_status === 'inactive' ? 'checked' : '').'> '.esc_html__('Non-active', 'cff').'</label>';
-    echo '<p class="description">'.esc_html__('Choose the default publish status when duplicating this CPT.', 'cff').'</p>';
-    echo '</td></tr>';
-
-    // ✅ ini akan selalu muncul value saat edit
-    echo '<tr><th><label>Menu Icon</label></th><td>';
-    echo '<input name="cpt_menu_icon" class="regular-text" placeholder="dashicons-admin-post or https://example.com/icon.svg" value="'.esc_attr($edit_def['menu_icon'] ?? '').'">';
-    echo '<p class="description">
-      Use Dashicons class (e.g. <code>dashicons-admin-post</code>) or a full image URL.
-      Reference: <a href="https://developer.wordpress.org/resource/dashicons/" target="_blank" rel="noopener noreferrer">Dashicons Library</a>.
-      Example image URL: <code>https://example.com/icon.svg</code>
-    </p>';
-    echo '</td></tr>';
-
-    echo '<tr><th><label>Menu Position</label></th><td>';
-    echo '<input type="number" min="0" name="cpt_menu_position" class="small-text" value="'.esc_attr($menu_position_value).'">';
-    echo '<p class="description">Control where this CPT appears in the admin menu (same values as <code>register_post_type</code>). Use <code>0</code> to hand over placement to WordPress.</p>';
-    echo '</td></tr>';
-
-    echo '<tr><th><label>Supports</label></th><td>';
-    foreach ($supports_all as $k => $lab) {
-      $checked = in_array($k, $supports_selected, true) ? 'checked' : '';
-      echo '<label style="display:inline-block;margin-right:12px"><input type="checkbox" name="cpt_supports[]" value="'.esc_attr($k).'" '.$checked.'> '.esc_html($lab).'</label>';
-    }
-    echo '</td></tr>';
-    echo '<tr><th><label>Admin list</label></th><td>';
-    echo '<label><input type="checkbox" name="cpt_list_thumbnail" value="1" '.($list_thumb_selected ? 'checked' : '').'> Show featured image column on the post listing screen.</label>';
-    echo '<p class="description">Requires Featured Image support.</p>';
-    echo '</td></tr>';
-
-    echo '</tbody></table>';
-    echo '</div>'; // end tk-card
-    echo '<p><button type="submit" class="button button-primary">Save CPT</button></p>';
-    echo '</form>';
-
-    echo '</div>';
+    include __DIR__ . '/admin/views/post-types.php';
   }
 
   public function page_taxonomies() {
@@ -1167,8 +940,9 @@ TEXT;
           $defs[$key] = [
             'plural' => sanitize_text_field($_POST['plural'] ?? ''),
             'singular' => sanitize_text_field($_POST['singular'] ?? ''),
-            'slug' => sanitize_title($_POST['slug'] ?? $key),
+            'slug' => sanitize_title(($_POST['slug'] ?? '') ?: $key),
             'public' => !empty($_POST['public']),
+            'hide_frontend' => !empty($_POST['hide_frontend']),
             'hierarchical' => !empty($_POST['hierarchical']),
             'show_in_rest' => !empty($_POST['show_in_rest']),
             'post_types' => isset($_POST['post_types']) ? array_map('sanitize_key',(array)$_POST['post_types']) : [],
@@ -1188,7 +962,9 @@ TEXT;
             $defs[$key]['slug_i18n'] = array_filter($slug_i18n);
           }
           update_option('cffp_taxonomies', $defs);
-          flush_rewrite_rules();
+          $edit_def = $defs[$key];
+          $edit_key = $key;
+          $editing = true;
           add_settings_error('cffp_taxonomies','saved',__('Taxonomy saved','cff'),'updated');
         }
       }
@@ -1200,7 +976,6 @@ TEXT;
           $i=2; while(isset($defs[$new_key])){ $new_key = $key.'_copy'.$i; $i++; }
           $defs[$new_key] = $defs[$key];
           update_option('cffp_taxonomies',$defs);
-          flush_rewrite_rules();
           add_settings_error('cffp_taxonomies','dup',__('Taxonomy duplicated','cff'),'updated');
         }
       }
@@ -1210,7 +985,11 @@ TEXT;
         if ($key && isset($defs[$key])) {
           unset($defs[$key]);
           update_option('cffp_taxonomies', $defs);
-          flush_rewrite_rules();
+          if ($edit_key === $key) {
+            $editing = false;
+            $edit_key = '';
+            $edit_def = [];
+          }
           add_settings_error('cffp_taxonomies','deleted',__('Taxonomy deleted','cff'),'updated');
         }
       }
@@ -1220,122 +999,19 @@ TEXT;
 
     $defs = get_option('cffp_taxonomies', []);
     if (!is_array($defs)) $defs = [];
-    $post_types = get_post_types(['public'=>true], 'objects');
+    $post_types = get_post_types(['public'=>true], 'objects') + get_post_types(['show_ui'=>true], 'objects');
+    unset($post_types['cff_group'], $post_types['cff_options']);
     $sel_pt = isset($edit_def['post_types']) && is_array($edit_def['post_types']) ? $edit_def['post_types'] : [];
 
-    echo '<div class="wrap tk-wrap cff-admin">';
-    cff_render_header_branding();
-    cff_render_page_hero(
-      __('Taxonomies', 'cff'),
-      __('Create and manage Custom Taxonomies to group your posts. Automatically registers URLs and REST API endpoints.', 'cff'),
-      'dashicons-category'
-    );
-
-    echo '<div class="tk-card">';
-    echo '<h2 style="margin-top:0">Existing Taxonomies</h2>';
-
-    if (!$defs) {
-      echo '<p class="tk-empty">No custom taxonomies yet.</p>';
-    } else {
-      echo '<div class="tk-table-scroll"><table class="tk-table tk-pairs-table"><thead><tr><th>Key</th><th>Label</th><th>Post Types</th><th>Public</th><th>Hierarchical</th><th>Actions</th></tr></thead><tbody>';
-      foreach ($defs as $key=>$def) {
-        $pts = isset($def['post_types']) ? implode(', ', array_map('esc_html',(array)$def['post_types'])) : '';
-        echo '<tr>';
-        echo '<td><code>'.esc_html($key).'</code></td>';
-        echo '<td>'.esc_html($def['plural'] ?? '').'</td>';
-        echo '<td>'.esc_html($pts).'</td>';
-        echo '<td>'.(!empty($def['public'])?'Yes':'No').'</td>';
-        echo '<td>'.(!empty($def['hierarchical'])?'Yes':'No').'</td>';
-        echo '<td>';
-        echo '<a class="button" href="'.esc_url(add_query_arg(['page'=>'cff-taxonomies','edit'=>$key], admin_url('admin.php'))).'">Edit</a> ';
-        echo '<form method="post" style="display:inline">';
-        echo wp_nonce_field('cffp_tax_nonce','cffp_tax_nonce',true,false);
-        echo '<input type="hidden" name="tax_key" value="'.esc_attr($key).'">';
-        echo '<button class="button" name="cffp_tax_action" value="duplicate">Duplicate</button> ';
-        echo '<button class="button button-link-delete cff-requires-confirm" name="cffp_tax_action" value="delete" data-confirm-title="'.esc_attr__('Delete Taxonomy', 'cff').'" data-confirm-message="'.esc_attr(sprintf(__('Delete the taxonomy "%s"? This only removes the CFF definition and does not delete existing terms.', 'cff'), $def['plural'] ?? $key)).'" data-confirm-submit="1">Delete</button>';
-        echo '</form>';
-        echo '</td>';
-        echo '</tr>';
-      }
-      echo '</tbody></table></div>';
-    }
-    echo '</div>'; // end tk-card
-
-    echo '<div class="tk-card tk-card--custom" style="margin-top: 24px;">';
-    echo '<h2 style="margin-top:0">'.($editing ? 'Edit Taxonomy' : 'Add New Taxonomy').'</h2>';
-    echo '<form method="post" class="cff-tools-form cff-tax-form">';
-    echo wp_nonce_field('cffp_tax_nonce','cffp_tax_nonce',true,false);
-    echo '<input type="hidden" name="cffp_tax_action" value="'.($editing?'update':'add').'">';
-    $langs = $this->polylang_languages();
-    echo '<div class="cff-tools-field"><label>Plural Label <span class="required">*</span></label>';
-    echo '<input class="regular-text" type="text" name="plural" placeholder="Genres" required value="' . esc_attr($edit_def['plural'] ?? '') . '">';
-    echo '</div>';
-    echo '<div class="cff-tools-field"><label>Singular Label <span class="required">*</span></label>';
-    echo '<input class="regular-text" type="text" name="singular" placeholder="Genre" required value="' . esc_attr($edit_def['singular'] ?? '') . '">';
-    echo '</div>';
-
-    echo '<div class="cff-tools-field"><label>Taxonomy Key <span class="required">*</span></label>';
-    echo '<input class="regular-text" type="text" name="tax_key" placeholder="genre" required value="' . esc_attr($editing ? $edit_key : '') . '" ' . ($editing ? 'readonly' : '') . '>';
-    echo '<p class="description">Lower case letters, underscores and dashes only. Max 32 characters.</p>';
-    echo '</div>';
-    echo '<div class="cff-tools-field"><label>Slug</label>';
-    echo '<input class="regular-text" type="text" name="slug" placeholder="genre" value="' . esc_attr($edit_def['slug'] ?? '') . '">';
-    echo '</div>';
-
-    if ($langs) {
-      echo '<div class="cff-tools-field">';
-      echo '<label>Translations</label>';
-      echo '<div class="cff-lang-tabs" data-default="'.esc_attr($langs[0]['slug']).'">';
-      echo '<div class="cff-lang-tabbar">';
-      foreach ($langs as $lang) {
-        echo '<button type="button" class="cff-lang-tab" data-lang="'.esc_attr($lang['slug']).'">'.esc_html($lang['name'] ?: $lang['slug']).'</button>';
-      }
-      echo '</div>';
-      foreach ($langs as $lang) {
-        $slug = $lang['slug'];
-        echo '<div class="cff-lang-panel" data-lang="'.esc_attr($slug).'">';
-        echo '<p><label>Plural</label><br><input class="regular-text" placeholder="Genres" name="plural_i18n['.esc_attr($slug).']" value="' . esc_attr($edit_def['plural_i18n'][$slug] ?? '') . '"></p>';
-        echo '<p><label>Singular</label><br><input class="regular-text" placeholder="Genre" name="singular_i18n['.esc_attr($slug).']" value="' . esc_attr($edit_def['singular_i18n'][$slug] ?? '') . '"></p>';
-        echo '<p><label>Slug</label><br><input class="regular-text" placeholder="genre" name="slug_i18n['.esc_attr($slug).']" value="' . esc_attr($edit_def['slug_i18n'][$slug] ?? '') . '"></p>';
-        echo '</div>';
-      }
-      echo '</div>';
-      echo '</div>';
-    }
-
-    echo '<div class="cff-tools-field"><label>Post Types</label>';
-    echo '<select name="post_types[]" multiple class="cff-select2 regular-text">';
-    foreach ($post_types as $pt) {
-      echo '<option value="' . esc_attr($pt->name) . '" ' . (in_array($pt->name, $sel_pt, true) ? 'selected' : '') . '>' . esc_html($pt->labels->name) . ' (' . esc_html($pt->name) . ')</option>';
-    }
-    echo '</select><p class="description">One or many post types that can be classified with this taxonomy.</p></div>';
-
-    $public_checked = $editing ? !empty($edit_def['public']) : true;
-    $rest_checked = $editing ? !empty($edit_def['show_in_rest']) : true;
-
-    echo '<div class="cff-tools-toggles">';
-    echo '<label class="cff-switch"><input type="checkbox" name="public" '.($public_checked?'checked':'').'><span class="cff-slider"></span></label><div><strong>Public</strong><div class="description">Visible on frontend/admin.</div></div>';
-    echo '</div>';
-
-    echo '<div class="cff-tools-toggles">';
-    echo '<label class="cff-switch"><input type="checkbox" name="hierarchical" '.(!empty($edit_def['hierarchical'])?'checked':'').'><span class="cff-slider"></span></label><div><strong>Hierarchical</strong><div class="description">Like categories.</div></div>';
-    echo '</div>';
-
-    echo '<div class="cff-tools-toggles">';
-    echo '<label class="cff-switch"><input type="checkbox" name="show_in_rest" '.($rest_checked?'checked':'').'><span class="cff-slider"></span></label><div><strong>REST API</strong><div class="description">Expose in REST.</div></div>';
-    echo '</div>';
-
-    echo '<p><button class="button button-primary">Save Taxonomy</button></p>';
-    echo '</form>';
-    echo '</div>'; // end tk-card
-    echo '</div>'; // end wrap
+    include __DIR__ . '/admin/views/taxonomies.php';
   }
 
   public function page_reorder() {
     if (!current_user_can('manage_options')) return;
 
-    $post_types = get_post_types(['public'=>true], 'objects');
-    $taxonomies = get_taxonomies(['public'=>true], 'objects');
+    $post_types = get_post_types(['public'=>true], 'objects') + get_post_types(['show_ui'=>true], 'objects');
+    unset($post_types['cff_group'], $post_types['cff_options']);
+    $taxonomies = get_taxonomies(['public'=>true], 'objects') + get_taxonomies(['show_ui'=>true], 'objects');
 
     echo '<div class="wrap tk-wrap cff-admin">';
     cff_render_header_branding();
@@ -1470,6 +1146,8 @@ TEXT;
 
     if ($is_group || $is_plugin_screen || ($screen && $screen->id === 'cff_options')) {
       wp_enqueue_style('cff-admin', CFFP_URL . 'assets/admin.css', [], $this->asset_ver('assets/admin.css'));
+      wp_enqueue_style('cff-management', CFFP_URL . 'assets/management.css', ['cff-admin'], $this->asset_ver('assets/management.css'));
+      wp_enqueue_script('cff-management', CFFP_URL . 'assets/management.js', ['cff-admin'], $this->asset_ver('assets/management.js'), true);
       wp_enqueue_script('postbox');
       wp_enqueue_script('common');
 
@@ -1897,7 +1575,7 @@ TEXT;
     $defs = get_option('cffp_post_types', []);
     if (is_array($defs)) {
       foreach ($defs as $key => $def) {
-        if (empty($def['has_archive'])) continue;
+        if (empty($def['has_archive']) || !empty($def['hide_frontend'])) continue;
         $base_slug = sanitize_title($def['slug'] ?? $key);
         foreach ($langs as $lang) {
           $slug = $this->i18n_slug_for_lang($def, 'slug_i18n', $lang, $base_slug);
@@ -3467,14 +3145,18 @@ TEXT;
           echo '<div class="cff-metabox">';
           echo '<div class="cff-field-view-controls cff-metabox-view">';
           echo '<div class="cff-field-view-copy">';
-          echo '<label for="cff-field-view-mode-' . intval($g->ID) . '">' . esc_html__('Field View', 'cff') . '</label>';
+          echo '<div class="cff-field-view-head">';
+          echo '<span class="cff-field-view-title">' . esc_html__('Field View', 'cff') . '</span>';
+          echo '<label class="cff-field-view-mode cff-field-view-switch" for="cff-field-view-mode-' . intval($g->ID) . '">';
+          echo '<input type="checkbox" id="cff-field-view-mode-' . intval($g->ID) . '" class="cff-field-view-mode--metabox" value="reorder">';
+          echo '<span class="cff-field-view-slider" aria-hidden="true"></span>';
+          echo '<span class="dashicons dashicons-sort" aria-hidden="true"></span>';
+          echo '<span class="cff-field-view-switch-label">' . esc_html__('Reorder', 'cff') . '</span>';
+          echo '</label>';
+          echo '</div>';
           echo '<p>' . esc_html__('Switch between the field editor and manual ordering for this group.', 'cff') . '</p>';
           echo '</div>';
           echo '<div class="cff-field-view-actions">';
-          echo '<select id="cff-field-view-mode-' . intval($g->ID) . '" class="cff-field-view-mode cff-field-view-mode--metabox">';
-          echo '<option value="builder">' . esc_html__('Builder', 'cff') . '</option>';
-          echo '<option value="reorder">' . esc_html__('Reorder', 'cff') . '</option>';
-          echo '</select>';
           if ($this->polylang_active()) {
             // render.php is loaded lazily by render_field(), which runs after this toolbar.
             require_once __DIR__ . '/render.php';
@@ -3871,6 +3553,7 @@ TEXT;
         'plural' => $plural,
         'slug' => $slug,
         'public' => $public,
+        'hide_frontend' => !empty($def['hide_frontend']),
         'has_archive' => $has_archive,
         'show_in_rest' => $show_in_rest,
         'supports' => $supports,
@@ -3968,6 +3651,7 @@ TEXT;
         'singular' => $singular,
         'slug' => $slug,
         'public' => $public,
+        'hide_frontend' => !empty($def['hide_frontend']),
         'hierarchical' => $hierarchical,
         'show_in_rest' => $show_in_rest,
         'post_types' => $post_types,

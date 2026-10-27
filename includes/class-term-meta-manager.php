@@ -4,7 +4,7 @@ if (!defined('ABSPATH')) exit;
 
 class Term_Meta_Manager {
   public function register_term_meta_fields() {
-    $taxonomies = get_taxonomies(['public'=>true], 'names');
+    $taxonomies = get_taxonomies(['public'=>true], 'names') + get_taxonomies(['show_ui'=>true], 'names');
     foreach ($taxonomies as $tax) {
       add_action($tax . '_add_form_fields', [$this, 'render_term_fields_add'], 10, 1);
       add_action($tax . '_edit_form_fields', [$this, 'render_term_fields_edit'], 10, 2);

@@ -4301,6 +4301,10 @@
 
     function init(){
       var $doc = $(document);
+      // Preserve saved/custom URLs when an editor changes a display label.
+      $('input[name="cpt_slug"], input[name^="cpt_slug_i18n["], input[name="slug"], input[name^="slug_i18n["]').each(function(){
+        $(this).data('cffSlugAuto', !this.value);
+      });
 
       $doc.on('input', 'input[name="cpt_plural"]', function(){
         var $form = $(this).closest('form');
@@ -4629,6 +4633,7 @@
       var singular = $singular.val() || '';
       var plural = $plural.val() || '';
       var nextKey = sanitizeCptKey(singular);
+      nextKey = nextKey.slice(0, 20);
       var nextSlug = sanitizeCptSlug(plural);
       if (keyAuto && !$key.prop('readonly')) {
         $key.val(nextKey);

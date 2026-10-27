@@ -1972,8 +1972,85 @@
   margin-left: 0;
 }
 
-.cff-field-view-controls .cff-field-view-mode {
-  min-width: 130px;
+/* Builder/Reorder toggle next to the Field View title. */
+.cff-field-view-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.cff-field-view-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--cff-editor-text);
+}
+
+.cff-field-view-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--cff-editor-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+
+.cff-field-view-switch input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.cff-field-view-slider {
+  position: relative;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 18px;
+  border-radius: 999px;
+  background: #cbd5e1;
+  transition: background .2s ease;
+}
+
+.cff-field-view-slider:before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .2);
+  transition: transform .2s ease;
+}
+
+.cff-field-view-switch .dashicons {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+}
+
+.cff-field-view-switch input:checked ~ .cff-field-view-slider {
+  background: var(--cff-editor-primary);
+}
+
+.cff-field-view-switch input:checked ~ .cff-field-view-slider:before {
+  transform: translateX(16px);
+}
+
+.cff-field-view-switch input:checked ~ .dashicons,
+.cff-field-view-switch input:checked ~ .cff-field-view-switch-label {
+  color: var(--cff-editor-primary);
+}
+
+.cff-field-view-switch input:focus-visible ~ .cff-field-view-slider {
+  outline: 2px solid var(--cff-editor-primary);
+  outline-offset: 2px;
 }
 
 .cff-field-view-controls select,

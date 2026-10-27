@@ -22,6 +22,23 @@ All notable changes to this project will be documented in this file.
 - Added unit coverage for REST write toggle behavior and JSON import payload validation.
 - Added unit coverage for content field ordering, hidden-section saves, sanitized value saves, and empty-value deletes.
 
+## 2.5.26
+
+### Added
+- Added Hide from frontend options for dynamic post types and taxonomies while retaining admin management and independent REST API settings.
+- Added searchable content lists, Public / Admin only filters, direct content actions, and unsaved-change feedback.
+
+### Changed
+- Reworked the content overview and Post Types / Taxonomies screens with clearer navigation, responsive rows, grouped settings, contextual visibility guidance, and a sticky save bar.
+- Keep hidden structures available in taxonomy fields, relationships, reorder screens, and JSON export/import.
+
+### Fixed
+- Preserve saved URL slugs when editing labels, generate valid content keys from names, and retain taxonomy assignments when saving post type settings.
+- Refresh rewrite rules after updated definitions are registered and prevent hidden frontend routes, including translated routes, from returning public content.
+
+### Validation
+- Added 54 standalone frontend visibility checks and verified management interactions at desktop, tablet, and mobile widths.
+
 ## 2.5.25
 
 ### Fixed

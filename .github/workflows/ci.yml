@@ -20,6 +20,7 @@ jobs:
       - run: composer validate --no-check-publish --no-interaction
       - run: composer lint
       - run: composer test:language-clone
+      - run: composer test:frontend-visibility
 
   package:
     runs-on: ubuntu-latest

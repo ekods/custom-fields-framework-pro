@@ -20,7 +20,8 @@ class Dynamic_Content_Manager {
         $slug = $this->i18n_slug($def, 'slug_i18n', $slug);
       }
       $public = !empty($def['public']);
-      $has_archive = !empty($def['has_archive']);
+      $hide_frontend = !empty($def['hide_frontend']);
+      $has_archive = !$hide_frontend && !empty($def['has_archive']);
       $show_in_rest = !empty($def['show_in_rest']);
       $supports = (isset($def['supports']) && is_array($def['supports']))
         ? array_values(array_map('sanitize_key', $def['supports']))
@@ -43,15 +44,17 @@ class Dynamic_Content_Manager {
           'add_new_item' => sprintf(__('Add New %s','cff'), $singular),
           'edit_item' => sprintf(__('Edit %s','cff'), $singular),
         ],
-        'public' => $public,
+        'public' => $public && !$hide_frontend,
         'has_archive' => $has_archive,
-        'rewrite' => !empty($def['block_single']) ? false : ['slug'=>$slug],
-        'publicly_queryable' => $public && empty($def['block_single']),
+        'rewrite' => $hide_frontend || !empty($def['block_single']) ? false : ['slug'=>$slug],
+        'publicly_queryable' => $public && !$hide_frontend && empty($def['block_single']),
+        'exclude_from_search' => $hide_frontend || !$public,
+        'show_in_nav_menus' => $public && !$hide_frontend,
         'show_in_rest' => $show_in_rest,
-        'show_ui' => array_key_exists('show_ui',$def) ? (bool)$def['show_ui'] : $public,
-        'query_var' => array_key_exists('query_var',$def)
+        'show_ui' => $hide_frontend || (array_key_exists('show_ui',$def) ? (bool)$def['show_ui'] : $public),
+        'query_var' => $hide_frontend ? false : (array_key_exists('query_var',$def)
           ? (bool)$def['query_var']
-          : (!empty($def['block_single']) ? false : true),
+          : (!empty($def['block_single']) ? false : true)),
         'show_admin_column' => array_key_exists('show_admin_column',$def) ? (bool)$def['show_admin_column'] : true,
         'supports' => $supports,
         'taxonomies' => (isset($def['taxonomies']) && is_array($def['taxonomies']))
@@ -87,6 +90,7 @@ class Dynamic_Content_Manager {
       $singular = $this->i18n_value($def, 'singular_i18n', $singular);
       $plural = $this->i18n_value($def, 'plural_i18n', $plural);
       $public = !empty($def['public']);
+      $hide_frontend = !empty($def['hide_frontend']);
       $hier = !empty($def['hierarchical']);
       $show_in_rest = !empty($def['show_in_rest']);
       $ptypes = isset($def['post_types']) && is_array($def['post_types'])
@@ -100,13 +104,15 @@ class Dynamic_Content_Manager {
           'add_new_item' => sprintf(__('Add New %s','cff'), $singular),
           'edit_item' => sprintf(__('Edit %s','cff'), $singular),
         ],
-        'public' => $public,
+        'public' => $public && !$hide_frontend,
+        'publicly_queryable' => $public && !$hide_frontend,
+        'show_in_nav_menus' => $public && !$hide_frontend,
         'hierarchical' => $hier,
         'show_in_rest' => $show_in_rest,
-        'show_ui' => array_key_exists('show_ui',$def) ? (bool)$def['show_ui'] : $public,
-        'query_var' => array_key_exists('query_var',$def) ? (bool)$def['query_var'] : true,
+        'show_ui' => $hide_frontend || (array_key_exists('show_ui',$def) ? (bool)$def['show_ui'] : $public),
+        'query_var' => $hide_frontend ? false : (array_key_exists('query_var',$def) ? (bool)$def['query_var'] : true),
         'show_admin_column' => array_key_exists('show_admin_column',$def) ? (bool)$def['show_admin_column'] : true,
-        'rewrite' => [
+        'rewrite' => $hide_frontend ? false : [
           'slug' => $this->polylang_active()
             ? sanitize_title($def['slug'] ?? $tax)
             : $this->i18n_slug($def, 'slug_i18n', sanitize_title($def['slug'] ?? $tax)),
@@ -114,6 +120,40 @@ class Dynamic_Content_Manager {
         ],
       ]);
     }
+  }
+
+  public function schedule_rewrite_flush() {
+    update_option('cffp_flush_rewrite_rules', 1, false);
+  }
+
+  public function block_hidden_frontend_views() {
+    if (is_admin()) return;
+    $hidden = false;
+    if (is_singular() || is_post_type_archive()) {
+      $types = is_singular() ? [get_post_type()] : (array) get_query_var('post_type');
+      foreach ($types as $type) {
+        $def = $this->get_cpt_definition($type);
+        $hidden = $hidden || !empty($def['hide_frontend']);
+      }
+    } elseif (is_tax()) {
+      $term = get_queried_object();
+      $defs = get_option('cffp_taxonomies', []);
+      $hidden = !empty($term->taxonomy) && !empty($defs[$term->taxonomy]['hide_frontend']);
+    }
+    if (!$hidden) return;
+    // Also cover generic taxonomy query strings and stale translated routes.
+    global $wp_query;
+    $wp_query->set_404();
+    status_header(404);
+    nocache_headers();
+    remove_action('template_redirect', 'redirect_canonical');
+  }
+
+  public function flush_pending_rewrite_rules() {
+    if (!get_option('cffp_flush_rewrite_rules', false)) return;
+    // Run after init so the saved definitions and translated routes are registered.
+    flush_rewrite_rules(false);
+    delete_option('cffp_flush_rewrite_rules');
   }
 
   public function remove_post_views_id() {

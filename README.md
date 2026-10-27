@@ -130,6 +130,12 @@ Kemampuan utama:
   - row label dinamis dari nama sub field tertentu
 
 #### Dynamic Post Types
+- Overview menyediakan akses langsung untuk mengelola dan menambah konten.
+- Daftar Post Types/Taxonomies mendukung pencarian nama/key, filter Public/Admin
+  only, serta akses terpisah ke konten dan pengaturan strukturnya.
+- Form dikelompokkan menjadi detail dasar, editor/relasi, visibilitas frontend,
+  dan integrasi. Tombol simpan tetap terlihat saat menggulir form, dilengkapi
+  penanda perubahan yang belum tersimpan.
 - Buat, edit, duplikat, hapus CPT dari admin.
 - Pengaturan:
   - label singular/plural
@@ -140,6 +146,9 @@ Kemampuan utama:
   - menu icon dan menu position
   - kolom thumbnail di daftar admin
   - opsi nonaktifkan single view
+  - **Hide from frontend**: tetap tersedia di admin tanpa URL single/archive,
+    hasil pencarian, pilihan menu navigasi, dan sitemap WordPress. Opsi ini
+    mengesampingkan Public/Views; REST API tetap mengikuti pengaturannya sendiri.
 - Slug bisa otomatis dari label plural jika slug kosong.
 
 #### Dynamic Taxonomies
@@ -150,6 +159,11 @@ Kemampuan utama:
   - hierarchical/public/REST API
   - target post type
 - Mendukung i18n label/slug saat Polylang aktif.
+- **Hide from frontend**: kelola term dan relasinya di admin tanpa halaman
+  archive term, pilihan menu navigasi, dan sitemap WordPress. REST API diatur
+  terpisah. Pilihan ini tersimpan dalam export/import JSON.
+- Pengaturan frontend berlaku untuk seluruh post type/taxonomy, bukan per item.
+  Data tetap dapat dipakai oleh template atau query khusus.
 
 #### Sistem Reorder
 - Reorder post/CPT dengan drag-and-drop (`menu_order`).
@@ -218,7 +232,7 @@ bash scripts/build-release-zip.sh
 Output default akan dibuat di:
 
 ```text
-plugins/custom-fields-framework-pro.zip
+dist/custom-fields-framework-pro/custom-fields-framework-pro.zip
 ```
 
 Build otomatis menyinkronkan source ke repo rilis
@@ -240,7 +254,7 @@ CFFP_SKIP_SYNC=1 bash scripts/build-release-zip.sh /tmp/custom-fields-framework-
 Tujuan sinkronisasi bisa diganti lewat `CFFP_RELEASE_REPO`.
 Build memeriksa kecocokan `Version`, `CFFP_VERSION`, dan `Stable tag` di
 `readme.txt`, kemudian memastikan folder ZIP, file PHP, dan aset Select2 lengkap.
-ZIP lama baru diganti setelah hasil build lolos validasi.
+ZIP lama baru diganti setelah hasil build lolos validasi. `SHA256SUMS`, `VERSION`, dan `RELEASE_NOTES.md` disimpan di folder output yang sama. Tidak ada folder build per versi. Di checkout mandiri, output memakai `dist/` dalam repo plugin. `RELEASE_SKIP_SYNC=1` dan `RELEASE_DIST_DIR=/path/output` berlaku sama untuk CFF dan Tool Kits; `CFFP_SKIP_SYNC` tetap didukung.
 
 Untuk rilis, naikkan versi di ketiga lokasi tersebut, tambahkan changelog di
 `readme.txt` dan `CHANGELOG.md`, lalu build, commit, dan push tag `v<VERSION>`

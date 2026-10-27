@@ -6,7 +6,7 @@
 |---|---|
 | Kerja/edit | `~/Herd/nexamonitor/plugins/custom-fields-framework-pro` |
 | Repo commit/rilis | `~/Sites/localhost/ekodwis/wp-content/plugins/custom-fields-framework-pro` |
-| Output ZIP | `~/Herd/nexamonitor/plugins/custom-fields-framework-pro.zip` |
+| Output ZIP | `~/Herd/nexamonitor/dist/custom-fields-framework-pro/custom-fields-framework-pro.zip` |
 
 Alurnya sama dengan Tool Kits. Folder kerja CFF juga memiliki `.git` sendiri;
 skrip tidak menghapus atau menyalin `.git`. Untuk publikasi gunakan repo rilis
@@ -43,7 +43,9 @@ CFFP_SKIP_SYNC=1 bash scripts/build-release-zip.sh
 
 Nama folder di dalam ZIP selalu `custom-fields-framework-pro/`, termasuk jika
 folder checkout memiliki nama lain. File development dikecualikan. ZIP sebelumnya
-diganti hanya setelah hasil build lolos validasi.
+diganti hanya setelah hasil build lolos validasi. Folder default juga menyimpan `SHA256SUMS`, `VERSION`, dan `RELEASE_NOTES.md`. Build berikutnya mengganti file tersebut tanpa membuat arsip versi baru. Riwayat rilis tetap berada di GitHub Releases.
+
+Tool Kits memakai metode identik di `dist/tool-kits/`. `RELEASE_SKIP_SYNC=1` berlaku untuk keduanya, dan `RELEASE_DIST_DIR` mengganti direktori output. Checkout mandiri memakai `dist/` di root plugin. Output manual (argumen path ZIP) menghasilkan checksum `<nama-zip>.sha256` di sebelah ZIP.
 
 ## Versi dan pengecekan
 
@@ -60,7 +62,7 @@ pada `CHANGELOG.md`. Jangan memakai kembali versi/tag rilis yang sudah dipublika
 composer lint
 bash scripts/check-release-metadata.sh
 bash scripts/check-release-metadata.sh v2.5.18  # setelah versi dinaikkan ke 2.5.18
-bash scripts/validate-release-zip.sh ../custom-fields-framework-pro.zip
+bash scripts/validate-release-zip.sh
 ```
 
 Alias Composer: `release:check`, `release:sync`, `release:zip`, `release:validate`.

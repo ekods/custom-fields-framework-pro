@@ -2,7 +2,12 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ZIP_PATH="${1:-$ROOT_DIR/../custom-fields-framework-pro.zip}"
+if [[ -f "$ROOT_DIR/../../artisan" ]]; then
+  DEFAULT_DIST="$ROOT_DIR/../../dist/custom-fields-framework-pro"
+else
+  DEFAULT_DIST="$ROOT_DIR/dist"
+fi
+ZIP_PATH="${1:-${RELEASE_DIST_DIR:-$DEFAULT_DIST}/custom-fields-framework-pro.zip}"
 PLUGIN_SLUG="custom-fields-framework-pro"
 
 if ! command -v unzip >/dev/null 2>&1; then

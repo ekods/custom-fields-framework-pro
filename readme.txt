@@ -1,6 +1,6 @@
 === Custom Fields Framework Pro ===
 Contributors: ekods
-Stable tag: 2.5.25
+Stable tag: 2.5.26
 
 Custom fields with Field Groups, Repeater, Flexible Content, Location rules, and CFF-compatible frontend helpers.
 
@@ -15,6 +15,17 @@ Build structured WordPress content with custom fields, nested repeaters, groups,
 3. Open Custom Fields and create a Field Group with location rules.
 
 == Changelog ==
+
+= 2.5.26 =
+* Add Hide from frontend for post types and taxonomies while retaining admin management and independent REST API settings.
+* Disable public single/archive pages, search visibility, navigation choices, and WordPress sitemap entries for hidden content structures.
+* Rework the content overview with direct Manage content and Add new actions, plus clearer navigation.
+* Add searchable Post Types and Taxonomies lists with Public / Admin only filters and responsive mobile rows.
+* Group definition settings into basic details, content editor or relationships, frontend visibility, and integrations.
+* Add a sticky save bar, contextual visibility guidance, and unsaved-change feedback.
+* Preserve saved URL slugs when labels change and retain taxonomy assignments when saving post type settings.
+* Keep hidden content structures available in term fields, relationship selectors, reorder screens, and JSON export/import.
+* Refresh rewrite rules after changed definitions are registered and prevent hidden Polylang routes from being recreated.
 
 = 2.5.25 =
 * Fix a fatal error on post edit screens with Polylang active, caused by the 2.5.24 translation dropdown running before its helper file was loaded.
@@ -62,6 +73,9 @@ Build structured WordPress content with custom fields, nested repeaters, groups,
 * Include bundled Select2 assets in release packages.
 
 == Upgrade Notice ==
+
+= 2.5.26 =
+Adds admin-only frontend visibility and a clearer content management interface. Existing frontend settings stay unchanged until Hide from frontend is enabled.
 
 = 2.5.23 =
 Language Clone is hidden when bilingual support is inactive or fewer than two languages are configured.
