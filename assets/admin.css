@@ -470,7 +470,7 @@
     background: linear-gradient(180deg, #fff, #fbfbfd)
 }
 
-.cff-metabox-reorder[aria-hidden="false"] {
+.cff-metabox.is-reorder > .cff-metabox-reorder {
     display: block
 }
 
@@ -542,7 +542,7 @@
     gap: 10px;
 }
 
-.cff-metabox.is-reorder .cff-metabox-fields {
+.cff-metabox.is-reorder > .cff-metabox-fields {
     display: none
 }
 

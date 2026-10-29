@@ -1198,7 +1198,7 @@ TEXT;
       wp_enqueue_script(
         'cff-post',
         CFFP_URL . 'assets/post.js',
-        ['jquery', 'wp-editor', 'cff-select2'],
+        ['jquery', 'wp-editor', 'cff-select2', 'cff-select2-init'],
         $this->asset_ver('assets/post.js'),
         true
       );

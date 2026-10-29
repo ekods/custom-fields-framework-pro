@@ -1032,8 +1032,9 @@ jQuery(function($){
 
   function setMetaboxView($metabox, mode){
     var reorder = mode === 'reorder';
-    $metabox.find('> .cff-metabox-reorder').attr('aria-hidden', reorder ? 'false' : 'true').toggle(reorder);
-    $metabox.find('> .cff-metabox-fields').toggle(!reorder);
+    $metabox.toggleClass('is-reorder', reorder);
+    $metabox.find('> .cff-metabox-reorder').attr('aria-hidden', reorder ? 'false' : 'true');
+    $metabox.find('> .cff-metabox-fields').attr('aria-hidden', reorder ? 'true' : 'false');
     if (reorder) {
       markMetaboxOrderActive($metabox);
       syncMetaboxOrderInput($metabox);
@@ -1234,6 +1235,7 @@ jQuery(function($){
     });
     window.cffInitWysiwyg($new);
     initLinkPickers($new);
+    if (window.cffInitSelect2) window.cffInitSelect2($new);
     $(document).trigger('cff:refresh', [$new]);
     updateRepeaterRowTitles($rep);
     return $new;
@@ -1341,6 +1343,7 @@ jQuery(function($){
     });
     window.cffInitWysiwyg($new);
     initLinkPickers($new);
+    if (window.cffInitSelect2) window.cffInitSelect2($new);
     $(document).trigger('cff:refresh', [$new]);
     return $new;
   }

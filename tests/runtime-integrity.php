@@ -91,6 +91,7 @@ function get_option($key, $default = false) { return $GLOBALS['options'][$key] ?
 function get_the_ID() { return 1; }
 function get_page_template_slug($id) { return get_post_meta($id, '_wp_page_template', true); }
 function get_post_types($args, $output) { return ['post']; }
+function get_post_type_object($type) { return in_array($type, ['post', 'project'], true) ? (object) ['name' => $type] : null; }
 function register_rest_field($type, $name, $config) { $GLOBALS['rest_fields'][$type][$name] = $config; }
 function is_wp_error($value) { return $value instanceof WP_Error; }
 function plugin_basename($file) { return basename(dirname($file)) . '/' . basename($file); }
@@ -206,6 +207,21 @@ $rest->register();
 check($GLOBALS['rest_fields']['post']['cff']['schema']['properties']['related_many']['type'] === 'array', 'Registered REST schema includes relational arrays');
 $rest->update_payload(1, 'post', ['related_many' => [42, 42, 7]]);
 check(get_post_meta(1, '_cff_related_many', true) === [42, 7], 'Relational REST writes store sanitized unique IDs');
+
+// Flexible relational fields must use the AJAX select renderer in saved and new rows.
+$relational_layout = ['name' => 'related_content', 'sub_fields' => [
+  ['name' => 'related', 'type' => 'relational', 'relational_type' => 'post_type', 'relational_subtype' => 'project'],
+  ['name' => 'related_many', 'type' => 'relational', 'relational_type' => 'post', 'relational_multiple' => true],
+]];
+foreach ([0, '__INDEX__'] as $index) {
+  ob_start();
+  CFF\render_flexible_row('blocks', [$relational_layout], ['related_content' => $relational_layout], ['__cff_row_id' => 'fixture_row', 'layout' => 'related_content', 'fields' => ['related' => 1, 'related_many' => [1]]], $index, 1);
+  $html = ob_get_clean();
+  check(substr_count($html, 'cff-relational-ajax cff-select2') === 2, 'Saved and template flexible rows render relational selects');
+  check(strpos($html, 'data-relational-subtype="project"') !== false && strpos($html, 'data-relational-type="post_type"') !== false, 'Flexible relational selects retain their AJAX source');
+  check(strpos($html, 'name="cff_values[blocks][' . $index . '][fields][related_many][]" multiple') !== false, 'Flexible multiple relational selects retain array names and multiple mode');
+  check(strpos($html, '<option value="1" selected>Fixture 1</option>') !== false, 'Saved flexible relational selections retain labels');
+}
 
 // Invalidation is exercised through registered WP actions, including deletion.
 check(CFF\get_field('path', 1, false) === '42', 'Prime value cache');

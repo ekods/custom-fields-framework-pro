@@ -22,6 +22,20 @@ All notable changes to this project will be documented in this file.
 - Added unit coverage for REST write toggle behavior and JSON import payload validation.
 - Added unit coverage for content field ordering, hidden-section saves, sanitized value saves, and empty-value deletes.
 
+## 2.5.28
+
+### Fixed
+- Switch metabox builder/reorder visibility through the `is-reorder` class so field containers retain their flex layout without inline display overrides.
+- Read view checkbox state consistently in both editor scripts.
+- Initialize relational AJAX Select2 fields on Add Row, Add Layout and scoped refresh, including a select passed as the root element.
+- Isolate copied Select2 state so clones do not share or destroy the source instance; upgrade static relational selects to AJAX when configuration is available.
+- Render relational fields inside flexible layouts with their source, cardinality, saved values and option labels.
+- Load the Select2 initializer before the content editor script.
+
+### Validation
+- Verify Add Row, Clone, Add Layout with rendered PHP markup, root-select refresh and static-to-AJAX upgrade in a browser using simulated AJAX responses.
+- Add eight rendering regressions; all 595 standalone checks/assertions and PHP/JavaScript syntax checks pass.
+
 ## 2.5.27
 
 ### Fixed

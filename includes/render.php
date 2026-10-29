@@ -1650,6 +1650,16 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
           echo '</div>';
         } elseif ($stype === 'gallery') {
           cff_render_gallery_field($name_attr, $v, $s);
+        } elseif ($stype === 'relational') {
+          render_relational_input(
+            $name_attr,
+            $sf['relational_type'] ?? 'post',
+            $sf['relational_subtype'] ?? '',
+            $sf['relational_display'] ?? 'select',
+            $v,
+            !empty($sf['relational_multiple']),
+            $required_attr
+          );
         } elseif ($stype === 'group') {
           $gsubs = isset($sf['sub_fields']) ? $sf['sub_fields'] : [];
           $gvals = is_array($v) ? $v : [];

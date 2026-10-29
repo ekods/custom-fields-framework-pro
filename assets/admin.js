@@ -3923,6 +3923,10 @@
   CFF.metaboxReorder = (function(){
     var MAX_RETRIES = 3;
 
+    function getMode($control){
+      return $control.is(':checkbox') ? ($control.is(':checked') ? 'reorder' : 'builder') : $control.val();
+    }
+
     function init(){
       $('.cff-metabox').each(function(){
         var $meta = $(this);
@@ -3934,10 +3938,10 @@
 
         $meta.data('cffMetaboxInit', true);
         buildList($list, $meta, 0);
-        toggleReorder($meta, $select.val());
+        toggleReorder($meta, getMode($select));
 
         $select.on('change', function(){
-          var mode = $(this).val();
+          var mode = getMode($(this));
           if (mode === 'reorder') {
             buildList($list, $meta, 0);
           }
@@ -4043,6 +4047,7 @@
       var show = (mode === 'reorder');
       $meta.toggleClass('is-reorder', show);
       $meta.find('.cff-metabox-reorder').attr('aria-hidden', !show);
+      $meta.find('.cff-metabox-fields').attr('aria-hidden', show);
       if (show) {
         buildList($meta.find('.cff-metabox-reorder-list').first(), $meta, 0);
       }

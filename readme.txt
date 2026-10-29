@@ -1,6 +1,6 @@
 === Custom Fields Framework Pro ===
 Contributors: ekods
-Stable tag: 2.5.27
+Stable tag: 2.5.28
 
 Custom fields with Field Groups, Repeater, Flexible Content, Location rules, and CFF-compatible frontend helpers.
 
@@ -15,6 +15,15 @@ Build structured WordPress content with custom fields, nested repeaters, groups,
 3. Open Custom Fields and create a Field Group with location rules.
 
 == Changelog ==
+
+= 2.5.28 =
+* Toggle metabox builder/reorder visibility through classes so field containers retain their flex layout without inline display overrides.
+* Read the view checkbox state consistently in both editor scripts.
+* Initialize relational AJAX Select2 fields immediately after Add Row and Add Layout, including scoped refresh on a select element itself.
+* Keep cloned Select2 state independent from the source field and upgrade static relational selects to AJAX when configuration is available.
+* Render single and multiple relational fields in flexible layouts with the correct AJAX source, saved values, and option labels.
+* Ensure the Select2 initializer loads before the content editor script.
+* Add regressions for relational rendering in saved and template flexible rows.
 
 = 2.5.27 =
 * Preserve taxonomy images and descriptions during quick edit, REST, and partial saves with a dedicated nonce and term-specific permission checks.
@@ -84,6 +93,9 @@ Build structured WordPress content with custom fields, nested repeaters, groups,
 * Include bundled Select2 assets in release packages.
 
 == Upgrade Notice ==
+
+= 2.5.28 =
+Fixes metabox flex layout when switching views and relational AJAX dropdowns in dynamically added rows and flexible layouts.
 
 = 2.5.27 =
 Fixes metadata loss, backslash preservation, field formatting, REST schemas and taxonomy ordering; reduces repeater and updater overhead. Values already lost before this update require recovery from a backup.
