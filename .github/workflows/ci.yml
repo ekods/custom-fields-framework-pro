@@ -16,11 +16,13 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
+          extensions: pdo_sqlite
           coverage: none
       - run: composer validate --no-check-publish --no-interaction
       - run: composer lint
       - run: composer test:language-clone
       - run: composer test:frontend-visibility
+      - run: composer test:runtime-integrity
 
   package:
     runs-on: ubuntu-latest

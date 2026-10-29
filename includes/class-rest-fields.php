@@ -109,7 +109,7 @@ class Rest_Fields {
       ) {
         delete_post_meta($post_id, $meta_key);
       } else {
-        update_post_meta($post_id, $meta_key, $sanitized);
+        update_post_meta($post_id, $meta_key, wp_slash($sanitized));
       }
     }
 
@@ -226,6 +226,16 @@ class Rest_Fields {
     if ($type === 'gallery') {
       $schema['type'] = 'array';
       $schema['items'] = ['type' => 'integer'];
+      return $schema;
+    }
+    if ($type === 'relational') {
+      if (!empty($field['relational_multiple'])) {
+        $schema['type'] = 'array';
+        $schema['items'] = ['type' => 'integer', 'minimum' => 1];
+      } else {
+        $schema['type'] = 'integer';
+        $schema['minimum'] = 0;
+      }
       return $schema;
     }
     if ($type === 'group') {

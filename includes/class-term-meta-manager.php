@@ -14,6 +14,7 @@ class Term_Meta_Manager {
   }
 
   public function render_term_fields_add($taxonomy) {
+    wp_nonce_field('cff_term_meta_save', 'cff_term_meta_nonce');
     echo '<div class="form-field cff-term-field">';
     echo '<label>Image</label>';
     echo '<div class="cff-term-image">';
@@ -41,6 +42,7 @@ class Term_Meta_Manager {
     $desc = (string) get_term_meta($term->term_id, 'cffp_term_description', true);
 
     echo '<tr class="form-field cff-term-field"><th scope="row"><label>Image</label></th><td>';
+    wp_nonce_field('cff_term_meta_save', 'cff_term_meta_nonce');
     echo '<div class="cff-term-image">';
     echo '<input type="hidden" class="cff-term-image-id" name="cffp_term_image_id" value="' . esc_attr($image_id) . '">';
     echo '<div class="cff-term-image-preview">' . $this->term_image_preview($image_id) . '</div>';
@@ -59,27 +61,20 @@ class Term_Meta_Manager {
   }
 
   public function save_term_fields($term_id, $tt_id = 0) {
-    if (!current_user_can('manage_categories')) return;
-    $image_id = isset($_POST['cffp_term_image_id']) ? absint($_POST['cffp_term_image_id']) : 0;
-    $short = isset($_POST['cffp_term_short_description']) ? wp_kses_post(wp_unslash($_POST['cffp_term_short_description'])) : '';
-    $desc = isset($_POST['cffp_term_description']) ? wp_kses_post(wp_unslash($_POST['cffp_term_description'])) : '';
+    if (!isset($_POST['cff_term_meta_nonce']) || !is_string($_POST['cff_term_meta_nonce'])) return;
+    if (!wp_verify_nonce(wp_unslash($_POST['cff_term_meta_nonce']), 'cff_term_meta_save')) return;
+    if (!current_user_can('edit_term', $term_id)) return;
 
-    if ($image_id) {
-      update_term_meta($term_id, 'cffp_term_image_id', $image_id);
-    } else {
-      delete_term_meta($term_id, 'cffp_term_image_id');
-    }
-
-    if ($short !== '') {
-      update_term_meta($term_id, 'cffp_term_short_description', $short);
-    } else {
-      delete_term_meta($term_id, 'cffp_term_short_description');
-    }
-
-    if ($desc !== '') {
-      update_term_meta($term_id, 'cffp_term_description', $desc);
-    } else {
-      delete_term_meta($term_id, 'cffp_term_description');
+    // Quick edit, REST, importers, and partial submissions must preserve omitted fields.
+    foreach (['cffp_term_image_id', 'cffp_term_short_description', 'cffp_term_description'] as $key) {
+      if (!array_key_exists($key, $_POST) || !is_scalar($_POST[$key])) continue;
+      $value = wp_unslash($_POST[$key]);
+      $value = $key === 'cffp_term_image_id' ? absint($value) : wp_kses_post($value);
+      if ($value === '' || $value === 0) {
+        delete_term_meta($term_id, $key);
+      } else {
+        update_term_meta($term_id, $key, wp_slash($value));
+      }
     }
   }
 

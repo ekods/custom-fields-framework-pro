@@ -275,6 +275,10 @@ Panduan lengkap dan perintah Composer tersedia di [scripts/RELEASE.md](scripts/R
 
 ### 1.7 API Helper Frontend
 
+Formatting mengikuti tipe field: `image` dan `file` menghasilkan `{id, url}` bila media tersedia; angka, teks numerik, relational ID, dan gallery ID tetap mempertahankan tipe nilainya. Aturan ini berlaku juga untuk group, repeater, dan flexible layouts. Gunakan `$format_value = false` untuk membaca nilai mentah, termasuk pada `get_sub_field()`.
+
+Jalankan `composer test:runtime-integrity` untuk tes integritas data, formatting, cache, loop, reorder taxonomy, dan updater. Tes mandiri ini membutuhkan PHP dengan PDO SQLite dan tidak menggunakan database situs.
+
 Dari `includes/helpers/acf-compat.php`:
 - `get_field($selector, $post_id = false, $format_value = true)`
 - `the_field($selector, $post_id = false)`
@@ -649,6 +653,10 @@ Additional dynamic reorder submenu pages are generated per post type.
 6. Read values in theme using helper functions.
 
 ### 2.6 Frontend Helper API
+
+Formatting follows field definitions: `image` and `file` return `{id, url}` when media is available; numbers, numeric text, relational IDs, and gallery IDs keep their value types. This also applies inside groups, repeaters, and flexible layouts. Use `$format_value = false` for raw values, including `get_sub_field()` reads.
+
+Run `composer test:runtime-integrity` for data integrity, formatting, cache, loop, taxonomy ordering, and updater regressions. The standalone suite requires PHP with PDO SQLite and does not use the site's database.
 
 From `includes/helpers/acf-compat.php`:
 - `get_field($selector, $post_id = false, $format_value = true)`

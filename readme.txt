@@ -1,6 +1,6 @@
 === Custom Fields Framework Pro ===
 Contributors: ekods
-Stable tag: 2.5.26
+Stable tag: 2.5.27
 
 Custom fields with Field Groups, Repeater, Flexible Content, Location rules, and CFF-compatible frontend helpers.
 
@@ -15,6 +15,17 @@ Build structured WordPress content with custom fields, nested repeaters, groups,
 3. Open Custom Fields and create a Field Group with location rules.
 
 == Changelog ==
+
+= 2.5.27 =
+* Preserve taxonomy images and descriptions during quick edit, REST, and partial saves with a dedicated nonce and term-specific permission checks.
+* Preserve backslashes and quoted content in classic/REST field saves, field definitions, imports, duplication, and translation copies.
+* Format media using field definitions so numbers, numeric text, relational IDs, and gallery IDs retain their types, including nested fields.
+* Keep newly created terms without saved reorder metadata visible and preserve counts and pagination.
+* Correct REST schemas for single and multiple relational fields.
+* Invalidate request caches after metadata, field definition, and post status changes.
+* Load repeater loop data once, format requested subfields lazily, and preserve raw reads and nested loop context.
+* Limit updater requests to five seconds and cache failed checks for five minutes before retrying.
+* Add runtime integrity regressions to CI and release checks.
 
 = 2.5.26 =
 * Add Hide from frontend for post types and taxonomies while retaining admin management and independent REST API settings.
@@ -73,6 +84,9 @@ Build structured WordPress content with custom fields, nested repeaters, groups,
 * Include bundled Select2 assets in release packages.
 
 == Upgrade Notice ==
+
+= 2.5.27 =
+Fixes metadata loss, backslash preservation, field formatting, REST schemas and taxonomy ordering; reduces repeater and updater overhead. Values already lost before this update require recovery from a backup.
 
 = 2.5.26 =
 Adds admin-only frontend visibility and a clearer content management interface. Existing frontend settings stay unchanged until Hide from frontend is enabled.

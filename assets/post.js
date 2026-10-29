@@ -1234,6 +1234,7 @@ jQuery(function($){
     });
     window.cffInitWysiwyg($new);
     initLinkPickers($new);
+    $(document).trigger('cff:refresh', [$new]);
     updateRepeaterRowTitles($rep);
     return $new;
   }
@@ -1340,6 +1341,7 @@ jQuery(function($){
     });
     window.cffInitWysiwyg($new);
     initLinkPickers($new);
+    $(document).trigger('cff:refresh', [$new]);
     return $new;
   }
 
@@ -1361,6 +1363,12 @@ jQuery(function($){
       var type = ($dst.attr('type') || '').toLowerCase();
 
       if (tag === 'select') {
+        // AJAX select2 options only exist in the source row; copy them over.
+        $src.find('option:selected').each(function(){
+          var value = String($(this).val());
+          var exists = $dst.find('option').filter(function(){ return String($(this).val()) === value; }).length;
+          if (!exists) $dst.append($(this).clone());
+        });
         $dst.val($src.val());
         $dst.trigger('change');
         continue;

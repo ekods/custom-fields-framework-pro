@@ -14,6 +14,8 @@ class Plugin {
   private $field_sanitizer = null;
   private $group_settings_cache = [];
   private $published_field_groups_cache = null;
+  private $context_groups_cache = [];
+  private $field_definitions_cache = [];
 
   public static function instance() {
     if (self::$instance === null) self::$instance = new self();
@@ -202,6 +204,11 @@ class Plugin {
     add_action('rest_api_init', [$this, 'register_rest_fields']);
     add_action('pre_get_posts', [$this, 'apply_reorder_post_types']);
     add_filter('get_terms_args', [$this, 'apply_reorder_terms_args'], 10, 2);
+    add_filter('terms_clauses', [$this, 'apply_reorder_terms_clauses'], 10, 3);
+    foreach (['added_post_meta', 'updated_post_meta', 'deleted_post_meta'] as $hook) {
+      add_action($hook, [$this, 'invalidate_metadata_cache'], 10, 3);
+    }
+    add_action('clean_post_cache', [$this, 'invalidate_post_cache']);
     add_filter('category_rewrite_rules', [$this, 'category_rewrite_rules']);
     add_filter('category_link', [$this, 'category_link_no_base'], 10, 2);
     add_filter('pll_translate_post_type_rewrite_slug', [$this, 'pll_translate_post_type_rewrite_slug'], 10, 3);
@@ -1414,10 +1421,24 @@ TEXT;
     if (!$match) return $args;
     if (!empty($args['orderby']) && $args['orderby'] !== 'name') return $args;
 
-    $args['meta_key'] = 'cffp_term_order';
-    $args['orderby'] = 'meta_value_num';
+    // A meta_key filter excludes new terms that have never been reordered.
+    $args['cffp_order_terms'] = true;
     if (empty($args['order'])) $args['order'] = 'ASC';
     return $args;
+  }
+
+  public function apply_reorder_terms_clauses($clauses, $taxonomies, $args) {
+    if (empty($args['cffp_order_terms']) || ($args['fields'] ?? '') === 'count') return $clauses;
+    global $wpdb;
+    // Aggregate duplicate legacy meta rows to keep counts and pagination correct.
+    $clauses['join'] .= " LEFT JOIN (SELECT term_id, MIN(CAST(meta_value AS SIGNED)) AS sort_order"
+      . " FROM {$wpdb->termmeta} WHERE meta_key = 'cffp_term_order' GROUP BY term_id) AS cffp_order_meta"
+      . ' ON cffp_order_meta.term_id = t.term_id';
+    $direction = strtoupper($args['order'] ?? 'ASC') === 'DESC' ? 'DESC' : 'ASC';
+    $clauses['orderby'] = "ORDER BY COALESCE(cffp_order_meta.sort_order, 0) {$direction}, t.name {$direction}, t.term_id";
+    // WP_Term_Query appends this separately after the orderby clause.
+    $clauses['order'] = $direction;
+    return $clauses;
   }
 
   public function category_rewrite_rules($rules) {
@@ -2788,8 +2809,8 @@ TEXT;
     // FIX: presentation ikut disimpan
     $settings['presentation'] = $presentation;
 
-    update_post_meta($post_id, '_cff_settings', $settings);
-    update_post_meta($post_id, 'cff_fields_json', wp_json_encode($clean));
+    update_post_meta($post_id, '_cff_settings', wp_slash($settings));
+    update_post_meta($post_id, 'cff_fields_json', wp_slash(wp_json_encode($clean)));
     $this->group_settings_cache[$post_id] = $settings;
     $this->published_field_groups_cache = null;
   }
@@ -3293,9 +3314,8 @@ TEXT;
   private function get_groups_for_context($post, $allow_zero_id = false) {
     if (!$post || (!$allow_zero_id && empty($post->ID)) || empty($post->post_type)) return [];
 
-    static $cache = [];
     $cache_key = intval($post->ID ?? 0) . '_' . $post->post_type;
-    if (isset($cache[$cache_key])) return $cache[$cache_key];
+    if (isset($this->context_groups_cache[$cache_key])) return $this->context_groups_cache[$cache_key];
 
     $groups = $this->get_published_field_groups();
     $out = [];
@@ -3307,7 +3327,7 @@ TEXT;
 
     $this->sort_field_groups_by_setting_order($out);
 
-    $cache[$cache_key] = $out;
+    $this->context_groups_cache[$cache_key] = $out;
     return $out;
   }
 
@@ -3337,6 +3357,26 @@ TEXT;
     $group_id = absint($group_id);
     if (!$group_id) return;
     $this->group_settings_cache[$group_id] = is_array($settings) ? $settings : [];
+    $this->context_groups_cache = [];
+    $this->field_definitions_cache = [];
+  }
+
+  public function invalidate_metadata_cache($meta_id, $post_id, $meta_key) {
+    if (function_exists(__NAMESPACE__ . '\\cff_clear_post_value_cache')) cff_clear_post_value_cache($post_id);
+    unset($this->field_definitions_cache[$post_id]);
+    $this->context_groups_cache = [];
+    if ($meta_key === '_cff_settings') $this->invalidate_post_cache($post_id);
+  }
+
+  public function invalidate_post_cache($post_id) {
+    unset($this->group_settings_cache[$post_id]);
+    $this->published_field_groups_cache = null;
+    $this->context_groups_cache = [];
+    $this->field_definitions_cache = [];
+    if (function_exists(__NAMESPACE__ . '\\cff_clear_post_value_cache')) {
+      cff_clear_post_value_cache($post_id);
+      cff_clear_field_definition_cache();
+    }
   }
 
   private function sort_field_groups_by_setting_order(&$groups) {
@@ -3359,6 +3399,8 @@ TEXT;
   }
 
   public function get_field_definitions_for_post($post) {
+    if (!$post || empty($post->ID)) return [];
+    if (isset($this->field_definitions_cache[$post->ID])) return $this->field_definitions_cache[$post->ID];
     $definitions = [];
     $groups = $this->get_groups_for_context($post);
     foreach ($groups as $g) {
@@ -3371,7 +3413,7 @@ TEXT;
         $definitions[$name] = $field;
       }
     }
-    return $definitions;
+    return $this->field_definitions_cache[$post->ID] = $definitions;
   }
 
   private function match_location($post, $groups) {
@@ -3683,7 +3725,7 @@ TEXT;
 
       if ($post_id && !is_wp_error($post_id)) {
         $settings = isset($g['settings']) && is_array($g['settings']) ? $g['settings'] : [];
-        update_post_meta($post_id, '_cff_settings', $this->sanitize_group_settings($settings));
+        update_post_meta($post_id, '_cff_settings', wp_slash($this->sanitize_group_settings($settings)));
       }
     }
   }
@@ -3725,7 +3767,7 @@ TEXT;
         ],
       ];
 
-      update_post_meta($post_id, '_cff_settings', $settings);
+      update_post_meta($post_id, '_cff_settings', wp_slash($settings));
     }
   }
 
@@ -3844,7 +3886,7 @@ TEXT;
         ],
       ];
 
-      update_post_meta($post_id, '_cff_settings', $settings);
+      update_post_meta($post_id, '_cff_settings', wp_slash($settings));
       $this->migrate_acf_content($acf_group, $mapped_fields);
       $count++;
     }
@@ -4071,7 +4113,7 @@ TEXT;
 
         $value = $this->acf_value_to_cff($field, $raw);
         if ($this->is_non_empty($value)) {
-          update_post_meta($post->ID, $meta_key, $value);
+          update_post_meta($post->ID, $meta_key, wp_slash($value));
         }
       }
     }
@@ -4424,7 +4466,7 @@ TEXT;
     foreach ($meta as $key => $values) {
       if ($this->should_skip_duplicate_meta_key($key)) continue;
       foreach ((array)$values as $value) {
-        add_post_meta($new_post_id, $key, maybe_unserialize($value));
+        add_post_meta($new_post_id, $key, wp_slash(maybe_unserialize($value)));
       }
     }
 

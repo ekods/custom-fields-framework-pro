@@ -22,6 +22,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '7.4'
+          extensions: pdo_sqlite
           coverage: none
       - name: Validate tag and plugin versions
         env:
@@ -33,6 +34,7 @@ jobs:
           composer lint
           composer test:language-clone
           composer test:frontend-visibility
+          composer test:runtime-integrity
       - name: Build and validate ZIP
         env:
           CFFP_SKIP_SYNC: '1'

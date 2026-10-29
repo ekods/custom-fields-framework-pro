@@ -1949,7 +1949,7 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
       if (empty($merged)) {
         delete_post_meta($translated_post_id, $meta_key);
       } else {
-        update_post_meta($translated_post_id, $meta_key, $merged);
+        update_post_meta($translated_post_id, $meta_key, wp_slash($merged));
       }
       $copied++;
     }
@@ -1987,7 +1987,7 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
       foreach ($cff_meta as $meta_key => $meta_values) {
         if (in_array((string) $meta_key, ['_cff_hidden_sections', '_cff_hidden_sections_local'], true)) continue;
         foreach ((array) $meta_values as $meta_value) {
-          add_post_meta($translated_post_id, $meta_key, maybe_unserialize($meta_value));
+          add_post_meta($translated_post_id, $meta_key, wp_slash(maybe_unserialize($meta_value)));
         }
       }
 

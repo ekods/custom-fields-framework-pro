@@ -22,6 +22,23 @@ All notable changes to this project will be documented in this file.
 - Added unit coverage for REST write toggle behavior and JSON import payload validation.
 - Added unit coverage for content field ordering, hidden-section saves, sanitized value saves, and empty-value deletes.
 
+## 2.5.27
+
+### Fixed
+- Require the CFF term form nonce and term-specific edit permission; preserve omitted term metadata during quick edit, REST and partial saves.
+- Slash sanitized post/term metadata before passing it to WordPress so nested text, JSON, definitions, imports, duplicates and translation copies retain backslashes.
+- Format image/file values by their field definitions, including groups, repeaters and flexible layouts, while preserving numeric text, numbers, relational IDs and gallery IDs.
+- Keep terms without reorder metadata in results, including paginated lists and count queries, without duplicating terms with legacy duplicate metadata.
+- Declare single relational REST values as integers and multiple relational values as arrays of positive integers.
+- Invalidate frontend metadata, aliases, field definitions and location caches through WordPress metadata and post-cache hooks.
+
+### Performance
+- Initialize raw repeater rows once per loop and format only requested subfields; retain raw reads, nested parent context and repeated loops.
+- Reduce updater request timeout to five seconds, memoize checks within a request, and cache failures for five minutes before retrying.
+
+### Validation
+- Add standalone runtime integrity regressions for the fixes, execute generated ordering SQL against SQLite fixtures, and include the suite in CI and release checks.
+
 ## 2.5.26
 
 ### Added

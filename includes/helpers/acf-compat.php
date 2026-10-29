@@ -8,6 +8,22 @@ if (!defined('ABSPATH')) exit;
  */
 $GLOBALS['cff_row_stack'] = [];
 $GLOBALS['cff_meta_cache'] = [];
+$GLOBALS['cff_group_ids_cache'] = [];
+$GLOBALS['cff_group_settings_cache'] = [];
+$GLOBALS['cff_alias_map'] = null;
+
+function cff_clear_post_value_cache($post_id) {
+  unset($GLOBALS['cff_meta_cache'][absint($post_id)]);
+  foreach ($GLOBALS['cff_row_stack'] as $key => $state) {
+    if (strpos($key, absint($post_id) . ':') === 0) unset($GLOBALS['cff_row_stack'][$key]);
+  }
+}
+
+function cff_clear_field_definition_cache() {
+  $GLOBALS['cff_group_ids_cache'] = [];
+  $GLOBALS['cff_group_settings_cache'] = [];
+  $GLOBALS['cff_alias_map'] = null;
+}
 
 function cff_meta_key($name) { return '_cff_' . sanitize_key($name); }
 function cff_value_not_empty($value) {
@@ -107,7 +123,7 @@ function cff_field_is_hidden_for_post($post_id, $field_name) {
 }
 
 function cff_get_cached_group_ids($post_status = ['publish']) {
-  static $cache = [];
+  $cache = &$GLOBALS['cff_group_ids_cache'];
 
   $statuses = array_values(array_filter(array_map('sanitize_key', (array) $post_status)));
   if (!$statuses) {
@@ -148,7 +164,7 @@ function cff_get_cached_group_settings($group_id) {
   $group_id = absint($group_id);
   if (!$group_id) return [];
 
-  static $cache = [];
+  $cache = &$GLOBALS['cff_group_settings_cache'];
   if (!array_key_exists($group_id, $cache)) {
     $settings = cff_get_cached_post_meta($group_id, '_cff_settings', true);
     $cache[$group_id] = is_array($settings) ? $settings : [];
@@ -184,7 +200,7 @@ function cff_collect_field_aliases($fields, &$map) {
 }
 
 function cff_get_field_aliases($selector) {
-  static $alias_map = null;
+  $alias_map = &$GLOBALS['cff_alias_map'];
   $selector = sanitize_key($selector);
   if (!$selector) return [];
 
@@ -201,68 +217,71 @@ function cff_get_field_aliases($selector) {
   return isset($alias_map[$selector]) && is_array($alias_map[$selector]) ? $alias_map[$selector] : [];
 }
 
-function cff_format_value($val, $format_value = true) {
+function cff_get_field_definition($selector, $post_id) {
+  $post = get_post($post_id);
+  if (!$post) return [];
+  $definitions = Plugin::instance()->get_field_definitions_for_post($post);
+  if (isset($definitions[$selector])) return $definitions[$selector];
+  foreach ($definitions as $field) {
+    if (in_array($selector, (array) ($field['aliases'] ?? []), true)) return $field;
+  }
+  return [];
+}
+
+function cff_index_field_definitions($fields) {
+  $out = [];
+  foreach ((array) $fields as $field) {
+    $name = sanitize_key($field['name'] ?? '');
+    if ($name) $out[$name] = $field;
+  }
+  return $out;
+}
+
+function cff_format_field_values($values, $fields) {
+  if (!is_array($values)) return $values;
+  $definitions = cff_index_field_definitions($fields);
+  $out = $values;
+  foreach ($definitions as $name => $field) {
+    if (!array_key_exists($name, $values)) continue;
+    $value = $values[$name];
+    if (in_array($field['type'] ?? '', ['image', 'file'], true)) {
+      if (!is_array($value)) $value = ['id' => $value, 'url' => $values[$name . '_url'] ?? ''];
+      unset($out[$name . '_url']);
+    }
+    $out[$name] = cff_format_value($value, true, $field);
+  }
+  return $out;
+}
+
+function cff_format_value($val, $format_value = true, $field = []) {
   if (!$format_value) return $val;
-  if (is_array($val)) {
-    $out = [];
-    foreach ($val as $k => $v) {
-      if (
-        is_string($k)
-        && array_key_exists($k . '_url', $val)
-        && ($v === null || $v === '' || (is_numeric($v) && (int) $v === 0))
-      ) {
-        continue;
-      }
-
-      if (is_string($k) && substr($k, -4) === '_url') {
-        $media_key = substr($k, 0, -4);
-        if (array_key_exists($media_key, $val)) {
-          continue;
-        }
-      }
-
-      if (is_array($v)) {
-        $out[$k] = cff_format_value($v, true);
-        continue;
-      }
-
-      if (is_numeric($v) && is_string($k)) {
-        $id = (int) $v;
-        if ($id) {
-          $url_key = $k . '_url';
-          $url = (isset($val[$url_key]) && is_string($val[$url_key])) ? $val[$url_key] : '';
-          if ($url && function_exists('attachment_url_to_postid')) {
-            $url_id = absint(attachment_url_to_postid($url));
-            if ($url_id) $id = $url_id;
-          }
-          if (!$url) $url = wp_get_attachment_url($id);
-          if ($url) {
-            $out[$k] = [
-              'id' => $id,
-              'url' => $url,
-            ];
-            continue;
-          }
-        }
-      }
-
-      $out[$k] = $v;
+  $type = $field['type'] ?? '';
+  if (in_array($type, ['image', 'file'], true)) {
+    $id = absint(is_array($val) ? ($val['id'] ?? 0) : $val);
+    if (!$id) return is_array($val) ? 0 : $val;
+    $url = wp_get_attachment_url($id);
+    $stored_url = is_array($val) && is_string($val['url'] ?? null) ? $val['url'] : '';
+    // Imports can retain an old ID alongside the URL of the migrated attachment.
+    if ($stored_url && $stored_url !== $url && function_exists('attachment_url_to_postid')) {
+      $resolved_id = absint(attachment_url_to_postid($stored_url));
+      if ($resolved_id) { $id = $resolved_id; $url = $stored_url; }
     }
-    return $out;
+    if (!$url) $url = $stored_url;
+    return $url ? ['id' => $id, 'url' => $url] : $id;
   }
-
-  if (is_numeric($val)) {
-    $id = (int) $val;
-    if ($id) {
-      $url = wp_get_attachment_url($id);
-      if ($url) {
-        return [
-          'id' => $id,
-          'url' => $url,
-        ];
-      }
+  if ($type === 'group') return cff_format_field_values($val, $field['sub_fields'] ?? []);
+  if ($type === 'repeater' && is_array($val)) {
+    foreach ($val as $key => $row) $val[$key] = cff_format_field_values($row, $field['sub_fields'] ?? []);
+  }
+  if ($type === 'flexible' && is_array($val)) {
+    $layouts = cff_index_field_definitions($field['layouts'] ?? []);
+    foreach ($val as $key => $row) {
+      if (!is_array($row) || !isset($row['fields'])) continue;
+      $layout = $layouts[$row['layout'] ?? ''] ?? [];
+      $val[$key]['fields'] = cff_format_field_values($row['fields'], $layout['sub_fields'] ?? []);
     }
   }
+  // Numbers, text, relational IDs, and gallery IDs retain their declared values.
   return $val;
 }
 
@@ -285,7 +304,7 @@ if (!function_exists('get_field')) {
         }
       }
     }
-    return cff_format_value($val, $format_value);
+    return cff_format_value($val, $format_value, $format_value ? cff_get_field_definition($selector, $post_id) : []);
   }
 }
 
@@ -298,21 +317,54 @@ if (!function_exists('the_field')) {
 
 if (!function_exists('have_rows')) {
   function have_rows($selector, $post_id = false) {
-    $post_id = $post_id ? $post_id : get_the_ID();
-    $data = get_field($selector, $post_id, true);
-    if (!is_array($data) || !count($data)) return false;
-
-    $key = $post_id . ':' . sanitize_key($selector);
+    $selector = sanitize_key($selector);
+    $post_id = absint($post_id ? $post_id : get_the_ID());
+    if (!$selector || !$post_id) return false;
+    $key = $post_id . ':' . $selector;
+    $parent = end($GLOBALS['cff_row_stack']);
+    if ($parent && $parent['selector'] === $selector && $parent['post_id'] === $post_id) {
+      $key = key($GLOBALS['cff_row_stack']);
+    }
+    if ($parent && $parent['selector'] !== $selector && $parent['post_id'] === $post_id) {
+      $sub_field = cff_get_row_sub_field_definition($parent, $selector);
+      if (in_array($sub_field['type'] ?? '', ['repeater', 'flexible'], true)) {
+        $key = key($GLOBALS['cff_row_stack']) . ':' . $parent['i'] . ':' . $selector;
+      }
+    }
     if (!isset($GLOBALS['cff_row_stack'][$key])) {
+      $nested = isset($sub_field) && in_array($sub_field['type'] ?? '', ['repeater', 'flexible'], true);
+      $data = $nested ? get_sub_field($selector, false) : get_field($selector, $post_id, false);
+      if (!is_array($data) || !$data) return false;
       $GLOBALS['cff_row_stack'][$key] = [
         'rows' => array_values($data),
         'i' => -1,
         'current' => null,
+        'selector' => $selector,
+        'post_id' => $post_id,
+        'field' => $nested ? $sub_field : cff_get_field_definition($selector, $post_id),
       ];
     }
+    // Resuming a parent after an early break abandons its unfinished child loops.
+    $found = false;
+    foreach (array_keys($GLOBALS['cff_row_stack']) as $active_key) {
+      if ($active_key === $key) { $found = true; continue; }
+      if ($found) unset($GLOBALS['cff_row_stack'][$active_key]);
+    }
     $st = &$GLOBALS['cff_row_stack'][$key];
-    return ($st['i'] + 1) < count($st['rows']);
+    if (($st['i'] + 1) < count($st['rows'])) return true;
+    unset($GLOBALS['cff_row_stack'][$key]);
+    return false;
   }
+}
+
+function cff_get_row_sub_field_definition($state, $selector) {
+  $field = $state['field'] ?? [];
+  if (($field['type'] ?? '') === 'flexible') {
+    $layouts = cff_index_field_definitions($field['layouts'] ?? []);
+    $field = $layouts[$state['current']['layout'] ?? ''] ?? [];
+  }
+  $fields = cff_index_field_definitions($field['sub_fields'] ?? []);
+  return $fields[$selector] ?? [];
 }
 
 if (!function_exists('the_row')) {
@@ -348,14 +400,15 @@ if (!function_exists('get_sub_field')) {
     $cur = $GLOBALS['cff_row_stack'][$key]['current'];
     if (!is_array($cur)) return null;
 
-    // Flexible stores subfields under ['fields']
-    if (isset($cur['fields']) && is_array($cur['fields'])) {
-      $val = $cur['fields'][sanitize_key($selector)] ?? null;
-      return cff_format_value($val, $format_value);
+    $selector = sanitize_key($selector);
+    $is_flexible = ($GLOBALS['cff_row_stack'][$key]['field']['type'] ?? '') === 'flexible';
+    $values = $is_flexible && isset($cur['fields']) && is_array($cur['fields']) ? $cur['fields'] : $cur;
+    $val = $values[$selector] ?? null;
+    $field = cff_get_row_sub_field_definition($GLOBALS['cff_row_stack'][$key], $selector);
+    if ($format_value && in_array($field['type'] ?? '', ['image', 'file'], true) && !is_array($val)) {
+      $val = ['id' => $val, 'url' => $values[$selector . '_url'] ?? ''];
     }
-    // Repeater rows store direct subkeys
-    $val = $cur[sanitize_key($selector)] ?? null;
-    return cff_format_value($val, $format_value);
+    return cff_format_value($val, $format_value, $field);
   }
 }
 

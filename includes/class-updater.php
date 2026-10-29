@@ -4,6 +4,7 @@ if (!defined('ABSPATH')) exit;
 class CFF_Github_Public_Updater {
   const RELEASE_TRANSIENT_KEY = 'cffp_github_release_latest';
   const RELEASE_TRANSIENT_TTL = 1800;
+  const FAILURE_TRANSIENT_TTL = 300;
 
   private $plugin_file;
   private $plugin_basename;
@@ -11,6 +12,7 @@ class CFF_Github_Public_Updater {
   private $repo;       // owner/repo
   private $asset_name; // zip asset name
   private $updating_this_plugin = false;
+  private $release_cache = [];
 
   public function __construct($plugin_file, $repo, $asset_name){
     $this->plugin_file = $plugin_file;
@@ -36,36 +38,44 @@ class CFF_Github_Public_Updater {
   }
 
   private function gh($url){
+    if (array_key_exists($url, $this->release_cache)) return $this->release_cache[$url];
     $cache_key = self::RELEASE_TRANSIENT_KEY . '_' . md5($url);
     $cached = get_site_transient($cache_key);
     if (is_array($cached)) {
-      return $cached;
+      return $this->release_cache[$url] = $cached;
     }
+    if ($cached === 'retry_later') return $this->release_cache[$url] = null;
+
+    // Also memoize failures if a persistent object cache/transient write fails.
+    $this->release_cache[$url] = null;
 
     $res = wp_remote_get($url, [
-      'timeout' => 20,
+      'timeout' => 5,
       'headers' => [
         'User-Agent' => 'WordPress/' . get_bloginfo('version'),
         'Accept'     => 'application/vnd.github+json',
       ],
     ]);
     if (is_wp_error($res)) {
+      set_site_transient($cache_key, 'retry_later', self::FAILURE_TRANSIENT_TTL);
       return null;
     }
 
     $code = wp_remote_retrieve_response_code($res);
     if ($code < 200 || $code >= 300) {
+      set_site_transient($cache_key, 'retry_later', self::FAILURE_TRANSIENT_TTL);
       return null;
     }
 
     $body = json_decode(wp_remote_retrieve_body($res), true);
-    if (!is_array($body)) {
+    if (!is_array($body) || empty($body['tag_name']) || !is_string($body['tag_name'])) {
+      set_site_transient($cache_key, 'retry_later', self::FAILURE_TRANSIENT_TTL);
       return null;
     }
 
     set_site_transient($cache_key, $body, self::RELEASE_TRANSIENT_TTL);
 
-    return $body;
+    return $this->release_cache[$url] = $body;
   }
 
   public function inject_update($transient){

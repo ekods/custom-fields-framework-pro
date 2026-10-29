@@ -206,7 +206,7 @@ class Reorder_Manager {
       $presentation = isset($settings['presentation']) && is_array($settings['presentation']) ? $settings['presentation'] : [];
       $presentation['order'] = $i;
       $settings['presentation'] = $this->plugin->sanitize_presentation($presentation);
-      update_post_meta($id, '_cff_settings', $settings);
+      update_post_meta($id, '_cff_settings', wp_slash($settings));
       $this->plugin->set_group_settings_cache($id, $settings);
     }
 

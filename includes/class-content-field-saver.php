@@ -145,7 +145,7 @@ class Content_Field_Saver {
       return;
     }
 
-    update_post_meta($post_id, $key, $value);
+    update_post_meta($post_id, $key, wp_slash($value));
   }
 
   private function copy_all_target_lang() {
