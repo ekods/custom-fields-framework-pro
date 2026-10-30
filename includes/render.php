@@ -1,6 +1,7 @@
 <?php
 namespace CFF;
 if (!defined('ABSPATH')) exit;
+require_once __DIR__ . '/helpers/relational-label.php';
 
 if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
   function cff_conditional_attrs($field) {
@@ -24,6 +25,10 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
 
   function cff_field_is_hidden($field) {
     return is_array($field) && !empty($field['hide']);
+  }
+
+  function cff_subfield_copy_hidden() {
+    return !empty(get_option('cffp_hide_subfield_copy', 0));
   }
 
   function cff_post_hidden_sections($post_id) {
@@ -450,8 +455,8 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     }
     echo '</div>';
     echo '<p class="cff-media-actions">';
-    echo '<button type="button" class="button cff-gallery-select" title="' . esc_attr__('Select gallery images', 'cff') . '" aria-label="' . esc_attr__('Select gallery images', 'cff') . '"><span class="dashicons dashicons-format-gallery" aria-hidden="true"></span></button> ';
-    echo '<button type="button" class="button cff-gallery-clear" title="' . esc_attr__('Clear gallery', 'cff') . '" aria-label="' . esc_attr__('Clear gallery', 'cff') . '"><span class="dashicons dashicons-no-alt" aria-hidden="true"></span></button>';
+    echo '<button type="button" class="button cff-gallery-select" title="' . esc_attr__('Select gallery images', 'cff') . '"><span class="dashicons dashicons-format-gallery" aria-hidden="true"></span>' . esc_html__('Select images', 'cff') . '</button> ';
+    echo '<button type="button" class="button cff-gallery-clear" title="' . esc_attr__('Clear gallery', 'cff') . '"><span class="dashicons dashicons-no-alt" aria-hidden="true"></span>' . esc_html__('Clear', 'cff') . '</button>';
     echo '</p>';
     echo '</div>';
   }
@@ -644,6 +649,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         data-layout="'.esc_attr($layout).'"
         data-row-label="'.esc_attr($row_label_field).'"
         data-collapsed-default="'.($collapsed_default ? '1' : '0').'"
+        style="--cff-repeater-cols:'.esc_attr(max(1, count(cff_visible_fields($subs)))).';"
       >';
 
       // ✅ FLAG: supaya key repeater tetap ada di $_POST walau 0 row
@@ -663,7 +669,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         echo '</div>';
       }
 
-      echo '<p><button type="button" class="button cff-rep-add">Add Row</button></p>';
+      echo '<p class="cff-rep-add-wrap"><button type="button" class="button cff-rep-add"><span class="dashicons dashicons-plus-alt2" aria-hidden="true"></span>' . esc_html__('Add Row', 'cff') . '</button></p>';
 
       echo '<template class="cff-rep-template">';
       if ($layout === 'table') {
@@ -699,12 +705,12 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
 
       echo '<div class="cff-flex-add">';
       echo '<select class="cff-flex-layout">';
-      echo '<option value="">Add layout…</option>';
+      echo '<option value="">' . esc_html__('Add layout…', 'cff') . '</option>';
       foreach ($layouts as $l) {
         echo '<option value="'.esc_attr($l['name']).'">'.esc_html($l['label']).'</option>';
       }
       echo '</select> ';
-      echo '<button type="button" class="button cff-flex-add-btn">Add</button>';
+      echo '<button type="button" class="button cff-flex-add-btn"><span class="dashicons dashicons-plus-alt2" aria-hidden="true"></span>' . esc_html__('Add', 'cff') . '</button>';
       echo '</div>';
 
       echo '<div class="cff-flex-templates" style="display:none">';
@@ -861,6 +867,124 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     echo '<tbody class="cff-rep-rows">';
   }
 
+  // Renders the input for one sub field; the caller owns the wrapper, label and copy action.
+  function cff_render_subfield_control($s, $name_attr, $v, $post_id, $root_name, $path, $placeholder_attr, $required_attr, $textarea_rows = 3) {
+    $sname = $s['name'];
+    $stype = $s['type'];
+    $label = $s['label'] ?? $sname;
+
+    if ($stype === 'textarea') {
+      echo '<textarea class="widefat" rows="'.intval($textarea_rows).'" name="'.esc_attr($name_attr).'"'.$placeholder_attr.$required_attr.'>'.esc_textarea($v).'</textarea>';
+    } elseif ($stype === 'shortcode') {
+      render_shortcode_input($name_attr, $v, $placeholder_attr, $required_attr);
+    } elseif ($stype === 'color') {
+      echo '<div class="cff-color">';
+      echo '<input class="cff-color-picker" type="color" value="'.esc_attr($v ?: '#ffffff').'">';
+      echo '<input class="widefat cff-color-value" type="text" placeholder="#ffffff" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$required_attr.'>';
+      echo '</div>';
+    } elseif ($stype === 'checkbox') {
+      $checked = !empty($v) ? 'checked' : '';
+      echo '<input type="hidden" name="'.esc_attr($name_attr).'" value="0">';
+      echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'" value="1" '.$checked.$required_attr.'> ' . esc_html($label) . '</label>';
+    } elseif ($stype === 'url') {
+      render_url_input($name_attr, $v, $placeholder_attr, $required_attr);
+    } elseif ($stype === 'choice') {
+      render_choice_input($name_attr, $s['choices'] ?? [], $s['choice_display'] ?? '', $v, $required_attr, $s['choice_default'] ?? '');
+    } elseif ($stype === 'date_picker' || $stype === 'datetime_picker') {
+      $use_time = ($stype === 'datetime_picker') ? !array_key_exists('datetime_use_time', $s) || !empty($s['datetime_use_time']) : true;
+      render_picker_input($name_attr, $v, $placeholder_attr, $required_attr, $stype, $use_time);
+    } elseif ($stype === 'link') {
+      render_link_field($name_attr, $v);
+    } elseif ($stype === 'wysiwyg') {
+      $editor_id = cff_build_editor_id($name_attr);
+      echo '<textarea id="' . esc_attr($editor_id) . '" class="widefat cff-wysiwyg" name="' . esc_attr($name_attr) . '"'.$required_attr.' rows="8">' . esc_textarea($v) . '</textarea>';
+      echo '<input type="hidden" class="cff-wysiwyg-settings" data-editor-id="' . esc_attr($editor_id) . '" value="' . esc_attr(wp_json_encode([
+        'tinymce' => [
+          'wpautop'  => true,
+          'toolbar1' => 'formatselect,bold,italic,bullist,numlist,blockquote,alignleft,aligncenter,alignright,link,unlink,wp_more,spellchecker,wp_adv',
+          'toolbar2' => 'strikethrough,hr,forecolor,pastetext,removeformat,charmap,outdent,indent,undo,redo,wp_help',
+          'menubar'  => false,
+        ],
+        'quicktags'    => true,
+        'mediaButtons' => true,
+      ])) . '">';
+    } elseif ($stype === 'image' || $stype === 'file') {
+      $id = cff_media_render_id($stype, $v);
+      $url = $id ? wp_get_attachment_url($id) : '';
+      // prefix[name] -> prefix[name_url]
+      $url_attr = substr($name_attr, 0, -1) . '_url]';
+      echo '<div class="cff-media cff-media-inline" data-type="'.esc_attr($stype).'"' . cff_media_field_attrs($s) . '>';
+      echo '<input type="hidden" class="cff-media-id" name="'.esc_attr($name_attr).'" value="'.esc_attr($id).'">';
+      echo '<input type="hidden" class="cff-media-url" name="'.esc_attr($url_attr).'" value="'.esc_attr($url).'">';
+      echo '<div class="cff-media-preview">';
+      echo cff_media_preview_html($stype, $id);
+      cff_render_media_action_buttons();
+      echo '</div>';
+      echo cff_media_limit_label_html($s);
+      echo '</div>';
+    } elseif ($stype === 'gallery') {
+      cff_render_gallery_field($name_attr, $v, $s);
+    } elseif ($stype === 'repeater') {
+      $rsubs = isset($s['sub_fields']) ? $s['sub_fields'] : [];
+      $rows = is_array($v) ? $v : [];
+      $min = isset($s['min']) ? (int) $s['min'] : 1;
+      $max = isset($s['max']) ? (int) $s['max'] : 0;
+      if ($max > 0 && count($rows) > $max) {
+        $rows = array_slice($rows, 0, $max);
+      }
+      $field_key = sanitize_key($s['key'] ?? '');
+      if (!$field_key) $field_key = sanitize_key($sname);
+      $rep_layout = isset($s['repeater_layout']) ? $s['repeater_layout'] : 'default';
+      $rep_layout = in_array($rep_layout, ['simple','grid','row','gallery','table','default'], true) ? $rep_layout : 'default';
+      $row_label_field = sanitize_key($s['repeater_row_label'] ?? '');
+      $collapsed_default = !empty($s['repeater_collapsed']);
+      echo '<div class="cff-repeater" data-field="'.esc_attr($field_key).'" data-min="'.esc_attr($min).'" data-max="'.esc_attr($max).'" data-layout="'.esc_attr($rep_layout).'" data-row-label="'.esc_attr($row_label_field).'" data-collapsed-default="'.($collapsed_default ? '1' : '0').'" style="--cff-repeater-cols:' . esc_attr(max(1, count($rsubs))) . ';">';
+      echo '<input type="hidden" class="cff-rep-present" name="'.esc_attr($name_attr).'[__cff_present]" value="1">';
+      if ($rep_layout === 'table') {
+        cff_render_repeater_table_head($rsubs);
+      } else {
+        echo '<div class="cff-rep-rows">';
+      }
+      foreach ($rows as $idx => $row) {
+        render_repeater_row($sname, $rsubs, $row, $idx, $post_id, $name_attr, $rep_layout, $row_label_field, $collapsed_default, $root_name, $path);
+      }
+      if ($rep_layout === 'table') {
+        echo '</tbody></table>';
+      } else {
+        echo '</div>';
+      }
+      echo '<p class="cff-rep-add-wrap"><button type="button" class="button cff-rep-add"><span class="dashicons dashicons-plus-alt2" aria-hidden="true"></span>' . esc_html__('Add Row', 'cff') . '</button></p>';
+      echo '<template class="cff-rep-template">';
+      if ($rep_layout === 'table') {
+        echo '<table><tbody>';
+      }
+      render_repeater_row($sname, $rsubs, [], '__INDEX__', $post_id, $name_attr, $rep_layout, $row_label_field, $collapsed_default, $root_name, $path);
+      if ($rep_layout === 'table') {
+        echo '</tbody></table>';
+      }
+      echo '</template>';
+      echo '</div>';
+    } elseif ($stype === 'relational') {
+      render_relational_input(
+        $name_attr,
+        $s['relational_type'] ?? 'post',
+        $s['relational_subtype'] ?? '',
+        $s['relational_display'] ?? 'select',
+        $v,
+        !empty($s['relational_multiple']),
+        $required_attr
+      );
+    } elseif ($stype === 'group') {
+      $gsubs = isset($s['sub_fields']) ? $s['sub_fields'] : [];
+      $gvals = is_array($v) ? $v : [];
+      echo '<div class="cff-group cff-group-nested">';
+      render_group_fields($name_attr, $gsubs, $gvals, $post_id, $root_name, $path);
+      echo '</div>';
+    } else {
+      echo '<input class="widefat" type="text" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$placeholder_attr.$required_attr.'>';
+    }
+  }
+
   function render_repeater_row($parent, $subs, $row, $i, $post_id, $name_prefix = null, $layout = 'default', $row_label_field = '', $collapsed_default = false, $root_name = '', $path = []) {
     $subs = cff_visible_fields($subs);
     $layout = in_array($layout, ['simple','grid','row','gallery','table','default'], true) ? $layout : 'default';
@@ -910,122 +1034,20 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
           'name' => sanitize_key($sname),
           'type' => sanitize_key($stype),
         ]]);
-        echo '<td class="cff-subfield-input" data-field-name="' . esc_attr(sanitize_key($sname)) . '" data-field-key="' . esc_attr($sub_field_key) . '"' . cff_conditional_attrs($s) . '>';
+        echo '<td class="cff-subfield-input cff-subfield-type-' . esc_attr(sanitize_key($stype)) . '" data-field-name="' . esc_attr(sanitize_key($sname)) . '" data-field-key="' . esc_attr($sub_field_key) . '"' . cff_conditional_attrs($s) . '>';
         if ($index === 0) {
           echo '<input type="hidden" class="cff-row-id" name="'.esc_attr($row_prefix . '[__cff_row_id]').'" value="'.esc_attr($row_id).'">';
         }
         echo '<label>'.$label_text.'</label>';
-        if ($stype === 'textarea') {
-          echo '<textarea class="widefat" rows="3" name="'.esc_attr($name_attr).'"'.$placeholder_attr.$required_attr.'>'.esc_textarea($v).'</textarea>';
-        } elseif ($stype === 'shortcode') {
-          render_shortcode_input($name_attr, $v, $placeholder_attr, $required_attr);
-        } elseif ($stype === 'color') {
-          echo '<div class="cff-color">';
-          echo '<input class="cff-color-picker" type="color" value="'.esc_attr($v ?: '#ffffff').'">';
-          echo '<input class="widefat cff-color-value" type="text" placeholder="#ffffff" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$required_attr.'>';
-          echo '</div>';
-        } elseif ($stype === 'checkbox') {
-          $checked = !empty($v) ? 'checked' : '';
-          echo '<input type="hidden" name="'.esc_attr($name_attr).'" value="0">';
-          echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'" value="1" '.$checked.$required_attr.'> ' . esc_html($label) . '</label>';
-        } elseif ($stype === 'url') {
-          render_url_input($name_attr, $v, $placeholder_attr, $required_attr);
-        } elseif ($stype === 'choice') {
-          render_choice_input($name_attr, $s['choices'] ?? [], $s['choice_display'] ?? '', $v, $required_attr, $s['choice_default'] ?? '');
-        } elseif ($stype === 'date_picker' || $stype === 'datetime_picker') {
-          $sub_use_time = ($stype === 'datetime_picker') ? !array_key_exists('datetime_use_time', $s) || !empty($s['datetime_use_time']) : true;
-          render_picker_input($name_attr, $v, $placeholder_attr, $required_attr, $stype, $sub_use_time);
-        } elseif ($stype === 'link') {
-          render_link_field($name_attr, $v);
-        } elseif ($stype === 'wysiwyg') {
-          $editor_id = cff_build_editor_id($name_attr);
-          echo '<textarea id="' . esc_attr($editor_id) . '" class="widefat cff-wysiwyg" name="' . esc_attr($name_attr) . '"'.$required_attr.' rows="8">' . esc_textarea($v) . '</textarea>';
-          echo '<input type="hidden" class="cff-wysiwyg-settings" data-editor-id="' . esc_attr($editor_id) . '" value="' . esc_attr(wp_json_encode([
-            'tinymce' => [
-              'wpautop'  => true,
-              'toolbar1' => 'formatselect,bold,italic,bullist,numlist,blockquote,alignleft,aligncenter,alignright,link,unlink,wp_more,spellchecker,wp_adv',
-              'toolbar2' => 'strikethrough,hr,forecolor,pastetext,removeformat,charmap,outdent,indent,undo,redo,wp_help',
-              'menubar'  => false,
-            ],
-            'quicktags'    => true,
-            'mediaButtons' => true,
-          ])) . '">';
-        } elseif ($stype === 'image' || $stype === 'file') {
-          $id = cff_media_render_id($stype, $v);
-          $url = $id ? wp_get_attachment_url($id) : '';
-          $url_attr = $row_prefix . '[' . $sname . '_url]';
-          echo '<div class="cff-media cff-media-inline" data-type="'.esc_attr($stype).'"' . cff_media_field_attrs($s) . '>';
-          echo '<input type="hidden" class="cff-media-id" name="'.esc_attr($name_attr).'" value="'.esc_attr($id).'">';
-          echo '<input type="hidden" class="cff-media-url" name="'.esc_attr($url_attr).'" value="'.esc_attr($url).'">';
-          echo '<div class="cff-media-preview">';
-          echo cff_media_preview_html($stype, $id);
-          cff_render_media_action_buttons();
-          echo '</div>';
-          echo cff_media_limit_label_html($s);
-          echo '</div>';
-        } elseif ($stype === 'gallery') {
-          cff_render_gallery_field($name_attr, $v, $s);
-        } elseif ($stype === 'repeater') {
-          $rsubs = isset($s['sub_fields']) ? $s['sub_fields'] : [];
-          $rows = is_array($v) ? $v : [];
-          $min = isset($s['min']) ? (int) $s['min'] : 1;
-          $max = isset($s['max']) ? (int) $s['max'] : 0;
-          if ($max > 0 && count($rows) > $max) {
-            $rows = array_slice($rows, 0, $max);
-          }
-          $field_key = sanitize_key($s['key'] ?? '');
-          if (!$field_key) $field_key = sanitize_key($sname);
-          $repeater_prefix = $name_attr;
-          $rep_layout = isset($s['repeater_layout']) ? $s['repeater_layout'] : 'default';
-          $rep_layout = in_array($rep_layout, ['simple','grid','row','gallery','table','default'], true) ? $rep_layout : 'default';
-          $nested_row_label_field = sanitize_key($s['repeater_row_label'] ?? '');
-          $collapsed_default = !empty($s['repeater_collapsed']);
-          echo '<div class="cff-repeater" data-field="'.esc_attr($field_key).'" data-min="'.esc_attr($min).'" data-max="'.esc_attr($max).'" data-layout="'.esc_attr($rep_layout).'" data-row-label="'.esc_attr($nested_row_label_field).'" data-collapsed-default="'.($collapsed_default ? '1' : '0').'">';
-          echo '<input type="hidden" class="cff-rep-present" name="'.esc_attr($repeater_prefix).'[__cff_present]" value="1">';
-          if ($rep_layout === 'table') {
-            cff_render_repeater_table_head($rsubs);
-          } else {
-            echo '<div class="cff-rep-rows">';
-          }
-          foreach ($rows as $idx => $nested_row) {
-            render_repeater_row($sname, $rsubs, $nested_row, $idx, $post_id, $repeater_prefix, $rep_layout, $nested_row_label_field, $collapsed_default, $root_name, $current_path);
-          }
-          if ($rep_layout === 'table') {
-            echo '</tbody></table>';
-          } else {
-            echo '</div>';
-          }
-          echo '<p><button type="button" class="button cff-rep-add">Add Row</button></p>';
-          echo '<template class="cff-rep-template">';
-          render_repeater_row($sname, $rsubs, [], '__INDEX__', $post_id, $repeater_prefix, $rep_layout, $nested_row_label_field, $collapsed_default, $root_name, $current_path);
-          echo '</template>';
-          echo '</div>';
-        } elseif ($stype === 'relational') {
-          render_relational_input(
-            $name_attr,
-            $s['relational_type'] ?? 'post',
-            $s['relational_subtype'] ?? '',
-            $s['relational_display'] ?? 'select',
-            $v,
-            !empty($s['relational_multiple']),
-            $required_attr
-          );
-        } elseif ($stype === 'group') {
-          $gsubs = isset($s['sub_fields']) ? $s['sub_fields'] : [];
-          $gvals = is_array($v) ? $v : [];
-          $group_prefix = $row_prefix . '[' . $sname . ']';
-          echo '<div class="cff-group cff-group-nested">';
-          render_group_fields($group_prefix, $gsubs, $gvals, $post_id, $root_name, $current_path);
-          echo '</div>';
-        } else {
-          echo '<input class="widefat" type="text" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$placeholder_attr.$required_attr.'>';
+        cff_render_subfield_control($s, $name_attr, $v, $post_id, $root_name, $current_path, $placeholder_attr, $required_attr);
+        if (!cff_subfield_copy_hidden()) {
+          cff_render_copy_to_translations_field_action([
+            'root' => $root_name ?: sanitize_key($parent),
+            'field' => sanitize_key($sname),
+            'key' => $sub_field_key,
+            'path' => $current_path,
+          ]);
         }
-        cff_render_copy_to_translations_field_action([
-          'root' => $root_name ?: sanitize_key($parent),
-          'field' => sanitize_key($sname),
-          'key' => $sub_field_key,
-          'path' => $current_path,
-        ]);
         echo '</td>';
       }
       echo '</tr>';
@@ -1084,135 +1106,17 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         'name' => sanitize_key($sname),
         'type' => sanitize_key($stype),
       ]]);
-      echo '<div class="cff-subfield-input" data-field-name="' . esc_attr(sanitize_key($sname)) . '" data-field-key="' . esc_attr($sub_field_key) . '"' . cff_conditional_attrs($s) . '>';
+      echo '<div class="cff-subfield-input cff-subfield-type-' . esc_attr(sanitize_key($stype)) . '" data-field-name="' . esc_attr(sanitize_key($sname)) . '" data-field-key="' . esc_attr($sub_field_key) . '"' . cff_conditional_attrs($s) . '>';
       echo '<label>'.$label_text.'</label>';
-      if ($stype === 'textarea') {
-        echo '<textarea class="widefat" rows="3" name="'.esc_attr($name_attr).'"'.$placeholder_attr.$required_attr.'>'.esc_textarea($v).'</textarea>';
-      } elseif ($stype === 'shortcode') {
-        render_shortcode_input($name_attr, $v, $placeholder_attr, $required_attr);
-      } elseif ($stype === 'color') {
-        echo '<div class="cff-color">';
-        echo '<input class="cff-color-picker" type="color" value="'.esc_attr($v ?: '#ffffff').'">';
-        echo '<input class="widefat cff-color-value" type="text" placeholder="#ffffff" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$required_attr.'>';
-        echo '</div>';
-      } elseif ($stype === 'checkbox') {
-        $checked = !empty($v) ? 'checked' : '';
-        echo '<input type="hidden" name="'.esc_attr($name_attr).'" value="0">';
-        echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'" value="1" '.$checked.$required_attr.'> ' . esc_html($label) . '</label>';
-    } elseif ($stype === 'url') {
-          render_url_input($name_attr, $v, $placeholder_attr, $required_attr);
-    } elseif ($stype === 'choice') {
-        render_choice_input($name_attr, $s['choices'] ?? [], $s['choice_display'] ?? '', $v, $required_attr, $s['choice_default'] ?? '');
-      } elseif ($stype === 'date_picker' || $stype === 'datetime_picker') {
-        $sub_use_time = ($stype === 'datetime_picker') ? !array_key_exists('datetime_use_time', $s) || !empty($s['datetime_use_time']) : true;
-        render_picker_input($name_attr, $v, $placeholder_attr, $required_attr, $stype, $sub_use_time);
-      } elseif ($stype === 'link') {
-        render_link_field($name_attr, $v);
-      } elseif ($stype === 'wysiwyg') {
-        $editor_id = cff_build_editor_id($name_attr);
-
-        echo '<textarea
-          id="' . esc_attr($editor_id) . '"
-          class="widefat cff-wysiwyg"
-          name="' . esc_attr($name_attr) . '"'.$required_attr.'
-          rows="8"
-        >' . esc_textarea($v) . '</textarea>';
-
-        echo '<input type="hidden"
-          class="cff-wysiwyg-settings"
-          data-editor-id="' . esc_attr($editor_id) . '"
-          value="' . esc_attr(wp_json_encode([
-            'tinymce' => [
-              'wpautop'  => true,
-              'toolbar1' => 'formatselect,bold,italic,bullist,numlist,blockquote,alignleft,aligncenter,alignright,link,unlink,wp_more,spellchecker,wp_adv',
-              'toolbar2' => 'strikethrough,hr,forecolor,pastetext,removeformat,charmap,outdent,indent,undo,redo,wp_help',
-              'menubar'  => false,
-            ],
-            'quicktags'    => true,
-            'mediaButtons' => true,
-          ])) . '">';
-      } elseif ($stype === 'image' || $stype === 'file') {
-        $id = cff_media_render_id($stype, $v);
-        $url = $id ? wp_get_attachment_url($id) : '';
-        $url_attr = $row_prefix . '[' . $sname . '_url]';
-        echo '<div class="cff-media cff-media-inline" data-type="'.esc_attr($stype).'"' . cff_media_field_attrs($s) . '>';
-        echo '<input type="hidden" class="cff-media-id" name="'.esc_attr($name_attr).'" value="'.esc_attr($id).'">';
-        echo '<input type="hidden" class="cff-media-url" name="'.esc_attr($url_attr).'" value="'.esc_attr($url).'">';
-        echo '<div class="cff-media-preview">';
-        echo cff_media_preview_html($stype, $id);
-        cff_render_media_action_buttons();
-        echo '</div>';
-        echo cff_media_limit_label_html($s);
-        echo '</div>';
-      } elseif ($stype === 'gallery') {
-        cff_render_gallery_field($name_attr, $v, $s);
-      } elseif ($stype === 'repeater') {
-        $rsubs = isset($s['sub_fields']) ? $s['sub_fields'] : [];
-        $rows = is_array($v) ? $v : [];
-        $min = isset($s['min']) ? (int) $s['min'] : 1;
-        $max = isset($s['max']) ? (int) $s['max'] : 0;
-        if ($max > 0 && count($rows) > $max) {
-          $rows = array_slice($rows, 0, $max);
-        }
-        $field_key = sanitize_key($s['key'] ?? '');
-        if (!$field_key) $field_key = sanitize_key($sname);
-        $repeater_prefix = $name_attr;
-        $rep_layout = isset($s['repeater_layout']) ? $s['repeater_layout'] : 'default';
-        $rep_layout = in_array($rep_layout, ['simple','grid','row','gallery','table','default'], true) ? $rep_layout : 'default';
-        $row_label_field = sanitize_key($s['repeater_row_label'] ?? '');
-        $collapsed_default = !empty($s['repeater_collapsed']);
-        echo '<div class="cff-repeater" data-field="'.esc_attr($field_key).'" data-min="'.esc_attr($min).'" data-max="'.esc_attr($max).'" data-layout="'.esc_attr($rep_layout).'" data-row-label="'.esc_attr($row_label_field).'" data-collapsed-default="'.($collapsed_default ? '1' : '0').'" style="--cff-repeater-cols:' . esc_attr(max(1, count($rsubs))) . ';">';
-        echo '<input type="hidden" class="cff-rep-present" name="'.esc_attr($repeater_prefix).'[__cff_present]" value="1">';
-        if ($rep_layout === 'table') {
-          cff_render_repeater_table_head($rsubs);
-        } else {
-          echo '<div class="cff-rep-rows">';
-        }
-        foreach ($rows as $idx => $row) {
-          render_repeater_row($sname, $rsubs, $row, $idx, $post_id, $repeater_prefix, $rep_layout, $row_label_field, $collapsed_default, $root_name, $current_path);
-        }
-        if ($rep_layout === 'table') {
-          echo '</tbody></table>';
-        } else {
-          echo '</div>';
-        }
-        echo '<p><button type="button" class="button cff-rep-add">Add Row</button></p>';
-        echo '<template class="cff-rep-template">';
-        if ($rep_layout === 'table') {
-          echo '<table><tbody>';
-        }
-        render_repeater_row($sname, $rsubs, [], '__INDEX__', $post_id, $repeater_prefix, $rep_layout, $row_label_field, $collapsed_default, $root_name, $current_path);
-        if ($rep_layout === 'table') {
-          echo '</tbody></table>';
-        }
-        echo '</template>';
-        echo '</div>';
-      } elseif ($stype === 'relational') {
-        render_relational_input(
-          $name_attr,
-          $s['relational_type'] ?? 'post',
-          $s['relational_subtype'] ?? '',
-          $s['relational_display'] ?? 'select',
-          $v,
-          !empty($s['relational_multiple']),
-          $required_attr
-        );
-      } elseif ($stype === 'group') {
-        $gsubs = isset($s['sub_fields']) ? $s['sub_fields'] : [];
-        $gvals = is_array($v) ? $v : [];
-        $group_prefix = $row_prefix . '[' . $sname . ']';
-        echo '<div class="cff-group cff-group-nested">';
-        render_group_fields($group_prefix, $gsubs, $gvals, $post_id, $root_name, $current_path);
-        echo '</div>';
-      } else {
-        echo '<input class="widefat" type="text" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$placeholder_attr.$required_attr.'>';
+      cff_render_subfield_control($s, $name_attr, $v, $post_id, $root_name, $current_path, $placeholder_attr, $required_attr);
+      if (!cff_subfield_copy_hidden()) {
+        cff_render_copy_to_translations_field_action([
+          'root' => $root_name ?: sanitize_key($parent),
+          'field' => sanitize_key($sname),
+          'key' => $sub_field_key,
+          'path' => $current_path,
+        ]);
       }
-      cff_render_copy_to_translations_field_action([
-        'root' => $root_name ?: sanitize_key($parent),
-        'field' => sanitize_key($sname),
-        'key' => $sub_field_key,
-        'path' => $current_path,
-      ]);
       echo '</div>';
     }
     echo '</div></div>';
@@ -1239,135 +1143,17 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
         'name' => sanitize_key($sname),
         'type' => sanitize_key($stype),
       ]]);
-      echo '<div class="cff-subfield-input" data-field-name="' . esc_attr(sanitize_key($sname)) . '" data-field-key="' . esc_attr($sub_field_key) . '"' . cff_conditional_attrs($s) . '>';
+      echo '<div class="cff-subfield-input cff-subfield-type-' . esc_attr(sanitize_key($stype)) . '" data-field-name="' . esc_attr(sanitize_key($sname)) . '" data-field-key="' . esc_attr($sub_field_key) . '"' . cff_conditional_attrs($s) . '>';
       echo '<label>'.$label_text.'</label>';
-      if ($stype === 'textarea') {
-        echo '<textarea class="widefat" rows="3" name="'.esc_attr($name_attr).'"'.$placeholder_attr.$required_attr.'>'.esc_textarea($v).'</textarea>';
-      } elseif ($stype === 'shortcode') {
-        render_shortcode_input($name_attr, $v, $placeholder_attr, $required_attr);
-      } elseif ($stype === 'color') {
-        echo '<div class="cff-color">';
-        echo '<input class="cff-color-picker" type="color" value="'.esc_attr($v ?: '#ffffff').'">';
-        echo '<input class="widefat cff-color-value" type="text" placeholder="#ffffff" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$required_attr.'>';
-        echo '</div>';
-      } elseif ($stype === 'checkbox') {
-        $checked = !empty($v) ? 'checked' : '';
-        echo '<input type="hidden" name="'.esc_attr($name_attr).'" value="0">';
-        echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'" value="1" '.$checked.$required_attr.'> ' . esc_html($label) . '</label>';
-      } elseif ($stype === 'url') {
-        render_url_input($name_attr, $v, $placeholder_attr, $required_attr);
-      } elseif ($stype === 'choice') {
-        render_choice_input($name_attr, $s['choices'] ?? [], $s['choice_display'] ?? '', $v, $required_attr, $s['choice_default'] ?? '');
-      } elseif ($stype === 'date_picker' || $stype === 'datetime_picker') {
-        $sub_use_time = ($stype === 'datetime_picker') ? !array_key_exists('datetime_use_time', $s) || !empty($s['datetime_use_time']) : true;
-        render_picker_input($name_attr, $v, $placeholder_attr, $required_attr, $stype, $sub_use_time);
-      } elseif ($stype === 'link') {
-        render_link_field($name_attr, $v);
-      } elseif ($stype === 'wysiwyg') {
-        $editor_id = cff_build_editor_id($name_attr);
-
-        echo '<textarea
-          id="' . esc_attr($editor_id) . '"
-          class="widefat cff-wysiwyg"
-          name="' . esc_attr($name_attr) . '"'.$required_attr.'
-          rows="8"
-        >' . esc_textarea($v) . '</textarea>';
-
-        echo '<input type="hidden"
-          class="cff-wysiwyg-settings"
-          data-editor-id="' . esc_attr($editor_id) . '"
-          value="' . esc_attr(wp_json_encode([
-            'tinymce' => [
-              'wpautop'  => true,
-              'toolbar1' => 'formatselect,bold,italic,bullist,numlist,blockquote,alignleft,aligncenter,alignright,link,unlink,wp_more,spellchecker,wp_adv',
-              'toolbar2' => 'strikethrough,hr,forecolor,pastetext,removeformat,charmap,outdent,indent,undo,redo,wp_help',
-              'menubar'  => false,
-            ],
-            'quicktags'    => true,
-            'mediaButtons' => true,
-          ])) . '">';
-      } elseif ($stype === 'image' || $stype === 'file') {
-        $id = cff_media_render_id($stype, $v);
-        $url = $id ? wp_get_attachment_url($id) : '';
-        $url_attr = $parent_prefix . '[' . $sname . '_url]';
-
-        echo '<div class="cff-media cff-media-inline" data-type="'.esc_attr($stype).'"' . cff_media_field_attrs($s) . '>';
-        echo '<input type="hidden" class="cff-media-id" name="'.esc_attr($name_attr).'" value="'.esc_attr($id).'">';
-        echo '<input type="hidden" class="cff-media-url" name="'.esc_attr($url_attr).'" value="'.esc_attr($url).'">';
-        echo '<div class="cff-media-preview">';
-        echo cff_media_preview_html($stype, $id);
-        cff_render_media_action_buttons();
-        echo '</div>';
-        echo cff_media_limit_label_html($s);
-        echo '</div>';
-      } elseif ($stype === 'gallery') {
-        cff_render_gallery_field($name_attr, $v, $s);
-      } elseif ($stype === 'repeater') {
-        $rsubs = isset($s['sub_fields']) ? $s['sub_fields'] : [];
-        $rows = is_array($v) ? $v : [];
-        $min = isset($s['min']) ? (int) $s['min'] : 1;
-        $max = isset($s['max']) ? (int) $s['max'] : 0;
-        if ($max > 0 && count($rows) > $max) {
-          $rows = array_slice($rows, 0, $max);
-        }
-        $field_key = sanitize_key($s['key'] ?? '');
-        if (!$field_key) $field_key = sanitize_key($sname);
-        $repeater_prefix = $name_attr;
-        $rep_layout = isset($s['repeater_layout']) ? $s['repeater_layout'] : 'default';
-        $rep_layout = in_array($rep_layout, ['simple','grid','row','gallery','table','default'], true) ? $rep_layout : 'default';
-        $row_label_field = sanitize_key($s['repeater_row_label'] ?? '');
-        $collapsed_default = !empty($s['repeater_collapsed']);
-        echo '<div class="cff-repeater" data-field="'.esc_attr($field_key).'" data-min="'.esc_attr($min).'" data-max="'.esc_attr($max).'" data-layout="'.esc_attr($rep_layout).'" data-row-label="'.esc_attr($row_label_field).'" data-collapsed-default="'.($collapsed_default ? '1' : '0').'" style="--cff-repeater-cols:' . esc_attr(max(1, count($rsubs))) . ';">';
-        echo '<input type="hidden" class="cff-rep-present" name="'.esc_attr($repeater_prefix).'[__cff_present]" value="1">';
-        if ($rep_layout === 'table') {
-          cff_render_repeater_table_head($rsubs);
-        } else {
-          echo '<div class="cff-rep-rows">';
-        }
-        foreach ($rows as $idx => $row) {
-          render_repeater_row($sname, $rsubs, $row, $idx, $post_id, $repeater_prefix, $rep_layout, $row_label_field, $collapsed_default, $root_name, $current_path);
-        }
-        if ($rep_layout === 'table') {
-          echo '</tbody></table>';
-        } else {
-          echo '</div>';
-        }
-        echo '<p><button type="button" class="button cff-rep-add">Add Row</button></p>';
-        echo '<template class="cff-rep-template">';
-        if ($rep_layout === 'table') {
-          echo '<table><tbody>';
-        }
-        render_repeater_row($sname, $rsubs, [], '__INDEX__', $post_id, $repeater_prefix, $rep_layout, $row_label_field, $collapsed_default, $root_name, $current_path);
-        if ($rep_layout === 'table') {
-          echo '</tbody></table>';
-        }
-        echo '</template>';
-        echo '</div>';
-      } elseif ($stype === 'group') {
-        $gsubs = isset($s['sub_fields']) ? $s['sub_fields'] : [];
-        $gvals = is_array($v) ? $v : [];
-        echo '<div class="cff-group cff-group-nested">';
-        render_group_fields($name_attr, $gsubs, $gvals, $post_id, $root_name, $current_path);
-        echo '</div>';
-      } elseif ($stype === 'relational') {
-        render_relational_input(
-          $name_attr,
-          $s['relational_type'] ?? 'post',
-          $s['relational_subtype'] ?? '',
-          $s['relational_display'] ?? 'select',
-          $v,
-          !empty($s['relational_multiple']),
-          $required_attr
-        );
-      } else {
-        echo '<input class="widefat" type="text" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$placeholder_attr.$required_attr.'>';
+      cff_render_subfield_control($s, $name_attr, $v, $post_id, $root_name, $current_path, $placeholder_attr, $required_attr);
+      if (!cff_subfield_copy_hidden()) {
+        cff_render_copy_to_translations_field_action([
+          'root' => $root_name ?: sanitize_key($sname),
+          'field' => sanitize_key($sname),
+          'key' => $sub_field_key,
+          'path' => $current_path,
+        ]);
       }
-      cff_render_copy_to_translations_field_action([
-        'root' => $root_name ?: sanitize_key($sname),
-        'field' => sanitize_key($sname),
-        'key' => $sub_field_key,
-        'path' => $current_path,
-      ]);
       echo '</div>';
     }
   }
@@ -1497,7 +1283,7 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
     // INTERNAL
     echo '<div class="cff-link-internal">';
 
-    echo '<div class="cff-link-post-type" style="margin-bottom: 10px;">';
+    echo '<div class="cff-link-post-type">';
     echo '<label>' . esc_html__('Filter by post type', 'cff') . '</label>';
     echo '<select class="cff-input cff-link-post-type-select" name="' . esc_attr($name_attr) . '[post_type_filter]">';
     echo '<option value="any"' . selected($post_type_filter, 'any', false) . '>All post types</option>';
@@ -1522,7 +1308,8 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
     echo '<input type="hidden" class="cff-link-internal-id" name="' . esc_attr($name_attr) . '[internal_id]" value="' . esc_attr($internal_id) . '">';
 
     // NOTE: class input dibedakan
-    echo '<input class="widefat cff-link-title-input cff-title-internal" type="text" placeholder="Title" name="' . esc_attr($name_attr) . '[title]" value="' . esc_attr($title) . '" style="margin-top: 10px;">';
+    echo '<p class="cff-link-title-wrap"><label>' . esc_html__('Title', 'cff') . '</label>';
+    echo '<input class="widefat cff-link-title-input cff-title-internal" type="text" placeholder="Title" name="' . esc_attr($name_attr) . '[title]" value="' . esc_attr($title) . '"></p>';
 
     echo '<div class="cff-link-internal-extra">';
     echo '<p><label>' . esc_html__('Parameter', 'cff') . '</label>';
@@ -1535,20 +1322,17 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
 
     // CUSTOM
     echo '<div class="cff-link-custom">';
-    echo '<div class="cff-link-url">';
-    echo '<input class="widefat cff-url-custom" type="url" placeholder="URL" name="' . esc_attr($name_attr) . '[url]" value="' . esc_attr($url) . '">';
-    echo '</div>';
+    echo '<p class="cff-link-url"><label>' . esc_html__('URL', 'cff') . '</label>';
+    echo '<input class="widefat cff-url-custom" type="url" placeholder="https://" name="' . esc_attr($name_attr) . '[url]" value="' . esc_attr($url) . '"></p>';
 
     // wrapper class dibedakan, input class dibedakan
-    echo '<div class="cff-link-title-wrap">';
-    echo '<input class="widefat cff-link-title-input cff-title-custom" type="text" placeholder="Title" name="' . esc_attr($name_attr) . '[title]" value="' . esc_attr($title) . '" style="margin-top: 10px;">';
-    echo '</div>';
+    echo '<p class="cff-link-title-wrap"><label>' . esc_html__('Title', 'cff') . '</label>';
+    echo '<input class="widefat cff-link-title-input cff-title-custom" type="text" placeholder="Title" name="' . esc_attr($name_attr) . '[title]" value="' . esc_attr($title) . '"></p>';
 
     echo '</div>';
 
     echo '<div class="cff-link-target">';
     echo '<input type="hidden" name="' . esc_attr($name_attr) . '[target]" value="">';
-    echo '<br>';
     echo '<label><input type="checkbox" name="' . esc_attr($name_attr) . '[target]" value="_blank" ' . checked($target, '_blank', false) . '> Open in new tab</label>';
     echo '</div>';
 
@@ -1563,8 +1347,8 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
     $row_id = ($i === '__INDEX__') ? '__ROWID__' : cff_generate_row_id($row['__cff_row_id'] ?? '');
 
     echo '<div class="cff-flex-row" data-i="'.esc_attr($i).'" data-layout="'.esc_attr($layout).'" data-row-id="'.esc_attr($row_id).'">';
-    echo '<div class="cff-flex-head"><strong>'.esc_html($label).'</strong> <span class="cff-pill">'.esc_html($layout).'</span> ';
-    echo '<button type="button" class="button-link cff-flex-remove" title="'.esc_attr__('Remove layout', 'cff').'">'.esc_html__('Remove', 'cff').'</button></div>';
+    echo '<div class="cff-flex-head"><div class="cff-flex-title"><strong>'.esc_html($label).'</strong> <span class="cff-pill">'.esc_html($layout).'</span></div>';
+    echo '<button type="button" class="button-link cff-flex-remove" title="'.esc_attr__('Remove layout', 'cff').'" aria-label="'.esc_attr__('Remove layout', 'cff').'"><span class="dashicons dashicons-trash" aria-hidden="true"></span></button></div>';
     echo '<input type="hidden" name="cff_values['.esc_attr($parent).']['.esc_attr($i).'][layout]" value="'.esc_attr($layout).'">';
     echo '<input type="hidden" class="cff-row-id" name="cff_values['.esc_attr($parent).']['.esc_attr($i).'][__cff_row_id]" value="'.esc_attr($row_id).'">';
     echo '<div class="cff-flex-body">';
@@ -1593,89 +1377,17 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
           'name' => sanitize_key($sname),
           'type' => sanitize_key($stype),
         ]]);
-        echo '<div class="cff-subfield-input" data-field-name="' . esc_attr(sanitize_key($sname)) . '" data-field-key="' . esc_attr($sub_field_key) . '"' . cff_conditional_attrs($sf) . '>';
+        echo '<div class="cff-subfield-input cff-subfield-type-' . esc_attr(sanitize_key($stype)) . '" data-field-name="' . esc_attr(sanitize_key($sname)) . '" data-field-key="' . esc_attr($sub_field_key) . '"' . cff_conditional_attrs($sf) . '>';
         echo '<label>'.$label_text.'</label>';
-        if ($stype === 'textarea') {
-          echo '<textarea class="widefat" rows="4" name="'.esc_attr($name_attr).'"'.$placeholder_attr.$required_attr.'>'.esc_textarea($v).'</textarea>';
-        } elseif ($stype === 'shortcode') {
-          render_shortcode_input($name_attr, $v, $placeholder_attr, $required_attr);
-        } elseif ($stype === 'color') {
-          echo '<div class="cff-color">';
-          echo '<input class="cff-color-picker" type="color" value="'.esc_attr($v ?: '#ffffff').'">';
-          echo '<input class="widefat cff-color-value" type="text" placeholder="#ffffff" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$required_attr.'>';
-          echo '</div>';
-        } elseif ($stype === 'checkbox') {
-          $checked = !empty($v) ? 'checked' : '';
-          echo '<input type="hidden" name="'.esc_attr($name_attr).'" value="0">';
-          echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'" value="1" '.$checked.$required_attr.'> ' . esc_html($slabel) . '</label>';
-        } elseif ($stype === 'url') {
-          render_url_input($name_attr, $v, $placeholder_attr, $required_attr);
-        } elseif ($stype === 'choice') {
-          render_choice_input($name_attr, $sf['choices'] ?? [], $sf['choice_display'] ?? '', $v, $required_attr, $sf['choice_default'] ?? '');
-        } elseif ($stype === 'date_picker' || $stype === 'datetime_picker') {
-        $sub_use_time = ($stype === 'datetime_picker') ? !array_key_exists('datetime_use_time', $sf) || !empty($sf['datetime_use_time']) : true;
-        render_picker_input($name_attr, $v, $placeholder_attr, $required_attr, $stype, $sub_use_time);
-      } elseif ($stype === 'link') {
-        render_link_field($name_attr, $v);
-        } elseif ($stype === 'wysiwyg') {
-          $editor_id = cff_build_editor_id($name_attr);
-
-          echo '<textarea'
-            . ' id="' . esc_attr($editor_id) . '"'
-            . ' class="widefat cff-wysiwyg"'
-            . ' rows="6"'
-            . ' name="' . esc_attr($name_attr) . '"'.$required_attr.''
-            . '>' . esc_textarea($v) . '</textarea>';
-
-          echo '<input type="hidden"'
-            . ' class="cff-wysiwyg-settings"'
-            . ' data-editor-id="' . esc_attr($editor_id) . '"'
-            . ' value="' . esc_attr(wp_json_encode([
-                'tinymce' => true,
-                'quicktags' => true,
-                'mediaButtons' => true,
-              ])) . '">';
-        } elseif ($stype === 'image' || $stype === 'file') {
-          $id = intval($v);
-          $url = $id ? wp_get_attachment_url($id) : '';
-          $url_attr = 'cff_values['.$parent.']['.$i.'][fields]['.$sname.'_url]';
-          echo '<div class="cff-media cff-media-inline" data-type="'.esc_attr($stype).'"' . cff_media_field_attrs($sf) . '>';
-          echo '<input type="hidden" class="cff-media-id" name="'.esc_attr($name_attr).'" value="'.esc_attr($id).'">';
-          echo '<input type="hidden" class="cff-media-url" name="'.esc_attr($url_attr).'" value="'.esc_attr($url).'">';
-          echo '<div class="cff-media-preview">';
-          echo cff_media_preview_html($stype, $id);
-          cff_render_media_action_buttons();
-          echo '</div>';
-          echo cff_media_limit_label_html($sf);
-          echo '</div>';
-        } elseif ($stype === 'gallery') {
-          cff_render_gallery_field($name_attr, $v, $s);
-        } elseif ($stype === 'relational') {
-          render_relational_input(
-            $name_attr,
-            $sf['relational_type'] ?? 'post',
-            $sf['relational_subtype'] ?? '',
-            $sf['relational_display'] ?? 'select',
-            $v,
-            !empty($sf['relational_multiple']),
-            $required_attr
-          );
-        } elseif ($stype === 'group') {
-          $gsubs = isset($sf['sub_fields']) ? $sf['sub_fields'] : [];
-          $gvals = is_array($v) ? $v : [];
-          $group_prefix = 'cff_values['.$parent.']['.$i.'][fields]['.$sname.']';
-          echo '<div class="cff-group cff-group-nested">';
-          render_group_fields($group_prefix, $gsubs, $gvals, $post_id, $root_name, $current_path);
-          echo '</div>';
-        } else {
-          echo '<input class="widefat" type="text" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$placeholder_attr.$required_attr.'>';
+        cff_render_subfield_control($sf, $name_attr, $v, $post_id, $root_name, $current_path, $placeholder_attr, $required_attr, 4);
+        if (!cff_subfield_copy_hidden()) {
+          cff_render_copy_to_translations_field_action([
+            'root' => $root_name ?: sanitize_key($parent),
+            'field' => sanitize_key($sname),
+            'key' => $sub_field_key,
+            'path' => $current_path,
+          ]);
         }
-        cff_render_copy_to_translations_field_action([
-          'root' => $root_name ?: sanitize_key($parent),
-          'field' => sanitize_key($sname),
-          'key' => $sub_field_key,
-          'path' => $current_path,
-        ]);
         echo '</div>';
       }
     } else {
@@ -2105,7 +1817,7 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
       foreach ($options as $id => $title) {
         $is_selected = $rel_multiple ? in_array((string)$id, $selected, true) : ((string)$selected === (string)$id);
         $selected_attr = $is_selected ? ' selected' : '';
-        echo '<option value="'.esc_attr($id).'"'.$selected_attr.'>'.esc_html($title).'</option>';
+        echo '<option value="'.esc_attr($id).'"'.$selected_attr.'>'.esc_html(cff_relational_label($title)).'</option>';
       }
       echo '</select>';
       return;
@@ -2122,7 +1834,7 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
       echo '<input type="hidden" name="'.esc_attr($name_attr).'[]" value="__cff_rel_empty__">';
       foreach ($options as $id => $title) {
         $checked = in_array((string)$id, $selected, true) ? ' checked' : '';
-        echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'[]" value="'.esc_attr($id).'"'.$checked.'> '.esc_html($title).'</label>';
+        echo '<label><input type="checkbox" name="'.esc_attr($name_attr).'[]" value="'.esc_attr($id).'"'.$checked.'> '.esc_html(cff_relational_label($title)).'</label>';
       }
       echo '</div>';
       return;
@@ -2132,7 +1844,7 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
       echo '<div class="cff-relational-radios">';
       foreach ($options as $id => $title) {
         $checked = (string)$selected === (string)$id ? ' checked' : '';
-        echo '<label><input type="radio" name="'.esc_attr($name_attr).'" value="'.esc_attr($id).'"'.$checked.$required_attr.'> '.esc_html($title).'</label>';
+        echo '<label><input type="radio" name="'.esc_attr($name_attr).'" value="'.esc_attr($id).'"'.$checked.$required_attr.'> '.esc_html(cff_relational_label($title)).'</label>';
       }
       echo '</div>';
       return;
@@ -2150,7 +1862,7 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
     echo '<option value="">' . esc_html__('Select...', 'cff') . '</option>';
     foreach ($options as $id => $title) {
       $selected_attr = (string)$selected === (string)$id ? ' selected' : '';
-      echo '<option value="'.esc_attr($id).'"'.$selected_attr.'>'.esc_html($title).'</option>';
+      echo '<option value="'.esc_attr($id).'"'.$selected_attr.'>'.esc_html(cff_relational_label($title)).'</option>';
     }
     echo '</select>';
   }

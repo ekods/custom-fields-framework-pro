@@ -1,6 +1,7 @@
 <?php
 namespace CFF;
 if (!defined('ABSPATH')) exit;
+require_once __DIR__ . '/helpers/relational-label.php';
 
 class Ajax_Controller {
   public function ajax_search_posts() {
@@ -64,7 +65,7 @@ class Ajax_Controller {
       if (is_wp_error($terms)) wp_send_json_error(['message' => $terms->get_error_message()], 400);
       $more = count($terms) > $limit;
       foreach (array_slice($terms, 0, $limit) as $term) {
-        $results[] = ['id' => $term->term_id, 'text' => $term->name];
+        $results[] = ['id' => $term->term_id, 'text' => cff_relational_label($term->name)];
       }
     } elseif ($type === 'user') {
       if (!current_user_can('list_users')) {
@@ -80,7 +81,7 @@ class Ajax_Controller {
       ]);
       $more = count($users) > $limit;
       foreach (array_slice($users, 0, $limit) as $user) {
-        $results[] = ['id' => $user->ID, 'text' => $user->display_name];
+        $results[] = ['id' => $user->ID, 'text' => cff_relational_label($user->display_name)];
       }
     } else {
       $post_types = ['post'];
@@ -108,7 +109,7 @@ class Ajax_Controller {
       ]);
       $more = count($posts) > $limit;
       foreach (array_slice($posts, 0, $limit) as $item) {
-        $results[] = ['id' => $item->ID, 'text' => $item->post_title ?: __('(no title)', 'cff')];
+        $results[] = ['id' => $item->ID, 'text' => cff_relational_label($item->post_title ?: __('(no title)', 'cff'))];
       }
     }
 

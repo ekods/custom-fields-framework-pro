@@ -52,6 +52,10 @@ function apply_filters($name, $value, ...$args) {
   return $value;
 }
 function get_post($id) { return $GLOBALS['posts'][$id] ?? null; }
+function get_term($id, $taxonomy = '') {
+  $term = $GLOBALS['fixture_terms'][$id] ?? null;
+  return $term && (!$taxonomy || $term->taxonomy === $taxonomy) ? $term : null;
+}
 function get_posts($args) {
   return array_values(array_filter($GLOBALS['posts'], function($post) use ($args) {
     $types = (array) ($args['post_type'] ?? 'post');
@@ -336,4 +340,31 @@ foreach ([['status' => 429, 'body' => '{}'], ['status' => 200, 'body' => '{inval
   check($GLOBALS['remote_calls'] === $calls + 1, 'HTTP/invalid release failures are negatively cached');
 }
 
+// Native JSON import must keep the relation's object namespace. Post and term IDs can overlap.
+$sanitize_import = new ReflectionMethod(CFF\Plugin::class, 'sanitize_group_settings');
+$sanitize_import->setAccessible(true);
+$imported = $sanitize_import->invoke($plugin, [
+  'presentation' => ['style' => 'standard', 'position' => 'normal', 'label_placement' => 'top', 'instruction_placement' => 'below_labels'],
+  'fields' => [[
+    'key' => 'fld_service_import', 'name' => 'capability_service', 'label' => '00 — Service', 'type' => 'relational',
+    'relational_type' => 'taxonomy', 'relational_subtype' => 'service', 'relational_post_type' => 'work',
+    'relational_display' => 'select', 'relational_multiple' => false,
+  ], [
+    'key' => 'fld_related_work_import', 'name' => 'related_work', 'type' => 'relational',
+    'relational_type' => 'post_type', 'relational_subtype' => 'project', 'relational_display' => 'checkbox', 'relational_multiple' => true,
+  ]],
+  'location' => [[['param' => 'post_type', 'operator' => '==', 'value' => 'page']]],
+]);
+$service_field = $imported['fields'][0];
+check(($service_field['relational_type'] ?? null) === 'taxonomy' && ($service_field['relational_subtype'] ?? null) === 'service', 'Import discarded the taxonomy source and changed Service into a Post relationship');
+check(($service_field['relational_post_type'] ?? null) === 'work' && ($service_field['relational_display'] ?? null) === 'select' && $service_field['relational_multiple'] === false, 'Import lost relational editor settings');
+$work_field = $imported['fields'][1];
+check($work_field['relational_type'] === 'post_type' && $work_field['relational_subtype'] === 'project' && $work_field['relational_display'] === 'checkbox' && $work_field['relational_multiple'] === true, 'Import changed custom post type or multiple relation settings');
+$GLOBALS['posts'][149] = (object) ['ID' => 149, 'post_type' => 'attachment', 'post_title' => '814306f0f546ac0f927cc34f736fb49b14b4f0eb'];
+$GLOBALS['fixture_terms'][149] = (object) ['term_id' => 149, 'taxonomy' => 'service', 'name' => 'Packaging'];
+ob_start();
+CFF\render_relational_input('cff_values[capability_service]', $service_field['relational_type'], $service_field['relational_subtype'], $service_field['relational_display'], 149, false, '');
+$import_html = ob_get_clean();
+check(strpos($import_html, 'data-relational-type="taxonomy"') !== false && strpos($import_html, 'data-relational-subtype="service"') !== false, 'Imported field renders the wrong AJAX namespace');
+check(strpos($import_html, '<option value="149" selected>Packaging</option>') !== false && strpos($import_html, '814306f0') === false, 'Imported taxonomy label resolved an unrelated post with the same ID');
 echo 'Runtime integrity: ' . $checks . " checks passed.\n";

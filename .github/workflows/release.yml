@@ -35,6 +35,7 @@ jobs:
           composer test:language-clone
           composer test:frontend-visibility
           composer test:runtime-integrity
+          composer test:relational-labels
       - name: Build and validate ZIP
         env:
           CFFP_SKIP_SYNC: '1'

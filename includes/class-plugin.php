@@ -1791,6 +1791,7 @@ TEXT;
     $hide_field_view_copy = !empty(get_option('cffp_hide_field_view_copy', 0));
     $hide_field_view_mode = !empty(get_option('cffp_hide_field_view_mode', 0));
     $hide_field_reorder_view = !empty(get_option('cffp_hide_field_reorder_view', 0));
+    $hide_subfield_copy = !empty(get_option('cffp_hide_subfield_copy', 0));
 
     echo '<div class="cff-global-settings-stack">';
 
@@ -1841,6 +1842,7 @@ TEXT;
     echo '<label class="cff-check"><input type="checkbox" name="cffp_hide_field_view_copy" value="1" ' . checked($hide_field_view_copy, true, false) . '> <span>' . esc_html__('Hide copy text', 'cff') . '</span></label>';
     echo '<label class="cff-check"><input type="checkbox" name="cffp_hide_field_view_mode" value="1" ' . checked($hide_field_view_mode, true, false) . '> <span>' . esc_html__('Hide view mode select', 'cff') . '</span></label>';
     echo '<label class="cff-check"><input type="checkbox" name="cffp_hide_field_reorder_view" value="1" ' . checked($hide_field_reorder_view, true, false) . '> <span>' . esc_html__('Hide reorder view', 'cff') . '</span></label>';
+    echo '<label class="cff-check"><input type="checkbox" name="cffp_hide_subfield_copy" value="1" ' . checked($hide_subfield_copy, true, false) . '> <span>' . esc_html__('Hide subfield copy', 'cff') . '</span></label>';
     echo '</div>';
     echo '</section>';
 
@@ -1897,6 +1899,7 @@ TEXT;
     $hide_field_view_copy = !empty($_POST['cffp_hide_field_view_copy']) ? 1 : 0;
     $hide_field_view_mode = !empty($_POST['cffp_hide_field_view_mode']) ? 1 : 0;
     $hide_field_reorder_view = !empty($_POST['cffp_hide_field_reorder_view']) ? 1 : 0;
+    $hide_subfield_copy = !empty($_POST['cffp_hide_subfield_copy']) ? 1 : 0;
 
     update_option('cffp_block_sidebar_enabled', $enabled);
     update_option('cffp_rest_writes_enabled', $rest_writes_enabled);
@@ -1906,6 +1909,7 @@ TEXT;
     update_option('cffp_hide_field_view_copy', $hide_field_view_copy);
     update_option('cffp_hide_field_view_mode', $hide_field_view_mode);
     update_option('cffp_hide_field_reorder_view', $hide_field_reorder_view);
+    update_option('cffp_hide_subfield_copy', $hide_subfield_copy);
   }
 
   public function render_group_settings($post) {
@@ -4083,6 +4087,14 @@ TEXT;
       }
       if ($type === 'gallery') {
         $item['gallery_preview_fit'] = $this->sanitize_gallery_preview_fit($f['gallery_preview_fit'] ?? 'cover');
+      }
+
+      if ($type === 'relational') {
+        $item['relational_type'] = $this->sanitize_relational_type($f['relational_type'] ?? 'post');
+        $item['relational_subtype'] = $this->sanitize_string_value($f['relational_subtype'] ?? '');
+        $item['relational_post_type'] = sanitize_key($f['relational_post_type'] ?? '');
+        $item['relational_display'] = $this->sanitize_relational_display($f['relational_display'] ?? 'select');
+        $item['relational_multiple'] = !empty($f['relational_multiple']);
       }
 
       $out[] = $item;

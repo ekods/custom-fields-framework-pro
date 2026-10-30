@@ -23,6 +23,7 @@ jobs:
       - run: composer test:language-clone
       - run: composer test:frontend-visibility
       - run: composer test:runtime-integrity
+      - run: composer test:relational-labels
 
   package:
     runs-on: ubuntu-latest

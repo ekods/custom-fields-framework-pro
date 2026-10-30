@@ -1,6 +1,6 @@
 === Custom Fields Framework Pro ===
 Contributors: ekods
-Stable tag: 2.5.28
+Stable tag: 2.5.32
 
 Custom fields with Field Groups, Repeater, Flexible Content, Location rules, and CFF-compatible frontend helpers.
 
@@ -15,6 +15,31 @@ Build structured WordPress content with custom fields, nested repeaters, groups,
 3. Open Custom Fields and create a Field Group with location rules.
 
 == Changelog ==
+
+= 2.5.32 =
+* Tidy the content editor field rendering: labelled URL/Title inputs for link fields, Select2 relational controls matching other inputs, contained media previews with a clear empty state, and labelled gallery buttons.
+* Align repeater and flexible rows: consistent spacing, an icon remove button and layout badge beside the title for flexible rows, and dashed Add Row / Add Layout areas.
+* Stack link, media and flexible controls when a field group sits in the narrow sidebar metabox.
+* Size table-layout repeater columns by field type and scroll horizontally instead of squeezing image, editor and nested fields.
+* Render sub fields through one shared renderer. Nested repeaters inside flexible layouts now render as repeaters instead of a text input, nested table repeaters keep their row template, and flexible layouts use the same editor toolbar and image validation as other containers.
+* Fix an undefined variable warning for gallery fields inside flexible layouts.
+
+= 2.5.31 =
+* Preserve top-level relational source type, subtype, taxonomy editor post type, display mode and multiple setting when importing native CFF field groups. Taxonomy relationships no longer silently become Post relationships.
+* Add an import-to-render regression with overlapping post/term ID 149 to ensure Service uses the taxonomy label instead of an unrelated post title.
+* Existing affected imports need their relationship source corrected once in the Field Group editor, or reimported from a known-good definition. Updating the plugin does not infer missing configuration or alter saved relationship IDs.
+
+= 2.5.30 =
+* Keep relational labels readable when themes destroy and recreate CFF Select2 controls after initialization, including the Egghead Service and dependent Work dropdowns.
+* Normalize results and render selected labels as text on the current Select2 instance while preserving the theme's AJAX endpoint, service/language filters, pagination and transport.
+* Preserve external AJAX providers during CFF refreshes instead of replacing them with the default CFF lookup.
+* Add a browser regression using the actual Egghead capabilities integration, covering selected labels, dependent fields, language changes and submitted relationship IDs.
+
+= 2.5.29 =
+* Display HTML entities in relational labels as their characters, including F&amp;B Branding as F&B Branding, in AJAX dropdown results and saved selections.
+* Apply the same label handling to post, page, custom post type, taxonomy and user relationships, including multiple selects, checkboxes and radio inputs.
+* Keep HTML escaping when rendering labels and preserve stored relationship IDs.
+* Keep selected relational labels stable with field-local Select2 text renderers and label caches, including legacy entity labels, multiple selections and cloned rows.
 
 = 2.5.28 =
 * Toggle metabox builder/reorder visibility through classes so field containers retain their flex layout without inline display overrides.

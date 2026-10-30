@@ -22,6 +22,57 @@ All notable changes to this project will be documented in this file.
 - Added unit coverage for REST write toggle behavior and JSON import payload validation.
 - Added unit coverage for content field ordering, hidden-section saves, sanitized value saves, and empty-value deletes.
 
+## 2.5.32
+
+### Changed
+- Tidied content editor field rendering: link fields label their URL/Title inputs and lay them out side by side, relational Select2 controls match the height and radius of other inputs, media previews fit a 16:9 frame with an icon empty state, and gallery actions are labelled buttons.
+- Aligned repeater and flexible rows (single border, consistent subfield spacing), moved the flexible layout badge beside its title, replaced the flexible "Remove" link with an icon button, and placed Add Row / Add Layout in matching dashed areas.
+- Added a container query on `.cff-metabox` so side metaboxes stack link, media and flexible controls regardless of viewport width.
+- Table-layout repeaters now size columns by field type (`cff-subfield-type-*`) and pass their column count to the table, scrolling horizontally rather than squeezing image, editor and nested fields.
+- Extracted `cff_render_subfield_control()` and used it for repeater rows, table rows, groups and flexible layouts, replacing four diverged copies.
+- Removed `post.css` rules that later rules fully override, verified by identical computed styles on the editor at wide, sidebar and narrow widths.
+- Made Add Row, Add layout, Add, Select images and Clear translatable.
+
+### Fixed
+- Repeaters nested in flexible layouts rendered as a plain text input (showing "Array").
+- Table repeaters nested in table rows emitted their row template without `<table><tbody>`, so the browser dropped the template row.
+- Images in flexible layouts skipped `cff_media_render_id()` validation, and wysiwyg fields there used a reduced toolbar.
+- Gallery fields in flexible layouts passed an undefined `$s` instead of the field settings, raising a warning and ignoring `gallery_preview_fit`.
+- The link post type filter select inherited container padding from `.cff-input`.
+
+## 2.5.31
+
+### Fixed
+- Preserve top-level relational metadata in native CFF JSON imports. `sanitize_fields()` previously dropped the relationship namespace and subtype, so a taxonomy field could fall back to Post and read an unrelated post title for the same numeric ID.
+- Keep source type/subtype, taxonomy editor post type, display mode and multiple selection settings through import sanitization.
+
+### Validation
+- Regression first reproduced the dropped taxonomy metadata before the fix, then exercises imported Service configuration through rendering with a term and unrelated attachment sharing ID 149. The selected label must come from the term, and AJAX attributes must remain `taxonomy` / `service`.
+
+### Existing installations
+- Correct affected fields once in the Field Group editor (Service: Relational → Taxonomy → service), or reimport a known-good definition after reviewing its other changes. Existing field definitions have already lost their source metadata; updating alone cannot infer it safely. Saved relationship values are untouched.
+
+## 2.5.30
+
+### Fixed
+- Protect relational result and selection labels on the active Select2 instance when a theme destroys/recreates the control after CFF initialization. This handles the Egghead `admin-capabilities-child.js` integration that replaces the Service and dependent Work AJAX dropdowns.
+- Preserve external AJAX providers, request parameters and pagination when decorating labels or refreshing CFF fields. Normalize entity labels from the integration's own results and keep labels as escaped text.
+
+### Validation
+- Add a real-browser regression loading the actual Egghead integration after CFF, checking label rendering, relationship IDs, service-filtered Work results, language changes, dependent field clearing and provider preservation.
+- Optional integration command: `composer test:relational-theme-select2`. Set `CFFP_THEME_SCRIPT` and `CFFP_JQUERY` to override the local theme/jQuery paths; the test uses mocked AJAX and never loads a site database.
+
+## 2.5.29
+
+### Fixed
+- Decode HTML entities once in relational AJAX labels and escape decoded labels when rendering saved options, checkboxes and radio inputs. `F&amp;B Branding` now displays as `F&B Branding`.
+- Preserve relationship IDs and default Select2 text escaping; decoded markup is rendered as text.
+- Give relational dropdowns their own text-only result/selection templates and per-field label cache so global Select2 templates or mutated option text do not replace the selected label. Decode legacy AJAX entity labels in the browser as well.
+
+### Validation
+- Add isolated label regressions for post/page/custom post type/taxonomy/user relationships, single/multiple controls, named/numeric entities, UTF-8 labels, encoded markup and AJAX access checks.
+- Add a real Select2 browser fixture covering selection, changed cached labels, multiple values, cloned fields, clearing and form submission. Run `composer test:relational-select2` with Puppeteer and a local jQuery file (`CFFP_JQUERY` can override its path).
+
 ## 2.5.28
 
 ### Fixed
