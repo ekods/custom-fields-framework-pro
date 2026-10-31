@@ -40,6 +40,11 @@ class Tools_Page {
 
     echo '<div class="tk-grid tk-grid-2">';
 
+    echo '<div class="tk-card" style="grid-column: 1 / -1;">';
+    echo '<h2>' . esc_html__('Import Content', 'cff') . '</h2>';
+    echo '<p>' . esc_html__('Import one JSON file into an existing page. Replace supplied fields or fill empty fields only, with a preview before saving.', 'cff') . '</p>';
+    echo '<a class="button" href="' . esc_url(admin_url('admin.php?page=cff-import-content')) . '">' . esc_html__('Open Import Content', 'cff') . '</a></div>';
+
     echo '<div class="tk-card tk-card--feature" style="grid-column: 1 / -1; margin-bottom: 8px;">';
     echo '<h2>' . esc_html__('Export Configuration', 'cff') . '</h2>';
     echo '<p class="description">' . esc_html__('Download a JSON package containing field groups, post types, and taxonomies.', 'cff') . '</p>';

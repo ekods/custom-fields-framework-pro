@@ -24,6 +24,7 @@ jobs:
       - run: composer test:frontend-visibility
       - run: composer test:runtime-integrity
       - run: composer test:relational-labels
+      - run: composer test:content-import
 
   package:
     runs-on: ubuntu-latest

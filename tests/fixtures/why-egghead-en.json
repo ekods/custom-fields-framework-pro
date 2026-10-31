@@ -1,0 +1,197 @@
+{
+  "hero": {
+    "eyebrow": "Comparing branding agencies?",
+    "title": "Not all branding agencies are created equal.",
+    "intro": "A strong portfolio is only the start. Look for an agency that understands your business, challenges your thinking, and turns strategy into results. Here’s how EGGHEAD does it.",
+    "quote": "“Great branding doesn’t just make you different. It makes customers choose you and stay with you.”",
+    "citation": "<strong>Adam Mulyadi</strong>, CEO EGGHEAD<br>17+ years in branding · Campaign Asia 40 Under 40",
+    "questions_button_label": "See what sets us apart →",
+    "questions_button_url": "#questions",
+    "whatsapp_label": "Talk to EGGHEAD",
+    "whatsapp_url": "https://wa.me/628889090909?text=Hi%20EGGHEAD%2C%20I%27m%20comparing%20agencies%20for%20a%20branding%20project.",
+    "image": "images/egghead-branding-agency-team-adam-mulyadi-hero.jpg",
+    "image_alt": "Adam Mulyadi, CEO of EGGHEAD, seated in a studio in natural window light"
+  },
+  "questions": {
+    "eyebrow": "Before you sign",
+    "title": "The questions a pitch won't answer",
+    "intro": "A polished pitch shows what an agency can make. These nine questions show how it thinks, who does the work and what you are really paying for. Tap each card to see how we answer.",
+    "count_label": "of %d answers open",
+    "answer_label": "How EGGHEAD answers",
+    "items": [
+      {
+        "question": "Do I really need everything you’re selling?",
+        "teaser": "Big packages look thorough, but they often spread your budget thin.",
+        "answer": "Probably not, and we’ll tell you which parts you can skip. We start from where your brand is today and recommend only the phases that will move it at this stage. Some brands need an audit and a clear direction first; others are ready for a full rebrand and launch. Each stage needs different priorities."
+      },
+      {
+        "question": "How well will you understand my business?",
+        "teaser": "An agency that skips this stage is designing on guesswork.",
+        "answer": "Every project starts with EGGSPLORE, our Brand Audit. Inside the company, we interview your leadership and team to understand the business, its goals and its constraints. Outside, we study your competitors and target market, with a research partner or our in-house team depending on the project. Design only begins once we can explain your business back to you."
+      },
+      {
+        "question": "Who will actually work on my project?",
+        "teaser": "Senior people often win the pitch, then hand the work to someone else.",
+        "answer": "Strategy and design sit under one roof, led by a team with 17+ years in branding. You know from the first meeting who leads your project, and the same team stays with you from audit to launch. When specialist partners join for research or activation, we name them up front."
+      },
+      {
+        "question": "What exactly am I paying for?",
+        "teaser": "A long list of deliverables means little if you can’t see what each one is for.",
+        "answer": "Every proposal breaks the fee down by item, process, actions, deliverables and quantity, so you can see what each part buys. Depending on the phases you choose, that means audit findings, a brand platform and direction, an identity system, and guidelines your team can use to roll the brand out. What you receive and own at handover is written into the agreement before work starts."
+      },
+      {
+        "question": "Is your strategy backed by insights or opinions?",
+        "teaser": "“We like it” is not a reason. Every creative choice should have one.",
+        "answer": "Insights first, then judgment. As a data-driven branding agency, every recommendation we make can be traced back to an audit finding, a business objective or the brand direction you approved. Creative craft still matters, but it works within that rationale, not in place of it."
+      },
+      {
+        "question": "How will we know if the branding works?",
+        "teaser": "Branding takes time to pay off, which makes it easy never to measure it at all.",
+        "answer": "We agree on it before the project starts. Brand growth depends on many factors, including product, pricing, distribution and service, so we don’t promise sales figures. Instead we set brand health indicators such as awareness, perception and consistency, measure them at the start, and track them through regular Brand Health Checks so the direction can keep adjusting."
+      },
+      {
+        "question": "Have you solved challenges like mine before?",
+        "teaser": "A matching industry in the portfolio is not the same as a matching problem.",
+        "answer": "We look at the challenge before the category: a business that has outgrown its identity, a brand entering a new market, a group of brands that needs a clear structure. Our work spans F&B, FMCG, beauty, property, and corporate and financial services. See examples in Work in your industry below, and ask us for the case closest to yours."
+      },
+      {
+        "question": "What happens after the brand launches?",
+        "teaser": "Most brands drift in the months after launch, not before.",
+        "answer": "Through EGGUIDE Guardianship, we can stay on as your brand’s guardian: training your team, reviewing new materials before they go out, and running Brand Health Checks to see how the market perceives you. It’s an optional add-on, so you decide how much support you need."
+      },
+      {
+        "question": "Will there be any unexpected costs?",
+        "teaser": "Fees that are vague at the start tend to grow halfway through.",
+        "answer": "Not if we do our job at the proposal stage. Fees are split by phase and item, and the proposal states what is included and what counts as additional work. Third-party costs such as ad spend, talent fees and VAT are listed separately. If the scope changes midway, we quote the change in writing before any work on it begins."
+      }
+    ],
+    "cta_eyebrow": "Still have questions?",
+    "cta_title": "Ask our team directly. We'll give you a straight answer, even if it's that you don't need an agency yet.",
+    "whatsapp_label": "Chat on WhatsApp",
+    "whatsapp_url": "https://wa.me/628889090909?text=Hi%20EGGHEAD%2C%20I%20have%20a%20question%20about%20a%20branding%20project.",
+    "form_label": "Fill in the form",
+    "form_url": "#form"
+  },
+  "comparison": {
+    "eyebrow": "Two ways to build a brand",
+    "title": "Neither is wrong. The question is which one you need.",
+    "quick_title": "The quick route",
+    "strategic_title": "The strategic route <span>THE EGGHEAD WAY</span>",
+    "rows": [
+      {
+        "label": "Starting point",
+        "quick": "Straight into logo and visuals.",
+        "strategic": "An audit of the brand, competitors and target market first."
+      },
+      {
+        "label": "Basis for decisions",
+        "quick": "Taste and visual references.",
+        "strategic": "Research findings and an agreed brand direction."
+      },
+      {
+        "label": "Marketing channels",
+        "quick": "Often bundled together in one package.",
+        "strategic": "Chosen to fit your brand’s stage and situation."
+      },
+      {
+        "label": "What you get",
+        "quick": "Logo files and a few assets.",
+        "strategic": "A brand platform, identity system and guidelines."
+      },
+      {
+        "label": "Measure of success",
+        "quick": "The design gets approved.",
+        "strategic": "Brand health indicators measured before and after."
+      },
+      {
+        "label": "After launch",
+        "quick": "The project ends.",
+        "strategic": "Regular Brand Health Checks and ongoing support."
+      },
+      {
+        "label": "Best for",
+        "quick": "New businesses that need to look ready fast on a limited budget.",
+        "strategic": "Growing companies, brands entering new markets, or brands that no longer reflect the business."
+      }
+    ]
+  },
+  "work": {
+    "eyebrow": "Proof, not promises",
+    "title": "Work in your industry",
+    "archive_label": "See all work",
+    "archive_url": "https://thinkegghead.com/works/",
+    "items": [
+      {
+        "title": "SASA",
+        "category": "FMCG · Rebranding",
+        "image": "images/egghead-branding-agency-sasa-fmcg-billboard-rebranding.jpg",
+        "image_alt": "SASA billboard from the EGGHEAD rebranding",
+        "url": "https://thinkegghead.com/works/sasa/"
+      },
+      {
+        "title": "Grandairy",
+        "category": "FMCG · Packaging design",
+        "image": "images/egghead-branding-agency-grandairy-fmcg-milk-packaging-design.jpg",
+        "image_alt": "Grandairy milk packaging system",
+        "url": "https://thinkegghead.com/works/"
+      },
+      {
+        "title": "ATM Bersama",
+        "category": "Corporate · Rebranding",
+        "image": "images/egghead-branding-agency-atm-bersama-corporate-bus-stop-rebranding.jpg",
+        "image_alt": "ATM Bersama bus stop advertising",
+        "url": "https://thinkegghead.com/works/atm-bersama/"
+      },
+      {
+        "title": "ASYA",
+        "category": "Property · Branding",
+        "image": "images/egghead-branding-agency-asya-property-township-gate-branding.jpg",
+        "image_alt": "ASYA township gate",
+        "url": "https://thinkegghead.com/works/"
+      },
+      {
+        "title": "BOGA Group",
+        "category": "F&B · Corporate branding",
+        "image": "images/egghead-branding-agency-boga-group-fnb-stationery-corporate-branding.jpg",
+        "image_alt": "BOGA Group stationery",
+        "url": "https://thinkegghead.com/works/boga-group/"
+      }
+    ]
+  },
+  "fit": {
+    "eyebrow": "So you don't waste your time",
+    "title": "When EGGHEAD isn't the right fit",
+    "intro": "We'd rather you find the right partner, even if it isn't us.",
+    "items": [
+      {
+        "text": "You only need a quick logo in a few days, without research or strategy."
+      },
+      {
+        "text": "Your budget doesn’t yet allow for an audit and strategy phase. A freelancer or a template may be a more sensible first step."
+      },
+      {
+        "text": "What you need is day-to-day social media management, not direction and growth for the brand."
+      },
+      {
+        "text": "Brand decisions can’t yet involve the owner or leadership of the company."
+      }
+    ]
+  },
+  "contact": {
+    "eyebrow": "Still comparing?",
+    "title": "Ask us those nine questions directly.",
+    "intro": "Tell us where your brand is today. Our strategy team will suggest the most sensible next step, even if that means you don't need an agency yet.",
+    "whatsapp_label": "Chat on WhatsApp",
+    "whatsapp_url": "https://wa.me/628889090909?text=Hi%20EGGHEAD%2C%20I%27m%20comparing%20agencies%20for%20a%20branding%20project.",
+    "phone": "Or call <a href=\"tel:+628889090909\">+62 888-9090-909</a>",
+    "contact_form": "[contact-form-7 id=\"5\" html_class=\"contactForm--dark\"]"
+  },
+  "links": {
+    "contact_eyebrow": "Still comparing agencies?",
+    "contact_title": "Ask every agency these<br>9 questions, including us.",
+    "about_eyebrow": "Now you know who's behind the work",
+    "about_title": "Still comparing agencies? Here are the 9 questions we think every client should ask.",
+    "button_label": "Read the questions →",
+    "footer_label": "Why EGGHEAD"
+  }
+}

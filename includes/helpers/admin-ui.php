@@ -30,15 +30,17 @@ function cff_render_header_branding() {
     ?>
     <div class="tk-header-branding">
         <div class="tk-header-brand">
-            <span class="dashicons dashicons-feedback"></span>
-            <span>Custom Fields Framework Pro</span>
-            <span class="tk-header-version">v<?php echo defined('CFFP_VERSION') ? CFFP_VERSION : '2.3'; ?></span>
+            <span class="dashicons dashicons-feedback" aria-hidden="true"></span>
+            <span class="tk-header-name">Custom Fields Framework Pro</span>
+            <span class="tk-header-version">v<?php echo esc_html(defined('CFFP_VERSION') ? CFFP_VERSION : '2.3'); ?></span>
         </div>
 
         <a class="cff-help-link" href="<?php echo esc_url(admin_url('admin.php?page=cff-docs')); ?>"><?php echo esc_html__('Help & documentation', 'cff'); ?></a>
     </div>
     <?php
     $current = sanitize_key($_GET['page'] ?? '');
+    $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+    if ($screen && in_array($screen->id, ['edit-cff_group', 'cff_group'], true)) $current = 'edit.php?post_type=cff_group';
     $items = [
         'cff' => __('Overview', 'cff'),
         'edit.php?post_type=cff_group' => __('Field Groups', 'cff'),
@@ -47,6 +49,7 @@ function cff_render_header_branding() {
         'cff-global-settings' => __('Global Settings', 'cff'),
         'cff-reorder' => __('Reorder', 'cff'),
         'cff-tools' => __('Export / Import', 'cff'),
+        'cff-import-content' => __('Import Content', 'cff'),
     ];
     echo '<nav class="cff-section-nav" aria-label="'.esc_attr__('Custom Fields navigation', 'cff').'">';
     foreach ($items as $page => $label) {
@@ -86,6 +89,43 @@ function cff_content_admin_url($type, $new = false) {
     return admin_url(($new ? 'post-new.php' : 'edit.php') . '?post_type=' . sanitize_key($type));
 }
 
+function cff_render_icon_link($url, $icon, $label) {
+    echo '<a class="button cff-icon-button" href="' . esc_url($url) . '" title="' . esc_attr($label) . '" aria-label="' . esc_attr($label) . '"><span class="dashicons ' . esc_attr($icon) . '" aria-hidden="true"></span><span class="screen-reader-text">' . esc_html($label) . '</span></a>';
+}
+
+/** Keep WordPress action URLs, nonce parameters and inline-edit attributes intact. */
+function cff_field_group_icon_actions($actions, $post) {
+    if (!$post || $post->post_type !== 'cff_group') return $actions;
+    $icons = ['edit' => 'edit', 'inline hide-if-no-js' => 'edit-page', 'trash' => 'trash', 'delete' => 'trash',
+        'untrash' => 'undo', 'view' => 'visibility', 'cff_duplicate' => 'admin-page', 'cff_export_group' => 'download'];
+    foreach ($actions as $key => $html) {
+        if (!is_string($html) || strpos($html, 'cff-icon-button') !== false) continue;
+        $icon = $icons[$key] ?? 'admin-generic';
+        $actions[$key] = preg_replace_callback('~<(a|button)\b([^>]*)>(.*?)</\1>~is', function($match) use ($icon) {
+            $attributes = $match[2];
+            $attributes = preg_replace('/\bclass=("|\')(.*?)\1/is', 'class=$1$2 cff-icon-button$1', $attributes, 1, $count);
+            if (!$count) $attributes .= ' class="cff-icon-button"';
+            if (!preg_match('/\btitle\s*=/i', $attributes)) $attributes .= ' title="' . esc_attr(html_entity_decode(strip_tags($match[3]), ENT_QUOTES, 'UTF-8')) . '"';
+            return '<' . $match[1] . $attributes . '><span class="dashicons dashicons-' . esc_attr($icon) . '" aria-hidden="true"></span><span class="screen-reader-text">' . $match[3] . '</span></' . $match[1] . '>';
+        }, $actions[$key]);
+    }
+    return $actions;
+}
+add_filter('post_row_actions', __NAMESPACE__ . '\\cff_field_group_icon_actions', 110, 2);
+add_filter('page_row_actions', __NAMESPACE__ . '\\cff_field_group_icon_actions', 110, 2);
+
+add_filter('manage_edit-cff_group_columns', function($columns) {
+    $columns['cff_actions'] = __('Actions', 'cff');
+    return $columns;
+}, 30);
+
+add_action('manage_cff_group_posts_custom_column', function($column, $post_id) {
+    if ($column !== 'cff_actions') return;
+    // Move WordPress-generated actions here in the browser, preserving permissions and nonce URLs.
+    echo '<div class="cff-field-group-actions" data-cff-group-actions></div>';
+    echo '<noscript><span class="description">' . esc_html__('Use the action buttons below the title.', 'cff') . '</span></noscript>';
+}, 20, 2);
+
 function cff_render_definition_actions($kind, $key, $label) {
     $is_post = $kind === 'post';
     $page = $is_post ? 'cff-post-types' : 'cff-taxonomies';
@@ -93,19 +133,16 @@ function cff_render_definition_actions($kind, $key, $label) {
     $key_name = $is_post ? 'cpt_key' : 'tax_key';
     ?>
     <div class="cff-definition-actions">
-        <a class="button" href="<?php echo esc_url(add_query_arg(['page' => $page, 'edit' => $key], admin_url('admin.php')) . '#cff-definition-editor'); ?>"><?php echo esc_html__('Edit settings', 'cff'); ?></a>
-        <details class="cff-more-actions">
-            <summary><?php echo esc_html__('More', 'cff'); ?><span class="dashicons dashicons-arrow-down-alt2" aria-hidden="true"></span></summary>
-            <form method="post">
+        <?php cff_render_icon_link(add_query_arg(['page' => $page, 'edit' => $key], admin_url('admin.php')) . '#cff-definition-editor', 'dashicons-edit', sprintf(__('Edit settings for %s', 'cff'), $label)); ?>
+            <form method="post" class="cff-definition-action-form">
                 <?php
                 if ($is_post) wp_nonce_field('cffp_cpt_save', 'cffp_cpt_nonce');
                 else wp_nonce_field('cffp_tax_nonce', 'cffp_tax_nonce');
                 ?>
                 <input type="hidden" name="<?php echo esc_attr($key_name); ?>" value="<?php echo esc_attr($key); ?>">
-                <button type="submit" class="button" name="<?php echo esc_attr($action); ?>" value="duplicate"><?php echo esc_html__('Duplicate', 'cff'); ?></button>
-                <button type="submit" class="button cff-delete-action cff-requires-confirm" name="<?php echo esc_attr($action); ?>" value="delete" data-confirm-submit="1" data-confirm-title="<?php echo esc_attr__('Delete definition', 'cff'); ?>" data-confirm-message="<?php echo esc_attr(sprintf(__('Remove the definition for "%s"? Existing posts and terms will be kept.', 'cff'), $label)); ?>"><?php echo esc_html__('Delete', 'cff'); ?></button>
+                <button type="submit" class="button cff-icon-button" name="<?php echo esc_attr($action); ?>" value="duplicate" title="<?php echo esc_attr__('Duplicate', 'cff'); ?>" aria-label="<?php echo esc_attr(sprintf(__('Duplicate %s', 'cff'), $label)); ?>"><span class="dashicons dashicons-admin-page" aria-hidden="true"></span><span class="screen-reader-text"><?php echo esc_html__('Duplicate', 'cff'); ?></span></button>
+                <button type="submit" class="button cff-icon-button cff-delete-action cff-requires-confirm" name="<?php echo esc_attr($action); ?>" value="delete" title="<?php echo esc_attr__('Delete', 'cff'); ?>" aria-label="<?php echo esc_attr(sprintf(__('Delete %s', 'cff'), $label)); ?>" data-confirm-submit="1" data-confirm-title="<?php echo esc_attr__('Delete definition', 'cff'); ?>" data-confirm-message="<?php echo esc_attr(sprintf(__('Remove the definition for "%s"? Existing posts and terms will be kept.', 'cff'), $label)); ?>"><span class="dashicons dashicons-trash" aria-hidden="true"></span><span class="screen-reader-text"><?php echo esc_html__('Delete', 'cff'); ?></span></button>
             </form>
-        </details>
     </div>
     <?php
 }

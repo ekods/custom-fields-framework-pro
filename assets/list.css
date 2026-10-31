@@ -15,3 +15,50 @@
 .post-type-cff_group .inline-edit-row-page {
   display: none !important;
 }
+
+/* Match the native Field Groups list to the shared CFF header and management tables. */
+body.edit-php.post-type-cff_group #wpbody-content > .wrap {
+  box-sizing: border-box;
+  max-width: 1440px;
+  min-width: 0;
+}
+body.edit-php.post-type-cff_group .wp-list-table {
+  border: 1px solid var(--cff-border);
+  border-spacing: 0;
+  border-radius: 8px;
+  box-shadow: none;
+}
+body.edit-php.post-type-cff_group .wp-list-table thead th,
+body.edit-php.post-type-cff_group .wp-list-table thead td.check-column,
+body.edit-php.post-type-cff_group .wp-list-table tfoot th,
+body.edit-php.post-type-cff_group .wp-list-table tfoot td.check-column { background: var(--cff-surface-soft); }
+body.edit-php.post-type-cff_group .wp-list-table tbody td { padding: 14px 12px; vertical-align: middle; border-bottom: 1px solid var(--cff-border-soft); line-height: 1.6; }
+body.edit-php.post-type-cff_group .wp-list-table tbody .check-column { vertical-align: middle; padding-top: 14px; }
+body.edit-php.post-type-cff_group .column-cff_key { width: 18%; }
+body.edit-php.post-type-cff_group .column-cff_location { width: 28%; }
+body.edit-php.post-type-cff_group .column-cff_fields { width: 64px; text-align: center; }
+body.edit-php.post-type-cff_group .column-cff_actions { width: 180px; }
+body.edit-php.post-type-cff_group .column-title,
+body.edit-php.post-type-cff_group .column-cff_key,
+body.edit-php.post-type-cff_group .column-cff_location { overflow-wrap: anywhere; }
+body.edit-php.post-type-cff_group .column-cff_key code { display: inline-block; box-sizing: border-box; max-width: 100%; font-size: 12px; overflow-wrap: anywhere; }
+body.edit-php.post-type-cff_group .cffp-location-summary { display: grid; gap: 6px; margin: 0; }
+body.edit-php.post-type-cff_group .cffp-location-summary li { margin: 0; }
+body.edit-php.post-type-cff_group .row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; visibility: visible; padding-top: 10px; font-size: 0; }
+body.edit-php.post-type-cff_group .cff-field-group-actions .row-actions { padding-top: 0; margin: 0; }
+body.edit-php.post-type-cff_group .row-actions > span { font-size: 0; line-height: 0; }
+body.edit-php.post-type-cff_group .row-actions a:not(.cff-icon-button),
+body.edit-php.post-type-cff_group .row-actions button:not(.cff-icon-button) { font-size: 13px; line-height: 1.5; }
+body.edit-php.post-type-cff_group .row-actions .trash .cff-icon-button,
+body.edit-php.post-type-cff_group .row-actions .delete .cff-icon-button { color: var(--cff-danger); }
+@media (max-width: 782px) {
+  body.edit-php.post-type-cff_group .wp-list-table tbody td { padding: 8px 12px 8px 35%; }
+  body.edit-php.post-type-cff_group .wp-list-table .column-primary { padding: 14px 44px 14px 12px; }
+  body.edit-php.post-type-cff_group .wp-list-table td.column-primary::before { content: none; }
+  body.edit-php.post-type-cff_group .column-cff_key,
+  body.edit-php.post-type-cff_group .column-cff_location,
+  body.edit-php.post-type-cff_group .column-cff_fields,
+  body.edit-php.post-type-cff_group .column-cff_actions { width: auto; text-align: left; }
+  body.edit-php.post-type-cff_group .wp-list-table tr:not(.inline-edit-row):not(.no-items) td.column-cff_actions:not(.hidden) { display: block !important; padding: 10px 12px 12px 35%; }
+  body.edit-php.post-type-cff_group .wp-list-table .row-actions .cff-icon-button { flex-basis: 40px; width: 40px; height: 40px; min-height: 40px; }
+}

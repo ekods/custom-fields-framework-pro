@@ -291,7 +291,6 @@
 }
 
 .cff-field-actions .cff-copy-field-indicator {
-  margin-right: auto;
   max-width: 100%;
   overflow: hidden;
 }
@@ -763,6 +762,10 @@
   background: #f8fafc;
 }
 
+.cff-rep-row-head:has(> .cff-rep-left > .cff-rep-toggle) {
+  cursor: pointer;
+}
+
 /* === Repeater layout: Grid === */
 .cff-repeater[data-layout="grid"] .cff-rep-rows {
   display: grid;
@@ -1092,20 +1095,21 @@
 .cff-rep-drag {
   width: 24px;
   height: 24px;
-  border: 1px solid #e2e8f0;
+  border: 0;
   border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #94a3b8;
-  background: #fff;
+  background: transparent;
+  box-shadow: none;
   cursor: grab;
   transition: all 0.2s;
 }
 
 .cff-rep-drag:hover {
   color: #475569;
-  border-color: #cbd5e1;
+  background: transparent;
 }
 
 .cff-rep-drag:before {
@@ -1117,9 +1121,10 @@
 .cff-rep-toggle {
   width: 24px;
   height: 24px;
-  border: 1px solid #e2e8f0;
+  border: 0;
   border-radius: 6px;
-  background: #fff;
+  background: transparent;
+  box-shadow: none;
   color: #64748b;
   cursor: pointer;
   display: flex;
@@ -1129,8 +1134,8 @@
 }
 
 .cff-rep-toggle:hover {
-  border-color: #3b82f6;
   color: #3b82f6;
+  background: transparent;
 }
 
 .cff-rep-toggle:before {
@@ -1151,9 +1156,10 @@
 .cff-field .cff-rep-remove {
   width: 28px;
   height: 28px;
-  border: 1px solid #dcdcde;
+  border: 0;
   border-radius: 8px;
-  background: #fff;
+  background: transparent;
+  box-shadow: none;
   color: #b32d2e;
   display: inline-flex;
   align-items: center;
@@ -1165,9 +1171,10 @@
 .cff-field .cff-rep-clone {
   width: 28px;
   height: 28px;
-  border: 1px solid #dcdcde;
+  border: 0;
   border-radius: 8px;
-  background: #fff;
+  background: transparent;
+  box-shadow: none;
   color: #2271b1;
   display: inline-flex;
   align-items: center;
@@ -1177,8 +1184,8 @@
 }
 
 .cff-field .cff-rep-clone:hover {
-  border-color: #2271b1;
-  background: #eef6ff;
+  color: #2271b1;
+  background: transparent;
 }
 
 .cff-field .cff-rep-clone .dashicons {
@@ -1194,9 +1201,8 @@
 }
 
 .cff-field .cff-rep-remove:hover {
-  border-color: #b32d2e;
   color: #b32d2e;
-  background: #fff5f5;
+  background: transparent;
 }
 
 .cff-field .cff-rep-remove .dashicons {
@@ -2389,9 +2395,10 @@
   width: 28px;
   height: 28px;
   margin: 0;
-  border: 1px solid #dcdcde;
+  border: 0;
   border-radius: 8px;
-  background: #fff;
+  background: transparent;
+  box-shadow: none;
   color: #b32d2e;
   display: inline-flex;
   flex: 0 0 auto;
@@ -2402,9 +2409,17 @@
 }
 
 .cff-field .cff-flex-remove:hover {
-  border-color: #b32d2e;
-  background: #fff5f5;
+  background: transparent;
   color: #b32d2e;
+}
+
+.cff-field .cff-rep-toggle:focus-visible,
+.cff-field .cff-rep-clone:focus-visible,
+.cff-field .cff-rep-remove:focus-visible,
+.cff-field .cff-flex-remove:focus-visible {
+  outline: 2px solid var(--cff-primary, #135e96);
+  outline-offset: 2px;
+  box-shadow: none;
 }
 
 .cff-field .cff-flex-remove .dashicons {

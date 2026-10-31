@@ -48,6 +48,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
   }
 
   function cff_render_section_hide_switch($field_name, $hidden, $field_label = '') {
+    if (!empty(get_option('cffp_hide_section_controls', 0))) return;
     $field_name = sanitize_key($field_name);
     if (!$field_name) return;
 
@@ -1076,7 +1077,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       echo '<div class="'.esc_attr($head_class).'">';
       echo '<div class="cff-rep-left">';
       echo '<span class="cff-rep-drag" title="'.esc_attr__('Drag to reorder', 'cff').'"></span>';
-      echo '<button type="button" class="cff-rep-toggle" title="'.esc_attr__('Toggle row', 'cff').'"></button>';
+      echo '<button type="button" class="cff-rep-toggle" title="'.esc_attr__('Toggle row', 'cff').'" aria-label="'.esc_attr__('Toggle row', 'cff').'" aria-expanded="'.($collapsed_default ? 'false' : 'true').'"></button>';
       echo '<strong class="cff-rep-row-title">'.esc_html($row_title).'</strong>';
       echo '</div>';
       echo '<div class="cff-rep-actions">';

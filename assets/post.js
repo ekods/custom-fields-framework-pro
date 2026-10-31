@@ -1070,10 +1070,28 @@ jQuery(function($){
     togglePostbox($(this).closest('.cff-field.cff-postbox'));
   });
 
+  function syncRepeaterRowExpanded($row){
+    $row.find('> .cff-rep-row-head > .cff-rep-left > .cff-rep-toggle')
+      .attr('aria-expanded', !$row.hasClass('is-collapsed'));
+  }
+
+  function toggleRepeaterRow($row){
+    if ($row.data('cff-rep-sorting') || !$row.children('.cff-rep-row-body').length) return;
+    $row.toggleClass('is-collapsed');
+    syncRepeaterRowExpanded($row);
+  }
+
   $(document).on('click', '.cff-rep-toggle', function(e){
     e.preventDefault();
-    var $row = $(this).closest('.cff-rep-row');
-    $row.toggleClass('is-collapsed');
+    toggleRepeaterRow($(this).closest('.cff-rep-row'));
+  });
+
+  $(document).on('click', '.cff-rep-row-head', function(e){
+    if ($(e.target).closest('.cff-rep-row-head')[0] !== this) return;
+    if ($(e.target).closest('button, a, input, select, textarea, label, [role="button"], [contenteditable], .cff-rep-drag').length) return;
+    // Simple, gallery and table layouts have no collapse control.
+    if (!$(this).find('> .cff-rep-left > .cff-rep-toggle').length) return;
+    toggleRepeaterRow($(this).closest('.cff-rep-row'));
   });
 
   /* -------------------------
@@ -1089,6 +1107,11 @@ jQuery(function($){
     $rows.sortable({
       handle: '.cff-rep-drag',
       items: '> .cff-rep-row',
+      start: function(event, ui){ ui.item.data('cff-rep-sorting', true); },
+      stop: function(event, ui){
+        // Ignore the click that can follow the mouseup ending a drag.
+        setTimeout(function(){ ui.item.removeData('cff-rep-sorting'); }, 0);
+      },
       update: function(){
         var $rep = $rows.closest('.cff-repeater');
         reindexRepeater($rep);
@@ -1197,6 +1220,7 @@ jQuery(function($){
         title += ': ' + labelValue;
       }
       $row.find('> .cff-rep-row-head .cff-rep-row-title').text(title);
+      syncRepeaterRowExpanded($row);
     });
   }
 

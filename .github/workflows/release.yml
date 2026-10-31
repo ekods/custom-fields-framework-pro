@@ -36,6 +36,7 @@ jobs:
           composer test:frontend-visibility
           composer test:runtime-integrity
           composer test:relational-labels
+          composer test:content-import
       - name: Build and validate ZIP
         env:
           CFFP_SKIP_SYNC: '1'
@@ -52,5 +53,5 @@ jobs:
             active { print }
           ' readme.txt > "$RUNNER_TEMP/release-notes.md"
           gh release create "$RELEASE_TAG" "$RUNNER_TEMP/custom-fields-framework-pro.zip" \
-            --verify-tag --title "Custom Fields Framework Pro $RELEASE_TAG" \
+            --verify-tag --latest --title "Custom Fields Framework Pro $RELEASE_TAG" \
             --notes-file "$RUNNER_TEMP/release-notes.md"

@@ -36,11 +36,15 @@ for file in \
   includes/class-reorder-manager.php includes/class-ajax-controller.php \
   includes/class-dynamic-content-manager.php includes/class-term-meta-manager.php \
   includes/class-content-field-saver.php includes/class-language-clone.php \
+  includes/class-content-import.php includes/admin/views/import-content.php \
+  includes/admin/views/import-content-select.php \
   includes/helpers/acf-compat.php includes/helpers/frontend-helpers.php \
   includes/helpers/frontend-shortcodes.php includes/helpers/field-group-columns.php \
   includes/helpers/admin-ui.php \
   assets/admin.css assets/admin.js assets/post.css assets/post.js assets/list.css \
   assets/js/select2-init.js assets/js/language-clone.js assets/language-clone.css \
+  assets/js/field-group-list.js \
+  assets/js/content-import.js assets/content-import.css \
   assets/vendor/select2/select2.min.css assets/vendor/select2/select2.min.js; do
   if ! grep -Fqx "$PLUGIN_SLUG/$file" <<<"$LISTING"; then
     echo "Missing required release entry: $PLUGIN_SLUG/$file" >&2

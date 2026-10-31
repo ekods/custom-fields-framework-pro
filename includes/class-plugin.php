@@ -11,6 +11,7 @@ class Plugin {
   private $dynamic_content_manager = null;
   private $term_meta_manager = null;
   private $language_clone = null;
+  private $content_import = null;
   private $field_sanitizer = null;
   private $group_settings_cache = [];
   private $published_field_groups_cache = null;
@@ -170,6 +171,8 @@ class Plugin {
   private function __construct() {
     $this->language_clone = new Language_Clone($this);
     $this->language_clone->register();
+    $this->content_import = new Content_Import($this);
+    $this->content_import->register();
     add_action('init', [__CLASS__, 'register_cpt']);
     add_action('init', [__CLASS__, 'register_options_cpt'], 15);
     add_action('init', [$this->dynamic_content_manager(), 'register_dynamic_cpts'], 20);
@@ -1149,6 +1152,7 @@ TEXT;
 
     if ($is_list_screen) {
       wp_enqueue_style('cff-list', CFFP_URL . 'assets/list.css', [], $this->asset_ver('assets/list.css'));
+      if ($is_group) wp_enqueue_script('cff-field-group-list', CFFP_URL . 'assets/js/field-group-list.js', [], $this->asset_ver('assets/js/field-group-list.js'), true);
     }
 
     if ($is_group || $is_plugin_screen || ($screen && $screen->id === 'cff_options')) {
@@ -1245,6 +1249,9 @@ TEXT;
     }
     if (!empty(get_option('cffp_hide_field_reorder_view', 0))) {
       $selectors[] = '.cff-field-reorder-view';
+    }
+    if (!empty(get_option('cffp_hide_section_controls', 0))) {
+      $selectors[] = '.cff-section-hide-switch';
     }
 
     if (!$selectors) return;
@@ -1792,6 +1799,7 @@ TEXT;
     $hide_field_view_mode = !empty(get_option('cffp_hide_field_view_mode', 0));
     $hide_field_reorder_view = !empty(get_option('cffp_hide_field_reorder_view', 0));
     $hide_subfield_copy = !empty(get_option('cffp_hide_subfield_copy', 0));
+    $hide_section_controls = !empty(get_option('cffp_hide_section_controls', 0));
 
     echo '<div class="cff-global-settings-stack">';
 
@@ -1846,6 +1854,18 @@ TEXT;
     echo '</div>';
     echo '</section>';
 
+    echo '<section class="cff-setting-card">';
+    echo '<div class="cff-setting-copy">';
+    echo '<h3>' . esc_html__('Hide Section Controls', 'cff') . '</h3>';
+    echo '<p>' . esc_html__('Hide the Hide Section switches in CFF content editors.', 'cff') . '</p>';
+    echo '<p class="description">' . esc_html__('Saved section visibility is preserved. Turn this off to show the switches again.', 'cff') . '</p>';
+    echo '</div>';
+    echo '<label class="cff-switch" aria-label="' . esc_attr__('Hide Section controls in content editors.', 'cff') . '">';
+    echo '<input type="checkbox" name="cffp_hide_section_controls" value="1" ' . checked($hide_section_controls, true, false) . '>';
+    echo '<span class="cff-slider"></span>';
+    echo '</label>';
+    echo '</section>';
+
     echo '<section class="cff-setting-card is-warning">';
     echo '<div class="cff-setting-copy">';
     echo '<h3>' . esc_html__('Uninstall Data Policy', 'cff') . '</h3>';
@@ -1877,10 +1897,10 @@ TEXT;
 
     echo '<h4 style="margin-top:20px;">' . esc_html__('How to Display on Frontend:', 'cff') . '</h4>';
     echo '<p>' . esc_html__('Use the following helper functions in your theme files:', 'cff') . '</p>';
-    echo '<pre style="background:#f6f7f7; padding:10px; border-radius:6px; font-size:11px; overflow-x:auto;"><code>' . esc_html("<?php\n// Get text value\n\$logo = \\CFF\\cff_get_global_text('logo_url');\n\n// Get any value (image, array, etc)\n\$social = \\CFF\\cff_get_global_value('social_links');\n?>") . '</code></pre>';
+    echo '<pre class="cff-guide-code"><code>' . esc_html("<?php\n// Get text value\n\$logo = \\CFF\\cff_get_global_text('logo_url');\n\n// Get any value (image, array, etc)\n\$social = \\CFF\\cff_get_global_value('social_links');\n?>") . '</code></pre>';
     
     echo '<p style="margin-top:10px;">' . esc_html__('Or using shortcode:', 'cff') . '</p>';
-    echo '<pre style="background:#f6f7f7; padding:10px; border-radius:6px; font-size:11px;"><code>' . esc_html("[cff_value name=\"logo_url\" page_id=\"global\"]") . '</code></pre>';
+    echo '<pre class="cff-guide-code"><code>' . esc_html("[cff_value name=\"logo_url\" page_id=\"global\"]") . '</code></pre>';
     echo '<p class="description">' . esc_html__('Note: page_id="global" automatically refers to this settings page.', 'cff') . '</p>';
     echo '</div>';
   }
@@ -1900,6 +1920,7 @@ TEXT;
     $hide_field_view_mode = !empty($_POST['cffp_hide_field_view_mode']) ? 1 : 0;
     $hide_field_reorder_view = !empty($_POST['cffp_hide_field_reorder_view']) ? 1 : 0;
     $hide_subfield_copy = !empty($_POST['cffp_hide_subfield_copy']) ? 1 : 0;
+    $hide_section_controls = !empty($_POST['cffp_hide_section_controls']) ? 1 : 0;
 
     update_option('cffp_block_sidebar_enabled', $enabled);
     update_option('cffp_rest_writes_enabled', $rest_writes_enabled);
@@ -1910,6 +1931,7 @@ TEXT;
     update_option('cffp_hide_field_view_mode', $hide_field_view_mode);
     update_option('cffp_hide_field_reorder_view', $hide_field_reorder_view);
     update_option('cffp_hide_subfield_copy', $hide_subfield_copy);
+    update_option('cffp_hide_section_controls', $hide_section_controls);
   }
 
   public function render_group_settings($post) {
@@ -3420,6 +3442,23 @@ TEXT;
     return $this->field_definitions_cache[$post->ID] = $definitions;
   }
 
+  /** Resolve planned content without creating a preview post or changing template metadata. */
+  public function get_field_definitions_for_import($post_type, $post_id, $template) {
+    $post = (object) ['ID' => (int) $post_id, 'post_type' => $post_type, 'cff_import_template' => $template ?: 'default'];
+    $groups = $this->get_published_field_groups();
+    $this->sort_field_groups_by_setting_order($groups);
+    $definitions = [];
+    foreach ($groups as $group) {
+      $settings = $this->get_group_settings($group->ID);
+      if (!$this->match_location($post, $settings['location'] ?? [])) continue;
+      foreach ((array) ($settings['fields'] ?? []) as $field) {
+        $name = sanitize_key($field['name'] ?? '');
+        if ($name) $definitions[$name] = $field;
+      }
+    }
+    return $definitions;
+  }
+
   private function match_location($post, $groups) {
     if (!is_array($groups) || !$groups) return false;
     foreach ($groups as $rules) {
@@ -3471,7 +3510,7 @@ TEXT;
     }
     if ($param === 'post_type') return $post->post_type === $val;
     if ($param === 'page_template') {
-      $tpl = get_page_template_slug($post->ID);
+      $tpl = property_exists($post, 'cff_import_template') ? $post->cff_import_template : get_page_template_slug($post->ID);
       if (!$tpl) $tpl = 'default';
       return $tpl === $val;
     }

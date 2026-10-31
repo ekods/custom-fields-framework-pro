@@ -1,0 +1,556 @@
+{
+  "fields": [
+    {
+      "name": "why_hero",
+      "label": "01 — Hero",
+      "type": "group",
+      "required": false,
+      "sub_fields": [
+        {
+          "name": "eyebrow",
+          "label": "Eyebrow",
+          "type": "text",
+          "required": false,
+          "key": "fld_ffed298c421b"
+        },
+        {
+          "name": "title",
+          "label": "Title",
+          "type": "textarea",
+          "required": false,
+          "key": "fld_2146870cdf54"
+        },
+        {
+          "name": "intro",
+          "label": "Intro",
+          "type": "textarea",
+          "required": false,
+          "key": "fld_39f6f848440f"
+        },
+        {
+          "name": "quote",
+          "label": "Quote",
+          "type": "textarea",
+          "required": false,
+          "key": "fld_95cb8d27b0b9"
+        },
+        {
+          "name": "citation",
+          "label": "Citation",
+          "type": "wysiwyg",
+          "required": false,
+          "key": "fld_8f17e4082f02",
+          "instructions": "Inline formatted text. Bold, line breaks and links are supported; the template controls typography and spacing."
+        },
+        {
+          "name": "questions_button_label",
+          "label": "Questions Button Label",
+          "type": "text",
+          "required": false,
+          "key": "fld_be5942631661"
+        },
+        {
+          "name": "questions_button_url",
+          "label": "Questions Button Url",
+          "type": "text",
+          "required": false,
+          "key": "fld_a330d17afeac",
+          "instructions": "An in-page anchor such as #questions or #form, or a full URL."
+        },
+        {
+          "name": "whatsapp_label",
+          "label": "Whatsapp Label",
+          "type": "text",
+          "required": false,
+          "key": "fld_0d304d85f830"
+        },
+        {
+          "name": "whatsapp_url",
+          "label": "Whatsapp Url",
+          "type": "url",
+          "required": false,
+          "key": "fld_35b7faab331e"
+        },
+        {
+          "name": "image",
+          "label": "Image",
+          "type": "image",
+          "required": false,
+          "key": "fld_6c7eb8a65044"
+        },
+        {
+          "name": "image_alt",
+          "label": "Image Alt",
+          "type": "text",
+          "required": false,
+          "key": "fld_e7d5cecde0c4"
+        }
+      ],
+      "key": "fld_7a909ef6d303"
+    },
+    {
+      "name": "why_questions",
+      "label": "02 — Nine Questions / FAQ",
+      "type": "group",
+      "required": false,
+      "sub_fields": [
+        {
+          "name": "eyebrow",
+          "label": "Eyebrow",
+          "type": "text",
+          "required": false,
+          "key": "fld_4a918bb04946"
+        },
+        {
+          "name": "title",
+          "label": "Title",
+          "type": "textarea",
+          "required": false,
+          "key": "fld_18ce131f5b01"
+        },
+        {
+          "name": "intro",
+          "label": "Intro",
+          "type": "textarea",
+          "required": false,
+          "key": "fld_3991573753fb"
+        },
+        {
+          "name": "count_label",
+          "label": "Count Label",
+          "type": "text",
+          "required": false,
+          "instructions": "Use %d for the total number of questions.",
+          "key": "fld_bf52b449048f"
+        },
+        {
+          "name": "answer_label",
+          "label": "Answer Label",
+          "type": "text",
+          "required": false,
+          "key": "fld_94d8b7a39923"
+        },
+        {
+          "name": "items",
+          "label": "Items",
+          "type": "repeater",
+          "required": false,
+          "sub_fields": [
+            {
+              "name": "question",
+              "label": "Question",
+              "type": "textarea",
+              "required": false,
+              "key": "fld_a449f19a642b"
+            },
+            {
+              "name": "teaser",
+              "label": "Teaser",
+              "type": "textarea",
+              "required": false,
+              "key": "fld_4576c015c582"
+            },
+            {
+              "name": "answer",
+              "label": "Answer (also used in FAQ schema)",
+              "type": "textarea",
+              "required": false,
+              "key": "fld_7278e3ed6df5"
+            }
+          ],
+          "repeater_layout": "default",
+          "min": 0,
+          "max": 0,
+          "repeater_row_label": "question",
+          "repeater_collapsed": true,
+          "key": "fld_479bd70d5ae6"
+        },
+        {
+          "name": "cta_eyebrow",
+          "label": "Cta Eyebrow",
+          "type": "textarea",
+          "required": false,
+          "key": "fld_6781d972fe6b"
+        },
+        {
+          "name": "cta_title",
+          "label": "Cta Title",
+          "type": "textarea",
+          "required": false,
+          "key": "fld_fb4fd7fe9f47"
+        },
+        {
+          "name": "whatsapp_label",
+          "label": "Whatsapp Label",
+          "type": "text",
+          "required": false,
+          "key": "fld_40972ee5cd86"
+        },
+        {
+          "name": "whatsapp_url",
+          "label": "Whatsapp Url",
+          "type": "url",
+          "required": false,
+          "key": "fld_5c09ff20fd03"
+        },
+        {
+          "name": "form_label",
+          "label": "Form Label",
+          "type": "text",
+          "required": false,
+          "key": "fld_2c4f8b438042"
+        },
+        {
+          "name": "form_url",
+          "label": "Form Url",
+          "type": "text",
+          "required": false,
+          "key": "fld_3b31244b47df",
+          "instructions": "An in-page anchor such as #questions or #form, or a full URL."
+        }
+      ],
+      "key": "fld_bcb7f4e25b68"
+    },
+    {
+      "name": "why_comparison",
+      "label": "03 — Comparison",
+      "type": "group",
+      "required": false,
+      "sub_fields": [
+        {
+          "name": "eyebrow",
+          "label": "Eyebrow",
+          "type": "text",
+          "required": false,
+          "key": "fld_3fec78b15ef8"
+        },
+        {
+          "name": "title",
+          "label": "Title",
+          "type": "textarea",
+          "required": false,
+          "key": "fld_4ecac6a982d5"
+        },
+        {
+          "name": "quick_title",
+          "label": "Quick Title",
+          "type": "text",
+          "required": false,
+          "key": "fld_685f1fd699f6"
+        },
+        {
+          "name": "strategic_title",
+          "label": "Strategic Title",
+          "type": "wysiwyg",
+          "required": false,
+          "key": "fld_9970727c0fe8",
+          "instructions": "Inline formatted text. Bold, line breaks and links are supported; the template controls typography and spacing."
+        },
+        {
+          "name": "rows",
+          "label": "Rows",
+          "type": "repeater",
+          "required": false,
+          "sub_fields": [
+            {
+              "name": "label",
+              "label": "Aspect",
+              "type": "text",
+              "required": false,
+              "key": "fld_5a2769a264e1"
+            },
+            {
+              "name": "quick",
+              "label": "The quick route",
+              "type": "textarea",
+              "required": false,
+              "key": "fld_bf91ded19a37"
+            },
+            {
+              "name": "strategic",
+              "label": "The strategic route",
+              "type": "textarea",
+              "required": false,
+              "key": "fld_874c26cce502"
+            }
+          ],
+          "repeater_layout": "default",
+          "min": 0,
+          "max": 0,
+          "repeater_row_label": "label",
+          "repeater_collapsed": true,
+          "key": "fld_82c04c61aab4"
+        }
+      ],
+      "key": "fld_2099bde16272"
+    },
+    {
+      "name": "why_work",
+      "label": "04 — Work Proof",
+      "type": "group",
+      "required": false,
+      "sub_fields": [
+        {
+          "name": "eyebrow",
+          "label": "Eyebrow",
+          "type": "text",
+          "required": false,
+          "key": "fld_8be68cfab32b"
+        },
+        {
+          "name": "title",
+          "label": "Title",
+          "type": "textarea",
+          "required": false,
+          "key": "fld_af3efa5aea30"
+        },
+        {
+          "name": "archive_label",
+          "label": "Archive Label",
+          "type": "text",
+          "required": false,
+          "key": "fld_7ab3f368e725"
+        },
+        {
+          "name": "archive_url",
+          "label": "Archive Url",
+          "type": "url",
+          "required": false,
+          "key": "fld_d6685e42e781"
+        },
+        {
+          "name": "items",
+          "label": "Items",
+          "type": "repeater",
+          "required": false,
+          "sub_fields": [
+            {
+              "name": "title",
+              "label": "Title",
+              "type": "text",
+              "required": false,
+              "key": "fld_d070ede307ad"
+            },
+            {
+              "name": "category",
+              "label": "Category",
+              "type": "text",
+              "required": false,
+              "key": "fld_5a93cd97f07e"
+            },
+            {
+              "name": "image",
+              "label": "Image",
+              "type": "image",
+              "required": false,
+              "key": "fld_7ad7427d9238"
+            },
+            {
+              "name": "image_alt",
+              "label": "Image alt text",
+              "type": "text",
+              "required": false,
+              "key": "fld_9ff930c70859"
+            },
+            {
+              "name": "url",
+              "label": "Work URL",
+              "type": "url",
+              "required": false,
+              "key": "fld_e701e7e0bd70"
+            }
+          ],
+          "repeater_layout": "default",
+          "min": 0,
+          "max": 0,
+          "repeater_row_label": "title",
+          "repeater_collapsed": true,
+          "key": "fld_8dac21f5a035"
+        }
+      ],
+      "key": "fld_720119a74ff2"
+    },
+    {
+      "name": "why_fit",
+      "label": "05 — When We Are Not A Fit",
+      "type": "group",
+      "required": false,
+      "sub_fields": [
+        {
+          "name": "eyebrow",
+          "label": "Eyebrow",
+          "type": "text",
+          "required": false,
+          "key": "fld_17b77d6b5fcb"
+        },
+        {
+          "name": "title",
+          "label": "Title",
+          "type": "textarea",
+          "required": false,
+          "key": "fld_c6e067484d42"
+        },
+        {
+          "name": "intro",
+          "label": "Intro",
+          "type": "textarea",
+          "required": false,
+          "key": "fld_5a239fca0ab7"
+        },
+        {
+          "name": "items",
+          "label": "Items",
+          "type": "repeater",
+          "required": false,
+          "sub_fields": [
+            {
+              "name": "text",
+              "label": "Text",
+              "type": "textarea",
+              "required": false,
+              "key": "fld_799e486cacb7"
+            }
+          ],
+          "repeater_layout": "default",
+          "min": 0,
+          "max": 0,
+          "repeater_row_label": "text",
+          "repeater_collapsed": true,
+          "key": "fld_868a3ddd8e00"
+        }
+      ],
+      "key": "fld_fb59ffa7d823"
+    },
+    {
+      "name": "why_contact",
+      "label": "06 — Contact",
+      "type": "group",
+      "required": false,
+      "sub_fields": [
+        {
+          "name": "eyebrow",
+          "label": "Eyebrow",
+          "type": "text",
+          "required": false,
+          "key": "fld_bde1cc5e6891"
+        },
+        {
+          "name": "title",
+          "label": "Title",
+          "type": "textarea",
+          "required": false,
+          "key": "fld_5bed5ca5ab32"
+        },
+        {
+          "name": "intro",
+          "label": "Intro",
+          "type": "textarea",
+          "required": false,
+          "key": "fld_e39eb53ec7e1"
+        },
+        {
+          "name": "whatsapp_label",
+          "label": "Whatsapp Label",
+          "type": "text",
+          "required": false,
+          "key": "fld_3f5da5f86c31"
+        },
+        {
+          "name": "whatsapp_url",
+          "label": "Whatsapp Url",
+          "type": "url",
+          "required": false,
+          "key": "fld_40c61deb0152"
+        },
+        {
+          "name": "phone",
+          "label": "Phone",
+          "type": "wysiwyg",
+          "required": false,
+          "key": "fld_b4e0b5338b5b",
+          "instructions": "Inline formatted text. Bold, line breaks and links are supported; the template controls typography and spacing."
+        },
+        {
+          "name": "contact_form",
+          "label": "Contact Form Shortcode",
+          "type": "shortcode",
+          "required": false,
+          "key": "fld_49e5173af628",
+          "instructions": "Paste the existing Contact Form 7 shortcode from Contact. Add html_class=\"contactForm--dark\" for the dark layout. Manage fields, labels, placeholders and Submit text in CF7.",
+          "placeholder": "[contact-form-7 id=\"5\" html_class=\"contactForm--dark\"]"
+        }
+      ],
+      "key": "fld_0cc9e208b519"
+    },
+    {
+      "name": "why_links",
+      "label": "07 — Related Links",
+      "type": "group",
+      "required": false,
+      "sub_fields": [
+        {
+          "name": "contact_eyebrow",
+          "label": "Contact Eyebrow",
+          "type": "text",
+          "required": false,
+          "key": "fld_51e2bb5288f6"
+        },
+        {
+          "name": "contact_title",
+          "label": "Contact Title",
+          "type": "wysiwyg",
+          "required": false,
+          "key": "fld_2afdc5534796",
+          "instructions": "Inline formatted text. Bold, line breaks and links are supported; the template controls typography and spacing."
+        },
+        {
+          "name": "about_eyebrow",
+          "label": "About Eyebrow",
+          "type": "text",
+          "required": false,
+          "key": "fld_d25365a6af7f"
+        },
+        {
+          "name": "about_title",
+          "label": "About Title",
+          "type": "textarea",
+          "required": false,
+          "key": "fld_82c7c93461a8"
+        },
+        {
+          "name": "button_label",
+          "label": "Button Label",
+          "type": "text",
+          "required": false,
+          "key": "fld_e9aeedf7e9ad"
+        },
+        {
+          "name": "footer_label",
+          "label": "Footer Label",
+          "type": "text",
+          "required": false,
+          "key": "fld_28f4e6492ea9"
+        }
+      ],
+      "key": "fld_189f42fad643"
+    }
+  ],
+  "location": [
+    [
+      {
+        "param": "page_template",
+        "operator": "==",
+        "value": "templates/page-why-egghead.php"
+      }
+    ]
+  ],
+  "presentation": {
+    "style": "standard",
+    "position": "normal",
+    "label_placement": "top",
+    "instruction_placement": "below_labels",
+    "order": 20,
+    "super_priority": false,
+    "hide_on_screen": {}
+  }
+}

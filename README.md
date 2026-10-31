@@ -1,5 +1,15 @@
 # Custom Fields Framework Pro
 
+## Hide Section controls
+
+Di **Custom Fields → Global Settings → Editor UI Settings**, aktifkan **Hide Section Controls** untuk menyembunyikan switch **Hide Section** di editor konten. Status visibilitas section yang sudah tersimpan tetap dipertahankan saat konten disimpan. Nonaktifkan opsi untuk menampilkan switch kembali.
+
+## Import Content (JSON)
+
+Buka editor halaman → **Import Content → Import JSON into this page**, atau pilih satu halaman melalui **Custom Fields → Import Content**. Unggah objek JSON per halaman, termasuk bentuk `hero`/`questions`/`contact` seperti `why-egghead-en.json`. Preview menampilkan pemetaan nama bagian ke field yang terdaftar pada template halaman, misalnya `hero` → `why_hero`.
+
+Pilih **Fill empty fields only** untuk mengisi subfield kosong sambil menjaga teks, angka `0`, checkbox dan repeater yang sudah terisi, atau **Replace supplied fields** untuk mengganti nilai yang dikirim. Tujuan tetap pada halaman terpilih; judul, URL, status, template dan terjemahan lain tidak diubah. Path gambar dicocokkan ke Media Library yang sudah ada. Gambar tanpa kecocokan ditampilkan sebagai catatan dan media lama pada posisi yang sama dipertahankan. Panduan lengkap: [CONTENT_IMPORT.md](CONTENT_IMPORT.md).
+
 ## Language Clone (Polylang)
 
 Menu **Language Clone** hanya muncul saat Polylang aktif dan minimal dua bahasa

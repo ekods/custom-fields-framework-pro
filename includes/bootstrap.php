@@ -14,6 +14,7 @@ require_once __DIR__ . '/class-dynamic-content-manager.php';
 require_once __DIR__ . '/class-term-meta-manager.php';
 require_once __DIR__ . '/class-content-field-saver.php';
 require_once __DIR__ . '/class-language-clone.php';
+require_once __DIR__ . '/class-content-import.php';
 require_once __DIR__ . '/helpers/acf-compat.php';
 require_once __DIR__ . '/helpers/frontend-helpers.php';
 require_once __DIR__ . '/helpers/frontend-shortcodes.php';
@@ -59,7 +60,7 @@ add_action('in_admin_header', function() {
   if (!$screen) return;
   
   if ($screen->id === 'edit-cff_group' || $screen->id === 'cff_group' || $screen->id === 'cff_options') {
-    echo '<div class="wrap tk-wrap cff-admin-header-wrap" style="margin-top: 20px; margin-bottom: 0;">';
+    echo '<div class="wrap tk-wrap cff-admin cff-admin-header-wrap" style="margin-top: 20px; margin-bottom: 0;">';
     \CFF\cff_render_header_branding();
     
     if ($screen->id === 'edit-cff_group') {

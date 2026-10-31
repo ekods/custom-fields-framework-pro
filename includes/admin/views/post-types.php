@@ -19,7 +19,7 @@ $langs = $this->polylang_languages();
         <?php if (!$defs): ?>
             <div class="cff-empty-state"><span class="dashicons dashicons-admin-post" aria-hidden="true"></span><h3><?php echo esc_html__('Create your first content collection', 'cff'); ?></h3><p><?php echo esc_html__('Use a post type for content such as Projects, Services, or Team Members.', 'cff'); ?></p><a class="button button-primary" href="#cff-definition-editor" data-cff-open-editor><?php echo esc_html__('Add post type', 'cff'); ?></a></div>
         <?php else: cff_render_management_toolbar('cff-types', count($defs)); ?>
-            <div class="tk-table-scroll"><table class="tk-table cff-management-table"><thead><tr><th scope="col"><?php echo esc_html__('Content collection', 'cff'); ?></th><th scope="col"><?php echo esc_html__('Frontend', 'cff'); ?></th><th scope="col"><?php echo esc_html__('Content', 'cff'); ?></th><th scope="col"><?php echo esc_html__('Settings', 'cff'); ?></th></tr></thead><tbody>
+            <div class="tk-table-scroll"><table class="tk-table cff-management-table"><thead><tr><th scope="col"><?php echo esc_html__('Content collection', 'cff'); ?></th><th scope="col" class="cff-column-frontend"><?php echo esc_html__('Frontend', 'cff'); ?></th><th scope="col" class="cff-column-actions"><?php echo esc_html__('Actions', 'cff'); ?></th></tr></thead><tbody>
             <?php foreach ($defs as $key => $def):
                 $label = ($def['plural'] ?? '') ?: $key;
                 $hidden = !empty($def['hide_frontend']) || empty($def['public']);
@@ -33,9 +33,8 @@ $langs = $this->polylang_languages();
                             <?php if (empty($def['block_single'])): ?><code><?php echo esc_html('single-' . $template_slug . '.php'); ?></code><?php endif; ?>
                         <?php endif; ?></div></details>
                     </td>
-                    <td data-label="<?php echo esc_attr__('Frontend', 'cff'); ?>"><?php cff_render_frontend_badge($hidden); ?></td>
-                    <td data-label="<?php echo esc_attr__('Content', 'cff'); ?>"><div class="cff-inline-actions"><?php if ($available): ?><a class="button" href="<?php echo esc_url(cff_content_admin_url($key)); ?>"><?php echo esc_html__('Manage content', 'cff'); ?></a><a href="<?php echo esc_url(cff_content_admin_url($key, true)); ?>"><?php echo esc_html__('Add new', 'cff'); ?></a><?php else: ?><span class="description"><?php echo esc_html__('Admin UI disabled', 'cff'); ?></span><?php endif; ?></div></td>
-                    <td data-label="<?php echo esc_attr__('Settings', 'cff'); ?>"><?php cff_render_definition_actions('post', $key, $label); ?></td>
+                    <td class="cff-column-frontend" data-label="<?php echo esc_attr__('Frontend', 'cff'); ?>"><?php cff_render_frontend_badge($hidden); ?><?php if (!$available): ?><span class="cff-cell-note"><?php echo esc_html__('Admin UI disabled', 'cff'); ?></span><?php endif; ?></td>
+                    <td class="cff-column-actions" data-label="<?php echo esc_attr__('Actions', 'cff'); ?>"><div class="cff-table-actions"><?php if ($available): cff_render_icon_link(cff_content_admin_url($key), 'dashicons-list-view', sprintf(__('Manage %s content', 'cff'), $label)); cff_render_icon_link(cff_content_admin_url($key, true), 'dashicons-plus-alt2', sprintf(__('Add new %s', 'cff'), $label)); endif; cff_render_definition_actions('post', $key, $label); ?></div></td>
                 </tr>
             <?php endforeach; ?>
             </tbody></table></div>

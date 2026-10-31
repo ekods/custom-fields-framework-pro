@@ -1,6 +1,6 @@
 === Custom Fields Framework Pro ===
 Contributors: ekods
-Stable tag: 2.5.32
+Stable tag: 2.5.40
 
 Custom fields with Field Groups, Repeater, Flexible Content, Location rules, and CFF-compatible frontend helpers.
 
@@ -15,6 +15,55 @@ Build structured WordPress content with custom fields, nested repeaters, groups,
 3. Open Custom Fields and create a Field Group with location rules.
 
 == Changelog ==
+
+= 2.5.40 =
+* Includes the updates from 2.5.33–2.5.39: import one page's JSON content with preview, section mapping, replace/fill-empty modes, media matching and reports.
+* Add Global Settings > Hide Section Controls while preserving saved section visibility.
+* Align CFF screens to 1440px, tidy branding/tables and provide dedicated Actions columns with direct icon controls.
+* Make repeater controls borderless and allow clicking row headers to collapse/expand without interfering with clone/remove/drag actions.
+* Keep PHP and shortcode examples inside the Guide & Usage sidebar with shared constrained-width code styling and horizontal scrolling for long lines.
+* Reset nested code padding/background so examples no longer overlap adjacent content and remain copyable without changing their text.
+
+= 2.5.39 =
+* Add a dedicated Actions column to Field Groups and move WordPress-generated icon actions out of the title cell while preserving links, permissions and nonce parameters.
+* Keep Field Group actions visible on mobile, handle refreshed rows, and restore actions below the title when their column is hidden in Screen Options or JavaScript is unavailable.
+* Consolidate Post Type content/settings controls into one Actions column and align Actions columns across Overview and Taxonomies.
+* Refine column widths, row alignment, cell spacing, separators and mobile action wrapping without changing repeater editor controls.
+
+= 2.5.38 =
+* Allow clicking a collapsible repeater row header or title to collapse/expand its body, including nested and newly added rows.
+* Keep arrow, clone/remove, interactive controls and drag behavior independent; ignore the click following a sort operation.
+* Synchronize the arrow button's accessible expanded state with the row, retaining native keyboard activation.
+
+= 2.5.37 =
+* Remove borders, backgrounds and shadows from repeater drag/toggle/clone/remove controls and the flexible layout remove control, including hover states. Keep visible keyboard focus.
+* Remove margin-right: auto from the field copy indicator so it stays next to the copy controls.
+
+= 2.5.36 =
+* Apply a shared 1440px maximum width to CFF wrappers and the native Field Groups list so branding, navigation and table edges align.
+* Consolidate conflicting header branding styles, wrap brand/version/help cleanly, and mark Field Groups active in its navigation.
+* Refine table spacing, column sizing, key/location wrapping and mobile primary-column labels/checkbox alignment.
+* Replace More menus with direct edit, duplicate and delete icon buttons. Content/term actions and native Field Group row actions also use labelled icon buttons; nonce URLs and delete confirmation are preserved.
+
+= 2.5.35 =
+* Add Hide Section Controls under Global Settings > Editor UI Settings to hide the Hide Section switches in CFF content editors.
+* Preserve saved section visibility and language-local markers while controls are hidden, including saves from previously opened editors. Turning the option off restores the controls with their saved state.
+
+= 2.5.34 =
+* Make Import Content a one-page workflow: open it from the current editor or choose an existing page from the menu. The destination stays fixed throughout preview and import.
+* Accept raw section JSON such as hero/questions/contact, matching exact CFF field names or unique suffixes such as hero to why_hero. Preview shows the mappings.
+* Add Replace supplied fields and Fill empty fields only. Fill empty merges blank group subfields while preserving existing text, zero/false values and populated repeaters.
+* Match image/file paths to existing Media Library files. Unmatched/ambiguous images are reported and prior media at the same field/row position is retained; no downloads or attachment metadata changes.
+* Keep title, URL, status, saved template and other translations unchanged. Isolate jobs per user and destination page, and require a new preview if resolved values or media matches change.
+* Add regressions using the exact Why EGGHEAD section JSON and field definitions, plus browser checks for editor context, page selection, policies and mapping/media notes.
+
+= 2.5.33 =
+* Add Custom Fields > Import Content for JSON content files, separate from configuration import.
+* Preview validation before importing posts, pages and custom post types; create-only, update-only and create-or-update modes match destination ID or slug.
+* Import CFF values including nested groups, repeaters and flexible layouts, existing media/relationship IDs, taxonomy assignments, page templates and optional Polylang language.
+* Process up to five items per batch with pause, resume, cancellation and a downloadable report. New content defaults to draft; publishing from JSON requires explicit opt-in and permission.
+* Recheck permissions, field definitions and destination changes before writing. Roll back failed items and stop for review after an interrupted write instead of automatically repeating it.
+* Limit JSON to 5 MB / 500 items, scope saved progress to the current user and expire temporary payloads/reports after 24 hours.
 
 = 2.5.32 =
 * Tidy the content editor field rendering: labelled URL/Title inputs for link fields, Select2 relational controls matching other inputs, contained media previews with a clear empty state, and labelled gallery buttons.

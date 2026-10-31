@@ -22,6 +22,89 @@ All notable changes to this project will be documented in this file.
 - Added unit coverage for REST write toggle behavior and JSON import payload validation.
 - Added unit coverage for content field ordering, hidden-section saves, sanitized value saves, and empty-value deletes.
 
+## 2.5.40
+
+### Fixed
+- Replace inconsistent inline PHP/shortcode example styles in Global Settings → Guide & Usage with `.cff-guide-code`. Constrain the preformatted block to its panel using border-box sizing and internal horizontal scrolling.
+- Reset nested code padding, background and typography so shared code styles do not widen the examples. Preserve the original PHP and shortcode text for copying.
+
+### Validation
+- Render the actual guide in browser fixtures with 180px, 240px, 280px and 360px sidebars. Both examples stay within the guide and do not overlap following content; long lines scroll within their blocks.
+
+## 2.5.39
+
+### Changed
+- Add a native Actions column to Field Groups. Move the existing WordPress-generated action nodes to it, retaining capabilities, nonce URLs, extension attributes and native row handling. Load the placement script only on the Field Groups list.
+- Keep actions available when Screen Options hides their column by returning them to the primary cell. Retain the original actions when JavaScript is unavailable, and realign actions after row refreshes. Show the Actions cell without requiring mobile row expansion.
+- Combine Post Type content shortcuts and definition controls in a single Actions column. Use explicit Actions/Frontend columns in the Overview and Taxonomies tables with consistent widths, row spacing, alignment and separators.
+- Refine mobile wrapping and tap sizes while preserving definition delete confirmation. Repeater/flexible editor controls are unchanged.
+
+### Validation
+- Browser checks at desktop/tablet/mobile widths cover action placement, exact nonce URL preservation, Screen Options hide/show, no duplicate title actions, no horizontal page overflow, and definition delete confirmation/cancellation.
+
+## 2.5.38
+
+### Added
+- Toggle collapsible repeater rows by clicking `.cff-rep-row-head` or its title, with a pointer cursor. Use delegated handling for nested and dynamically created rows.
+- Keep clone/remove/drag handles, links and other interactive header controls independent. Suppress toggle clicks during sorting and the mouseup click following a drag.
+- Add accessible names/expanded state to repeater toggle buttons and synchronize that state after toggles, row creation and title refreshes. Simple/gallery/table layouts retain their existing non-collapsible behavior.
+
+### Validation
+- Browser checks with production editor JavaScript and jQuery UI cover header/title collapse, single arrow/keyboard toggles, nested/new rows, unchanged submitted content, clone/remove exclusions and actual drag reordering. Runtime and relational renderer regressions pass.
+
+## 2.5.37
+
+### Changed
+- Make repeater row drag/toggle/clone/remove controls and flexible layout removal borderless and transparent in normal/hover states, preserving icon colors, control dimensions and keyboard focus.
+- Remove `margin-right: auto` from `.cff-field-actions .cff-copy-field-indicator` so the indicator no longer pushes copy controls apart.
+
+### Validation
+- Checked computed border/background/shadow styles for all five row controls at desktop/mobile widths, including hover, copy indicator spacing and keyboard focus.
+
+## 2.5.36
+
+### Changed
+- Set `.tk-wrap` and the native `edit.php?post_type=cff_group` list wrapper to a 1440px maximum width with aligned edges. Give the native CFF branding wrapper the shared admin class and set Field Groups as the active navigation item.
+- Consolidate duplicate branding rules and define explicit header spacing, surfaces, borders and responsive wrapping for the name, version and help link.
+- Align management table cells, bound action column widths and improve native key/location wrapping. Keep WordPress primary-column expansion on mobile while avoiding overlapping column labels and shifted header checkboxes.
+- Replace the management More dropdown with direct icon actions; render content/term shortcuts and native group row actions as labelled icon buttons. Preserve existing action attributes, nonce URLs, form payloads and delete confirmation. Scope icon sizing to tables so builder icon controls keep their existing layout.
+
+### Validation
+- Reviewed browser fixtures using the actual CFF PHP renderers, CSS/JavaScript and WordPress table styles at 1920px, 1024px and 390px. Verified wrapper/table alignment, no page overflow, square icon buttons, active navigation and confirmed/cancelled delete payloads without site/database writes.
+
+## 2.5.35
+
+### Added
+- Add Global Settings → Editor UI Settings → Hide Section Controls. The option defaults off and suppresses the content editor's section hide switches when enabled.
+- Preserve `_cff_hidden_sections` and its language-local marker during content saves while the controls are globally hidden, including stale editor submissions. Restoring the controls retains each section's existing state. Field definition visibility settings and frontend visibility behavior remain independent.
+- Extend runtime regressions for authenticated settings saves, switch rendering, preserved metadata and normal unhide behavior after restoring the controls.
+
+## 2.5.34
+
+### Changed
+- Import Content now opens a single existing destination: an editor sidebar action carries its current post ID; the menu provides searchable editable content. Page-scoped jobs are isolated per user and page. The original bulk backend remains compatible at `?page=cff-import-content&bulk=1`.
+- Accept raw page section JSON without an `items` envelope. Resolve exact field names before unique suffix matches (`hero` → `why_hero`), validate against the saved template, and display mappings before writing. Unknown, ambiguous and duplicate mappings are rejected.
+- Offer Replace supplied fields and Fill empty fields only. Empty filling recurses through group fields, treats missing/null/blank strings as empty and preserves numeric zero, false checkboxes and populated repeaters. Replace changes supplied values only; explicit empty group values now clear correctly.
+- Resolve media paths/URLs to unique accessible attachments already in the Media Library without downloads. Report unresolved references and retain prior media at the same row/field position, or omit the missing media value when no previous value exists. Replacement repeater rows align these fallbacks by position; they do not match rows by text.
+- Keep page core data, status, template and translations unchanged. Recheck resolved values/media matches against preview; generated repeater row IDs do not cause false conflicts.
+- Generate example JSON from the chosen page's actual field definitions.
+
+### Validation
+- Exercise the exact supplied Why EGGHEAD JSON and CFF schema in isolated persistence fixtures, covering all seven sections, image paths, repeaters, partial group fill, replacement, context isolation and stale media matches.
+- Exercise menu selection, the current-editor link, fixed request context, both policy options, raw JSON upload and safe preview notes in a browser.
+
+## 2.5.33
+
+### Added
+- Added Custom Fields → Import Content and a link from Export / Import. JSON content files use a separate format from field group/post type/taxonomy configuration packages.
+- Added validation preview, create/update/upsert modes matching destination IDs or slugs, and shared CFF sanitization for nested content, existing media/relationship references and taxonomy assignments. Planned page templates determine applicable field groups without creating preview posts.
+- Added five-item batches, pause/resume/cancel, progress recovery, per-item reports and example JSON download. New content defaults to draft; explicit publishing/private statuses require an opt-in and capability check.
+- Added per-user expiring jobs, atomic request leases, write-time permission/schema/destination checks and item rollback. An interrupted write pauses for review rather than being repeated automatically. Polylang synchronization is suspended while importing to avoid altering other translations.
+
+### Validation
+- Added isolated persistence regressions for preview, writes, partial group merges, escaping, relationship namespaces, capability checks, conflicts, rollback, interruption and progress recovery; included in PHP CI and release checks.
+- Added a browser regression for the actual import page and controls, including errors, interrupted responses, pause/resume and safe report rendering.
+
 ## 2.5.32
 
 ### Changed

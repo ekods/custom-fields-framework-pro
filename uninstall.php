@@ -1,6 +1,15 @@
 <?php
 if (!defined('WP_UNINSTALL_PLUGIN')) exit;
 
+// Uploaded content and progress are temporary, even when persistent CFF content is retained.
+global $wpdb;
+wp_unschedule_hook('cff_content_import_expire');
+$import_option_keys = $wpdb->get_col($wpdb->prepare(
+  "SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s",
+  $wpdb->esc_like('cff_content_import_') . '%'
+));
+foreach ($import_option_keys as $import_option_key) delete_option($import_option_key);
+
 $keep_data = get_option('cffp_keep_data_on_uninstall', 1);
 if ((int) $keep_data === 1) {
   return;
@@ -13,6 +22,7 @@ $option_keys = [
   'cffp_taxonomies',
   'cffp_global_settings_post_id',
   'cffp_block_sidebar_enabled',
+  'cffp_hide_section_controls',
   'cffp_keep_data_on_uninstall',
   'cffp_reorder_post_types',
   'cffp_reorder_taxonomies',

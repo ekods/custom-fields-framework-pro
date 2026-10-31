@@ -1,0 +1,15 @@
+.cff-content-import .tk-card { margin-bottom: 20px; }
+.cff-import-settings { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.cff-import-settings label { display: block; margin-bottom: 6px; font-weight: 600; }
+.cff-import-settings select, .cff-import-settings input[type=file] { width: 100%; max-width: 100%; }
+.cff-import-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.cff-import-counts { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 12px 0; }
+.cff-import-result progress { width: 100%; height: 18px; }
+.cff-import-table-wrap { overflow-x: auto; max-height: 520px; }
+.cff-import-table-wrap td { vertical-align: top; overflow-wrap: anywhere; white-space: pre-line; }
+.cff-import-destination small { color: #646970; font-weight: 400; }
+.cff-import-table-wrap th:first-child { width: 40px; }
+.cff-import-help pre { overflow-x: auto; padding: 16px; background: #f6f7f7; }
+.cff-import-help li { margin: 10px 0; }
+.cff-content-import [hidden] { display: none !important; }
+@media (max-width: 960px) { .cff-import-settings { grid-template-columns: 1fr; } }

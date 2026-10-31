@@ -37,6 +37,7 @@ function wp_unslash($value) { return is_array($value) ? array_map('wp_unslash', 
 function wp_generate_password($length, $special = false, $extra = false) { return str_repeat('a', $length); }
 function wp_verify_nonce($nonce, $action) { return $nonce === 'valid'; }
 function wp_nonce_field($action, $name) { echo '<input type="hidden" name="' . esc_attr($name) . '" value="valid">'; }
+function checked($value, $expected = true, $echo = true) { $result = (string) $value === (string) $expected ? 'checked="checked"' : ''; if ($echo) echo $result; return $result; }
 function current_user_can($cap, $id = 0) { return !in_array($cap . ':' . $id, $GLOBALS['denied'], true); }
 function add_action($name, $callback, $priority = 10, $accepted = 1) { $GLOBALS['hooks'][$name][$priority][] = [$callback, $accepted]; }
 function add_filter($name, $callback, $priority = 10, $accepted = 1) { add_action($name, $callback, $priority, $accepted); }
@@ -92,6 +93,7 @@ function attachment_url_to_postid($url) { return $url === 'https://example.test/
 function wp_get_attachment_image($id, $size, $icon, $attrs) { return '<img>'; }
 function wp_list_pluck($items, $field) { return array_map(function($item) use ($field) { return $item->$field; }, $items); }
 function get_option($key, $default = false) { return $GLOBALS['options'][$key] ?? $default; }
+function update_option($key, $value) { $GLOBALS['options'][$key] = $value; return true; }
 function get_the_ID() { return 1; }
 function get_page_template_slug($id) { return get_post_meta($id, '_wp_page_template', true); }
 function get_post_types($args, $output) { return ['post']; }
@@ -175,6 +177,42 @@ $saver->save(1, get_post(1));
 check(get_post_meta(1, '_cff_path', true) === $text, 'Classic text round-trips backslashes and quotes');
 check(get_post_meta(1, '_cff_group', true)['caption'] === $text, 'Classic group text round-trips');
 check(get_post_meta(1, '_cff_rows', true)[0]['caption'] === $text, 'Classic repeater text round-trips');
+
+// Hiding the editor controls must not erase existing frontend visibility when a post is saved.
+fixture_post(901, 'cff_options');
+ob_start(); $plugin->render_global_ui_settings(get_post(901)); $settings_html = ob_get_clean();
+check(strpos($settings_html, 'name="cffp_hide_section_controls"') !== false, 'Global settings expose Hide Section Controls');
+ob_start(); CFF\cff_render_section_hide_switch('path', true, 'Path'); $switch_html = ob_get_clean();
+check(strpos($switch_html, 'cff-section-hide-toggle') !== false && strpos($switch_html, 'checked="checked"') !== false, 'Hide Section switch is available by default');
+$_POST = ['cff_global_ui_settings_nonce' => 'invalid', 'cffp_hide_section_controls' => 1];
+$plugin->save_global_ui_settings(901, get_post(901));
+check(!get_option('cffp_hide_section_controls', 0), 'Invalid global settings nonce cannot hide controls');
+$GLOBALS['denied'] = ['manage_options:0']; $_POST['cff_global_ui_settings_nonce'] = 'valid';
+$plugin->save_global_ui_settings(901, get_post(901));
+check(!get_option('cffp_hide_section_controls', 0), 'Global UI changes require CFF administrator capability');
+$GLOBALS['denied'] = [];
+$plugin->save_global_ui_settings(901, get_post(901));
+check(get_option('cffp_hide_section_controls') === 1, 'Authenticated setting enables control hiding');
+ob_start(); CFF\cff_render_section_hide_switch('path', true, 'Path'); $switch_html = ob_get_clean();
+check($switch_html === '', 'Globally hidden switch emits no inputs');
+ob_start(); $plugin->output_global_editor_ui_css(); $css = ob_get_clean();
+check(strpos($css, '.cff-section-hide-switch') !== false, 'Global editor styles also hide section switches');
+update_post_meta(1, '_cff_hidden_sections', ['path' => true]);
+update_post_meta(1, '_cff_hidden_sections_local', '1');
+foreach ([[], ['cff_hidden_sections' => ['path' => '0']]] as $stale_controls) {
+  $_POST = ['cff_content_nonce' => 'valid', 'cff_values' => wp_slash(['path' => $text])] + $stale_controls;
+  $saver->save(1, get_post(1));
+  check(get_post_meta(1, '_cff_hidden_sections', true) === ['path' => true] && get_post_meta(1, '_cff_hidden_sections_local', true) === '1', 'Hidden controls preserve section flags and local marker, including stale editor submissions');
+}
+check(CFF\cff_section_is_hidden(1, 'path'), 'Hiding the control keeps existing section visibility effective');
+$_POST = ['cff_global_ui_settings_nonce' => 'valid'];
+$plugin->save_global_ui_settings(901, get_post(901));
+check(get_option('cffp_hide_section_controls') === 0, 'Unchecked global option restores controls');
+ob_start(); CFF\cff_render_section_hide_switch('path', true, 'Path'); $switch_html = ob_get_clean();
+check(strpos($switch_html, 'checked="checked"') !== false, 'Restored switch reflects preserved hidden state');
+$_POST = ['cff_content_nonce' => 'valid', 'cff_hidden_sections' => ['path' => '0']];
+$saver->save(1, get_post(1));
+check(get_post_meta(1, '_cff_hidden_sections', true) === '' && get_post_meta(1, '_cff_hidden_sections_local', true) === '', 'Restored controls can unhide sections normally');
 $rest = new CFF\Rest_Fields($plugin);
 check($rest->update_payload(1, 'post', ['path' => $text, 'group' => ['caption' => $text], 'rows' => [['caption' => $text]]]) === true, 'REST write succeeds');
 check(get_post_meta(1, '_cff_path', true) === $text && get_post_meta(1, '_cff_group', true)['caption'] === $text && get_post_meta(1, '_cff_rows', true)[0]['caption'] === $text, 'REST nested strings round-trip');

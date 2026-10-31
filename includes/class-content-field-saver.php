@@ -78,6 +78,8 @@ class Content_Field_Saver {
   }
 
   private function save_hidden_sections($post_id, $definitions) {
+    // Omitted/old editor controls must not reset stored visibility while globally hidden.
+    if (!empty(get_option('cffp_hide_section_controls', 0))) return;
     $posted_hidden_sections = isset($_POST['cff_hidden_sections']) && is_array($_POST['cff_hidden_sections'])
       ? wp_unslash($_POST['cff_hidden_sections'])
       : [];
