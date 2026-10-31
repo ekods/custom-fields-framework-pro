@@ -15,7 +15,7 @@ $langs = $this->polylang_languages();
     cff_render_page_hero(__('Post Types', 'cff'), __('Manage your content collections and choose how each one appears on your website.', 'cff'), 'dashicons-admin-post', '<a class="button button-primary" data-cff-open-editor href="'.esc_url(admin_url('admin.php?page=cff-post-types') . '#cff-definition-editor').'">'.esc_html__('Add post type', 'cff').'</a>');
     ?>
     <section class="tk-card cff-collection" data-cff-collection>
-        <div class="cff-card-heading"><div><h2><?php echo esc_html__('Your post types', 'cff'); ?></h2><p><?php echo esc_html__('Open a collection to manage its content, or edit its settings below.', 'cff'); ?></p></div><span class="cff-total"><?php echo esc_html(count($defs)); ?></span></div>
+        <div class="cff-card-heading"><div><h2><?php echo esc_html__('Your post types', 'cff'); ?></h2><p><?php echo esc_html__('Click a collection to edit its settings.', 'cff'); ?></p></div><span class="cff-total"><?php echo esc_html(count($defs)); ?></span></div>
         <?php if (!$defs): ?>
             <div class="cff-empty-state"><span class="dashicons dashicons-admin-post" aria-hidden="true"></span><h3><?php echo esc_html__('Create your first content collection', 'cff'); ?></h3><p><?php echo esc_html__('Use a post type for content such as Projects, Services, or Team Members.', 'cff'); ?></p><a class="button button-primary" href="#cff-definition-editor" data-cff-open-editor><?php echo esc_html__('Add post type', 'cff'); ?></a></div>
         <?php else: cff_render_management_toolbar('cff-types', count($defs)); ?>
@@ -26,7 +26,7 @@ $langs = $this->polylang_languages();
                 $available = !empty($def['hide_frontend']) || (array_key_exists('show_ui', $def) ? !empty($def['show_ui']) : !empty($def['public']));
             ?>
                 <tr data-cff-row data-visibility="<?php echo $hidden ? 'hidden' : 'public'; ?>" data-search="<?php echo esc_attr($label . ' ' . $key . ' ' . ($def['slug'] ?? '')); ?>">
-                    <td data-label="<?php echo esc_attr__('Collection', 'cff'); ?>"><div class="cff-collection-name"><strong><?php echo esc_html($label); ?></strong><code><?php echo esc_html($key); ?></code></div>
+                    <td data-label="<?php echo esc_attr__('Collection', 'cff'); ?>"><div class="cff-collection-name"><a href="<?php echo esc_url(add_query_arg(['page' => 'cff-post-types', 'edit' => $key], admin_url('admin.php')) . '#cff-definition-editor'); ?>"><strong><?php echo esc_html($label); ?></strong></a><code><?php echo esc_html($key); ?></code></div>
                         <details class="cff-technical"><summary><?php echo esc_html__('View details', 'cff'); ?></summary><div><span><?php echo esc_html__('URL slug:', 'cff'); ?> <code><?php echo esc_html($def['slug'] ?? $key); ?></code></span><span><?php echo esc_html__('REST API:', 'cff'); ?> <?php echo esc_html(!empty($def['show_in_rest']) ? __('Enabled', 'cff') : __('Disabled', 'cff')); ?></span>
                         <?php if (!$hidden): $template_slug = sanitize_title(($def['slug'] ?? '') ?: $key); ?>
                             <?php if (!empty($def['has_archive'])): ?><code><?php echo esc_html('archive-' . $template_slug . '.php'); ?></code><?php endif; ?>
@@ -34,7 +34,7 @@ $langs = $this->polylang_languages();
                         <?php endif; ?></div></details>
                     </td>
                     <td class="cff-column-frontend" data-label="<?php echo esc_attr__('Frontend', 'cff'); ?>"><?php cff_render_frontend_badge($hidden); ?><?php if (!$available): ?><span class="cff-cell-note"><?php echo esc_html__('Admin UI disabled', 'cff'); ?></span><?php endif; ?></td>
-                    <td class="cff-column-actions" data-label="<?php echo esc_attr__('Actions', 'cff'); ?>"><div class="cff-table-actions"><?php if ($available): cff_render_icon_link(cff_content_admin_url($key), 'dashicons-list-view', sprintf(__('Manage %s content', 'cff'), $label)); cff_render_icon_link(cff_content_admin_url($key, true), 'dashicons-plus-alt2', sprintf(__('Add new %s', 'cff'), $label)); endif; cff_render_definition_actions('post', $key, $label); ?></div></td>
+                    <td class="cff-column-actions" data-label="<?php echo esc_attr__('Actions', 'cff'); ?>"><div class="cff-table-actions"><?php cff_render_definition_actions('post', $key, $label); ?></div></td>
                 </tr>
             <?php endforeach; ?>
             </tbody></table></div>

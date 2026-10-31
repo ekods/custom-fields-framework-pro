@@ -22,6 +22,12 @@ All notable changes to this project will be documented in this file.
 - Added unit coverage for REST write toggle behavior and JSON import payload validation.
 - Added unit coverage for content field ordering, hidden-section saves, sanitized value saves, and empty-value deletes.
 
+## 2.5.41
+
+### Changed
+- Post Types and Taxonomies tables: the name links to the definition's settings editor.
+- Post Types table: removed the "Manage content" and "Add new" icon links; the Actions column keeps Edit, Duplicate and Delete.
+
 ## 2.5.40
 
 ### Fixed

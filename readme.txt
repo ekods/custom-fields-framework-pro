@@ -1,6 +1,6 @@
 === Custom Fields Framework Pro ===
 Contributors: ekods
-Stable tag: 2.5.40
+Stable tag: 2.5.41
 
 Custom fields with Field Groups, Repeater, Flexible Content, Location rules, and CFF-compatible frontend helpers.
 
@@ -15,6 +15,10 @@ Build structured WordPress content with custom fields, nested repeaters, groups,
 3. Open Custom Fields and create a Field Group with location rules.
 
 == Changelog ==
+
+= 2.5.41 =
+* Post Types and Taxonomies: click a name in the table to edit its settings.
+* Post Types: remove the "Manage content" and "Add new" icons from the table; Edit, Duplicate and Delete remain.
 
 = 2.5.40 =
 * Includes the updates from 2.5.33–2.5.39: import one page's JSON content with preview, section mapping, replace/fill-empty modes, media matching and reports.
