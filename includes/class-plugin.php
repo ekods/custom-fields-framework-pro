@@ -609,7 +609,7 @@ TEXT;
 
     echo '<div class="tk-card tk-card--feature" style="max-width:1080px;margin-top:16px;margin-bottom:16px;">';
     echo '<h2>' . esc_html__('Supported Field Types', 'cff') . '</h2>';
-    echo '<div class="tk-table-scroll"><table class="tk-table tk-pairs-table"><thead><tr><th>' . esc_html__('Type', 'cff') . '</th><th>' . esc_html__('Output Shape', 'cff') . '</th><th>' . esc_html__('Common Usage', 'cff') . '</th></tr></thead><tbody>';
+    echo '<div class="tk-table-scroll"><table class="widefat striped"><thead><tr><th>' . esc_html__('Type', 'cff') . '</th><th>' . esc_html__('Output Shape', 'cff') . '</th><th>' . esc_html__('Common Usage', 'cff') . '</th></tr></thead><tbody>';
     foreach ($field_types as $row) {
       echo '<tr>';
       echo '<td><code>' . esc_html($row[0]) . '</code></td>';
@@ -1152,7 +1152,6 @@ TEXT;
 
     if ($is_list_screen) {
       wp_enqueue_style('cff-list', CFFP_URL . 'assets/list.css', [], $this->asset_ver('assets/list.css'));
-      if ($is_group) wp_enqueue_script('cff-field-group-list', CFFP_URL . 'assets/js/field-group-list.js', [], $this->asset_ver('assets/js/field-group-list.js'), true);
     }
 
     if ($is_group || $is_plugin_screen || ($screen && $screen->id === 'cff_options')) {

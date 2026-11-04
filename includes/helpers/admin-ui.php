@@ -59,23 +59,12 @@ function cff_render_header_branding() {
     echo '</nav>';
 }
 
-function cff_render_management_toolbar($id, $count) {
-    ?>
-    <div class="cff-list-tools" hidden>
-        <label class="cff-list-search" for="<?php echo esc_attr($id); ?>-search">
-            <span class="dashicons dashicons-search" aria-hidden="true"></span>
-            <span class="screen-reader-text"><?php echo esc_html__('Search by name or key', 'cff'); ?></span>
-            <input type="search" id="<?php echo esc_attr($id); ?>-search" data-cff-search placeholder="<?php echo esc_attr__('Search by name or key…', 'cff'); ?>">
-        </label>
-        <label class="screen-reader-text" for="<?php echo esc_attr($id); ?>-filter"><?php echo esc_html__('Filter by frontend visibility', 'cff'); ?></label>
-        <select id="<?php echo esc_attr($id); ?>-filter" data-cff-filter>
-            <option value=""><?php echo esc_html__('All visibility', 'cff'); ?></option>
-            <option value="public"><?php echo esc_html__('Public', 'cff'); ?></option>
-            <option value="hidden"><?php echo esc_html__('Admin only', 'cff'); ?></option>
-        </select>
-        <span class="cff-list-count" role="status" aria-live="polite" data-cff-count data-total="<?php echo esc_attr($count); ?>" data-template="<?php echo esc_attr__('%1$d of %2$d shown', 'cff'); ?>"><?php echo esc_html(sprintf(__('%1$d of %2$d shown', 'cff'), $count, $count)); ?></span>
-    </div>
-    <?php
+/** Render real WordPress list tables, including server-side search and paging. */
+function cff_render_management_table($kind, $definitions) {
+    require_once dirname(__DIR__) . '/admin/class-management-list-table.php';
+    $table = new Management_List_Table($kind, $definitions);
+    $table->prepare_items();
+    $table->render();
 }
 
 function cff_render_frontend_badge($hidden) {
@@ -89,59 +78,22 @@ function cff_content_admin_url($type, $new = false) {
     return admin_url(($new ? 'post-new.php' : 'edit.php') . '?post_type=' . sanitize_key($type));
 }
 
-function cff_render_icon_link($url, $icon, $label) {
-    echo '<a class="button cff-icon-button" href="' . esc_url($url) . '" title="' . esc_attr($label) . '" aria-label="' . esc_attr($label) . '"><span class="dashicons ' . esc_attr($icon) . '" aria-hidden="true"></span><span class="screen-reader-text">' . esc_html($label) . '</span></a>';
-}
-
-/** Keep WordPress action URLs, nonce parameters and inline-edit attributes intact. */
-function cff_field_group_icon_actions($actions, $post) {
-    if (!$post || $post->post_type !== 'cff_group') return $actions;
-    $icons = ['edit' => 'edit', 'inline hide-if-no-js' => 'edit-page', 'trash' => 'trash', 'delete' => 'trash',
-        'untrash' => 'undo', 'view' => 'visibility', 'cff_duplicate' => 'admin-page', 'cff_export_group' => 'download'];
-    foreach ($actions as $key => $html) {
-        if (!is_string($html) || strpos($html, 'cff-icon-button') !== false) continue;
-        $icon = $icons[$key] ?? 'admin-generic';
-        $actions[$key] = preg_replace_callback('~<(a|button)\b([^>]*)>(.*?)</\1>~is', function($match) use ($icon) {
-            $attributes = $match[2];
-            $attributes = preg_replace('/\bclass=("|\')(.*?)\1/is', 'class=$1$2 cff-icon-button$1', $attributes, 1, $count);
-            if (!$count) $attributes .= ' class="cff-icon-button"';
-            if (!preg_match('/\btitle\s*=/i', $attributes)) $attributes .= ' title="' . esc_attr(html_entity_decode(strip_tags($match[3]), ENT_QUOTES, 'UTF-8')) . '"';
-            return '<' . $match[1] . $attributes . '><span class="dashicons dashicons-' . esc_attr($icon) . '" aria-hidden="true"></span><span class="screen-reader-text">' . $match[3] . '</span></' . $match[1] . '>';
-        }, $actions[$key]);
-    }
-    return $actions;
-}
-add_filter('post_row_actions', __NAMESPACE__ . '\\cff_field_group_icon_actions', 110, 2);
-add_filter('page_row_actions', __NAMESPACE__ . '\\cff_field_group_icon_actions', 110, 2);
-
-add_filter('manage_edit-cff_group_columns', function($columns) {
-    $columns['cff_actions'] = __('Actions', 'cff');
-    return $columns;
-}, 30);
-
-add_action('manage_cff_group_posts_custom_column', function($column, $post_id) {
-    if ($column !== 'cff_actions') return;
-    // Move WordPress-generated actions here in the browser, preserving permissions and nonce URLs.
-    echo '<div class="cff-field-group-actions" data-cff-group-actions></div>';
-    echo '<noscript><span class="description">' . esc_html__('Use the action buttons below the title.', 'cff') . '</span></noscript>';
-}, 20, 2);
-
 function cff_render_definition_actions($kind, $key, $label) {
     $is_post = $kind === 'post';
     $page = $is_post ? 'cff-post-types' : 'cff-taxonomies';
     $action = $is_post ? 'cffp_action' : 'cffp_tax_action';
     $key_name = $is_post ? 'cpt_key' : 'tax_key';
     ?>
-    <div class="cff-definition-actions">
-        <?php cff_render_icon_link(add_query_arg(['page' => $page, 'edit' => $key], admin_url('admin.php')) . '#cff-definition-editor', 'dashicons-edit', sprintf(__('Edit settings for %s', 'cff'), $label)); ?>
+    <div class="row-actions cff-definition-actions">
+        <span class="edit"><a href="<?php echo esc_url(add_query_arg(['page' => $page, 'edit' => $key], admin_url('admin.php')) . '#cff-definition-editor'); ?>"><?php echo esc_html__('Edit', 'cff'); ?></a> | </span>
             <form method="post" class="cff-definition-action-form">
                 <?php
                 if ($is_post) wp_nonce_field('cffp_cpt_save', 'cffp_cpt_nonce');
                 else wp_nonce_field('cffp_tax_nonce', 'cffp_tax_nonce');
                 ?>
                 <input type="hidden" name="<?php echo esc_attr($key_name); ?>" value="<?php echo esc_attr($key); ?>">
-                <button type="submit" class="button cff-icon-button" name="<?php echo esc_attr($action); ?>" value="duplicate" title="<?php echo esc_attr__('Duplicate', 'cff'); ?>" aria-label="<?php echo esc_attr(sprintf(__('Duplicate %s', 'cff'), $label)); ?>"><span class="dashicons dashicons-admin-page" aria-hidden="true"></span><span class="screen-reader-text"><?php echo esc_html__('Duplicate', 'cff'); ?></span></button>
-                <button type="submit" class="button cff-icon-button cff-delete-action cff-requires-confirm" name="<?php echo esc_attr($action); ?>" value="delete" title="<?php echo esc_attr__('Delete', 'cff'); ?>" aria-label="<?php echo esc_attr(sprintf(__('Delete %s', 'cff'), $label)); ?>" data-confirm-submit="1" data-confirm-title="<?php echo esc_attr__('Delete definition', 'cff'); ?>" data-confirm-message="<?php echo esc_attr(sprintf(__('Remove the definition for "%s"? Existing posts and terms will be kept.', 'cff'), $label)); ?>"><span class="dashicons dashicons-trash" aria-hidden="true"></span><span class="screen-reader-text"><?php echo esc_html__('Delete', 'cff'); ?></span></button>
+                <button type="submit" class="button-link" name="<?php echo esc_attr($action); ?>" value="duplicate" title="<?php echo esc_attr__('Duplicate', 'cff'); ?>" aria-label="<?php echo esc_attr(sprintf(__('Duplicate %s', 'cff'), $label)); ?>"><?php echo esc_html__('Duplicate', 'cff'); ?></button>
+                <span aria-hidden="true"> | </span><button type="submit" class="button-link button-link-delete cff-requires-confirm" name="<?php echo esc_attr($action); ?>" value="delete" title="<?php echo esc_attr__('Delete', 'cff'); ?>" aria-label="<?php echo esc_attr(sprintf(__('Delete %s', 'cff'), $label)); ?>" data-confirm-submit="1" data-confirm-title="<?php echo esc_attr__('Delete definition', 'cff'); ?>" data-confirm-message="<?php echo esc_attr(sprintf(__('Remove the definition for "%s"? Existing posts and terms will be kept.', 'cff'), $label)); ?>"><?php echo esc_html__('Delete', 'cff'); ?></button>
             </form>
     </div>
     <?php

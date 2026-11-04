@@ -16,30 +16,7 @@ $langs = $this->polylang_languages();
     ?>
     <section class="tk-card cff-collection" data-cff-collection>
         <div class="cff-card-heading"><div><h2><?php echo esc_html__('Your post types', 'cff'); ?></h2><p><?php echo esc_html__('Click a collection to edit its settings.', 'cff'); ?></p></div><span class="cff-total"><?php echo esc_html(count($defs)); ?></span></div>
-        <?php if (!$defs): ?>
-            <div class="cff-empty-state"><span class="dashicons dashicons-admin-post" aria-hidden="true"></span><h3><?php echo esc_html__('Create your first content collection', 'cff'); ?></h3><p><?php echo esc_html__('Use a post type for content such as Projects, Services, or Team Members.', 'cff'); ?></p><a class="button button-primary" href="#cff-definition-editor" data-cff-open-editor><?php echo esc_html__('Add post type', 'cff'); ?></a></div>
-        <?php else: cff_render_management_toolbar('cff-types', count($defs)); ?>
-            <div class="tk-table-scroll"><table class="tk-table cff-management-table"><thead><tr><th scope="col"><?php echo esc_html__('Content collection', 'cff'); ?></th><th scope="col" class="cff-column-frontend"><?php echo esc_html__('Frontend', 'cff'); ?></th><th scope="col" class="cff-column-actions"><?php echo esc_html__('Actions', 'cff'); ?></th></tr></thead><tbody>
-            <?php foreach ($defs as $key => $def):
-                $label = ($def['plural'] ?? '') ?: $key;
-                $hidden = !empty($def['hide_frontend']) || empty($def['public']);
-                $available = !empty($def['hide_frontend']) || (array_key_exists('show_ui', $def) ? !empty($def['show_ui']) : !empty($def['public']));
-            ?>
-                <tr data-cff-row data-visibility="<?php echo $hidden ? 'hidden' : 'public'; ?>" data-search="<?php echo esc_attr($label . ' ' . $key . ' ' . ($def['slug'] ?? '')); ?>">
-                    <td data-label="<?php echo esc_attr__('Collection', 'cff'); ?>"><div class="cff-collection-name"><a href="<?php echo esc_url(add_query_arg(['page' => 'cff-post-types', 'edit' => $key], admin_url('admin.php')) . '#cff-definition-editor'); ?>"><strong><?php echo esc_html($label); ?></strong></a><code><?php echo esc_html($key); ?></code></div>
-                        <details class="cff-technical"><summary><?php echo esc_html__('View details', 'cff'); ?></summary><div><span><?php echo esc_html__('URL slug:', 'cff'); ?> <code><?php echo esc_html($def['slug'] ?? $key); ?></code></span><span><?php echo esc_html__('REST API:', 'cff'); ?> <?php echo esc_html(!empty($def['show_in_rest']) ? __('Enabled', 'cff') : __('Disabled', 'cff')); ?></span>
-                        <?php if (!$hidden): $template_slug = sanitize_title(($def['slug'] ?? '') ?: $key); ?>
-                            <?php if (!empty($def['has_archive'])): ?><code><?php echo esc_html('archive-' . $template_slug . '.php'); ?></code><?php endif; ?>
-                            <?php if (empty($def['block_single'])): ?><code><?php echo esc_html('single-' . $template_slug . '.php'); ?></code><?php endif; ?>
-                        <?php endif; ?></div></details>
-                    </td>
-                    <td class="cff-column-frontend" data-label="<?php echo esc_attr__('Frontend', 'cff'); ?>"><?php cff_render_frontend_badge($hidden); ?><?php if (!$available): ?><span class="cff-cell-note"><?php echo esc_html__('Admin UI disabled', 'cff'); ?></span><?php endif; ?></td>
-                    <td class="cff-column-actions" data-label="<?php echo esc_attr__('Actions', 'cff'); ?>"><div class="cff-table-actions"><?php cff_render_definition_actions('post', $key, $label); ?></div></td>
-                </tr>
-            <?php endforeach; ?>
-            </tbody></table></div>
-            <p class="cff-no-results" data-cff-no-results hidden><?php echo esc_html__('No collections match your search. Try another name or clear the filter.', 'cff'); ?></p>
-        <?php endif; ?>
+        <?php cff_render_management_table('post', $defs); ?>
     </section>
 
     <details class="cff-editor-disclosure" id="cff-definition-editor" <?php echo $editing || !$defs ? 'open' : ''; ?>>

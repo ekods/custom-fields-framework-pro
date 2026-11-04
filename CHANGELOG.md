@@ -1,3 +1,14 @@
+## 2.5.43
+
+- Align field builder and content editing accents; add progressive Advanced options disclosures.
+- Preserve field serialization and native list tables; fix narrow repeater input layouts.
+- Clarify import feedback and destructive confirmations.
+
+## 2.5.42
+
+- Refresh admin colors and surfaces; use native WordPress list tables and Field Groups row actions.
+- Preserve search, filtering, pagination, definition action nonces and mobile details.
+
 # Changelog
 
 All notable changes to this project will be documented in this file.

@@ -8,6 +8,12 @@
   let job = {}, busy = false, automatic = false, pending = '';
   const activePhases = ['preview', 'ready', 'running', 'paused'];
 
+  function showMessage(text, state) {
+    message.textContent = text;
+    message.dataset.state = state || 'info';
+    message.setAttribute('role', state === 'error' ? 'alert' : 'status');
+  }
+
   async function request(command, body) {
     body = body || new FormData();
     body.set('action', 'cff_content_import'); body.set('nonce', config.nonce); body.set('command', command);
@@ -22,6 +28,7 @@
   }
 
   function render() {
+    result.setAttribute('aria-busy', String(busy));
     result.hidden = !job.token;
     const active = activePhases.includes(job.phase);
     form.querySelectorAll('input, select, button[type=submit]').forEach(input => { input.disabled = busy || active; });
@@ -37,9 +44,12 @@
     const labels = {preview: 'Validating JSON. No content is being changed.', ready: 'Preview ready. Review the items before starting.',
       running: 'Importing content. Keep this page open.', paused: 'Import paused. Review any items marked for manual review before continuing.',
       completed: 'Import completed. Review failures and download the report.', cancelled: 'Remaining work cancelled. Completed changes have been kept.'};
-    message.textContent = labels[job.phase] || job.phase;
+    const state = job.phase === 'completed' ? (job.failed || job.needs_review || job.invalid ? 'warning' : 'success')
+      : ['paused', 'cancelled'].includes(job.phase) ? 'warning' : 'info';
+    showMessage(labels[job.phase] || job.phase, state);
     const done = job.phase === 'preview' ? job.preview_cursor : ['ready'].includes(job.phase) ? job.total : job.cursor;
     el('progress').value = job.total ? Math.round(done / job.total * 100) : 0;
+    el('progress').setAttribute('aria-valuetext', el('progress').value + '%');
     el('counts').replaceChildren();
     [['total', 'Total'], ['valid', 'Ready'], ['invalid', 'Invalid'], ['created', 'Created'], ['updated', 'Updated'], ['skip', 'Skipped'], ['failed', 'Failed'], ['needs_review', 'Needs review']].forEach(([key, label]) => {
       const count = document.createElement('span'); count.textContent = label + ': ' + (job[key] || 0); el('counts').appendChild(count);
@@ -81,7 +91,7 @@
       // A response can be lost after a write. Refresh state, never retry the mutation automatically.
       try { job = await request('status'); } catch (_) { /* Keep last known state. */ }
       busy = false; render(); result.hidden = false;
-      message.textContent = error.message + ' Processing stopped. Continue saved progress or reload to review the latest state.';
+      showMessage(error.message + ' Processing stopped. Continue saved progress or reload to review the latest state.', 'error');
       return;
     } finally { busy = false; automatic = false; }
     render();
@@ -92,7 +102,7 @@
     if (busy || !form.reportValidity()) return;
     const file = form.elements.content_json.files[0];
     if (!file || !/\.json$/i.test(file.name) || file.size > 5242880) {
-      result.hidden = false; message.textContent = 'Choose a .json file no larger than 5 MB.'; return;
+      result.hidden = false; showMessage('Choose a .json file no larger than 5 MB.', 'warning'); return;
     }
     drive('upload', new FormData(form), true);
   });
@@ -110,7 +120,7 @@
     if (busy) return;
     busy = true; render();
     try { job = await request('status'); }
-    catch (error) { busy = false; render(); result.hidden = false; message.textContent = error.message; return; }
+    catch (error) { busy = false; render(); result.hidden = false; showMessage(error.message, 'error'); return; }
     busy = false;
     if (job.phase === 'paused') drive('resume', null, true);
     else if (job.phase === 'running') drive('batch', null, true);

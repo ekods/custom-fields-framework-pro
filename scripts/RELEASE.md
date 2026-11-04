@@ -1,3 +1,16 @@
+## Custom Fields Framework Pro 2.5.43
+
+- Align field, repeater, subfield, editor and content-field accents with the teal admin palette.
+- Group Conditional Logic and Hide Section inside Advanced options; keep Required visible and saved advanced settings expanded.
+- Fix narrow-screen repeater input widths; preserve nested fields and saved field values.
+- Distinguish destructive confirmations and import success, warning and failure states.
+
+## Custom Fields Framework Pro 2.5.42
+
+- Refresh admin navigation, headers, cards and editor accents with teal and mint surfaces.
+- Use WP_List_Table for content overview, post types and taxonomies, with server-side search, visibility filters, sorting and pagination.
+- Restore native Field Groups row actions and table styling; preserve nonce-protected definition actions and responsive row details.
+
 # Custom Fields Framework Pro — build dan rilis
 
 ## Folder

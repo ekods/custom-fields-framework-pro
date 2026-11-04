@@ -13,27 +13,7 @@ $hidden_checked = !empty($edit_def['hide_frontend']);
     ?>
     <section class="tk-card cff-collection" data-cff-collection>
         <div class="cff-card-heading"><div><h2><?php echo esc_html__('Your taxonomies', 'cff'); ?></h2><p><?php echo esc_html__('Manage terms to organize content, or edit how each taxonomy works.', 'cff'); ?></p></div><span class="cff-total"><?php echo esc_html(count($defs)); ?></span></div>
-        <?php if (!$defs): ?>
-            <div class="cff-empty-state"><span class="dashicons dashicons-category" aria-hidden="true"></span><h3><?php echo esc_html__('Give your content a clear structure', 'cff'); ?></h3><p><?php echo esc_html__('Create groups such as Project Categories, Industries, or Locations.', 'cff'); ?></p><a class="button button-primary" href="#cff-definition-editor" data-cff-open-editor><?php echo esc_html__('Add taxonomy', 'cff'); ?></a></div>
-        <?php else: cff_render_management_toolbar('cff-taxonomies', count($defs)); ?>
-            <div class="tk-table-scroll"><table class="tk-table cff-management-table"><thead><tr><th scope="col"><?php echo esc_html__('Taxonomy', 'cff'); ?></th><th scope="col"><?php echo esc_html__('Used by', 'cff'); ?></th><th scope="col" class="cff-column-frontend"><?php echo esc_html__('Frontend', 'cff'); ?></th><th scope="col" class="cff-column-actions"><?php echo esc_html__('Actions', 'cff'); ?></th></tr></thead><tbody>
-            <?php foreach ($defs as $key => $def):
-                $label = ($def['plural'] ?? '') ?: $key;
-                $hidden = !empty($def['hide_frontend']) || empty($def['public']);
-                $assigned_types = (array) ($def['post_types'] ?? []);
-                $term_args = ['taxonomy' => $key];
-                if ($assigned_types) $term_args['post_type'] = reset($assigned_types);
-            ?>
-                <tr data-cff-row data-visibility="<?php echo $hidden ? 'hidden' : 'public'; ?>" data-search="<?php echo esc_attr($label . ' ' . $key . ' ' . implode(' ', $assigned_types)); ?>">
-                    <td data-label="<?php echo esc_attr__('Taxonomy', 'cff'); ?>"><div class="cff-collection-name"><a href="<?php echo esc_url(add_query_arg(['page' => 'cff-taxonomies', 'edit' => $key], admin_url('admin.php')) . '#cff-definition-editor'); ?>"><strong><?php echo esc_html($label); ?></strong></a><code><?php echo esc_html($key); ?></code></div><span class="cff-cell-note"><?php echo esc_html(!empty($def['hierarchical']) ? __('Categories with parent / child groups', 'cff') : __('Tags without a hierarchy', 'cff')); ?></span></td>
-                    <td data-label="<?php echo esc_attr__('Used by', 'cff'); ?>"><div class="cff-tag-list"><?php foreach ($assigned_types as $type): ?><span class="cff-content-tag"><?php echo esc_html(isset($post_types[$type]) ? $post_types[$type]->labels->name : $type); ?></span><?php endforeach; ?><?php if (!$assigned_types): ?><span class="description"><?php echo esc_html__('No collections selected', 'cff'); ?></span><?php endif; ?></div></td>
-                    <td class="cff-column-frontend" data-label="<?php echo esc_attr__('Frontend', 'cff'); ?>"><?php cff_render_frontend_badge($hidden); ?></td>
-                    <td class="cff-column-actions" data-label="<?php echo esc_attr__('Actions', 'cff'); ?>"><div class="cff-table-actions"><?php if (!empty($def['hide_frontend']) || !empty($def['public'])) cff_render_icon_link(add_query_arg($term_args, admin_url('edit-tags.php')), 'dashicons-category', sprintf(__('Manage %s terms', 'cff'), $label)); cff_render_definition_actions('taxonomy', $key, $label); ?></div></td>
-                </tr>
-            <?php endforeach; ?>
-            </tbody></table></div>
-            <p class="cff-no-results" data-cff-no-results hidden><?php echo esc_html__('No taxonomies match your search. Try another name or clear the filter.', 'cff'); ?></p>
-        <?php endif; ?>
+        <?php cff_render_management_table('taxonomy', $defs); ?>
     </section>
 
     <details class="cff-editor-disclosure" id="cff-definition-editor" <?php echo $editing || !$defs ? 'open' : ''; ?>>

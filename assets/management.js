@@ -6,33 +6,6 @@
     var root = document.querySelector('.cff-admin');
     if (!root) return;
 
-    root.querySelectorAll('[data-cff-collection]').forEach(function (collection) {
-      var tools = collection.querySelector('.cff-list-tools');
-      if (!tools) return;
-      var search = tools.querySelector('[data-cff-search]');
-      var filter = tools.querySelector('[data-cff-filter]');
-      var count = tools.querySelector('[data-cff-count]');
-      var rows = Array.from(collection.querySelectorAll('[data-cff-row]'));
-      var empty = collection.querySelector('[data-cff-no-results]');
-      function update() {
-        var query = search.value.trim().toLocaleLowerCase();
-        var visible = 0;
-        rows.forEach(function (row) {
-          var matches = (!query || row.dataset.search.toLocaleLowerCase().indexOf(query) !== -1) &&
-            (!filter.value || row.dataset.visibility === filter.value);
-          row.hidden = !matches;
-          if (matches) visible++;
-        });
-        count.textContent = count.dataset.template.replace('%1$d', visible).replace('%2$d', rows.length);
-        if (empty) empty.hidden = visible !== 0;
-      }
-      tools.hidden = false;
-      search.addEventListener('input', update);
-      search.addEventListener('search', update);
-      filter.addEventListener('change', update);
-      update();
-    });
-
     var editor = root.querySelector('#cff-definition-editor');
     function openEditor(focus) {
       if (!editor) return;

@@ -1,6 +1,12 @@
 <?php
 /** Standalone regressions for frontend visibility and retained admin workflows. */
-define('ABSPATH', __DIR__);
+$wp_root = getenv('WP_ADMIN_TEST_ROOT');
+if (!$wp_root || !is_file($wp_root . '/wp-admin/includes/class-wp-list-table.php')) {
+  fwrite(STDERR, "Set WP_ADMIN_TEST_ROOT to WordPress source for native list table rendering.\n");
+  exit(1);
+}
+define('ABSPATH', rtrim($wp_root, '/') . '/');
+require_once __DIR__ . '/fixtures/native-list-table.php';
 require_once __DIR__ . '/../includes/class-dynamic-content-manager.php';
 require_once __DIR__ . '/../includes/class-term-meta-manager.php';
 require_once __DIR__ . '/../includes/class-plugin.php';
@@ -46,13 +52,19 @@ function nocache_headers() { $GLOBALS['no_cache'] = true; }
 function remove_action($hook, $callback) { $GLOBALS['removed_hooks'][$hook][] = $callback; }
 function current_user_can($capability) { return true; }
 function check_admin_referer($action, $key) { return true; }
-function wp_nonce_field($action, $name, $referer = true, $echo = true) { return ''; }
+function wp_nonce_field($action, $name = '_wpnonce', $referer = true, $echo = true) { return ''; }
 function settings_errors($key) {}
 function add_settings_error($setting, $code, $message, $type) {}
 function cff_render_header_branding() {}
 function cff_render_page_hero($title, $description, $icon) {}
 function admin_url($path) { return 'https://example.test/wp-admin/' . $path; }
-function add_query_arg($args, $url) { return $url . '?' . http_build_query($args); }
+function add_query_arg($args, $value = null, $url = null) {
+  if (is_array($args)) { $url = $value; } else { $args = [$args => $value]; }
+  $parts = explode('?', $url ?: 'https://example.test/wp-admin/admin.php', 2);
+  parse_str($parts[1] ?? '', $query);
+  foreach ($args as $key => $val) { if ($val === false) unset($query[$key]); else $query[$key] = $val; }
+  return $parts[0] . ($query ? '?' . http_build_query($query) : '');
+}
 function get_post_types($args, $output) { return get_registered_objects('post_types', $args, $output); }
 function get_taxonomies($args, $output) { return get_registered_objects('taxonomies', $args, $output); }
 function get_registered_objects($kind, $args, $output) {
@@ -152,7 +164,7 @@ ob_start();
 $plugin->page_post_types();
 $html = ob_get_clean();
 check(strpos($html, 'name="cpt_hide_frontend" value="1" checked') !== false, 'CPT editor restores the saved checkbox');
-check(strpos($html, 'data-visibility="hidden"') !== false && strpos($html, 'Admin only') !== false, 'CPT list displays frontend visibility');
+check(strpos($html, 'cff-status--muted') !== false && strpos($html, 'Admin only') !== false, 'Native CPT list displays frontend visibility');
 $_GET = ['edit' => 'hidden_terms'];
 ob_start();
 $plugin->page_taxonomies();

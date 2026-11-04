@@ -18,6 +18,11 @@ jobs:
           php-version: ${{ matrix.php }}
           extensions: pdo_sqlite
           coverage: none
+      - name: Prepare WordPress source for native table tests
+        run: |
+          curl --fail --silent --show-error --location https://wordpress.org/wordpress-6.8.3.tar.gz --output "$RUNNER_TEMP/wordpress.tar.gz"
+          tar -xzf "$RUNNER_TEMP/wordpress.tar.gz" -C "$RUNNER_TEMP"
+          echo "WP_ADMIN_TEST_ROOT=$RUNNER_TEMP/wordpress" >> "$GITHUB_ENV"
       - run: composer validate --no-check-publish --no-interaction
       - run: composer lint
       - run: composer test:language-clone

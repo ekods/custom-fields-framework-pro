@@ -24,8 +24,8 @@
 }
 
 .cff-tab.active {
-    border-bottom: 3px solid #2271b1;
-    color: #2271b1
+    border-bottom: 3px solid var(--cff-primary);
+    color: var(--cff-primary)
 }
 
 .cff-tabpanel {
@@ -101,7 +101,7 @@
     border: 1px solid #dcdcde;
     border-radius: 8px;
     background: #fff;
-    color: #2271b1;
+    color: var(--cff-primary);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -128,7 +128,7 @@
     border: 1px solid #dcdcde;
     border-radius: 6px;
     background: #fff;
-    color: #2271b1;
+    color: var(--cff-primary);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -365,8 +365,8 @@
 .cff-reorder-placeholder {
     min-height: 44px;
     margin: 0;
-    border: 1px dashed #2563eb;
-    background: #eff6ff
+    border: 1px dashed var(--cff-primary);
+    background: var(--cff-surface-soft)
 }
 
 .cff-reorder-title {
@@ -747,7 +747,7 @@
 
 .cff-field-row.is-mapping-highlight,
 .cff-subfield.is-mapping-highlight {
-    border-color: #2271b1;
+    border-color: var(--cff-primary);
     box-shadow: 0 0 0 2px rgba(34, 113, 177, .18);
 }
 
@@ -775,9 +775,9 @@
 }
 
 .cff-lang-tab.active {
-    background: #2271b1;
+    background: var(--cff-primary);
     color: #fff;
-    border-color: #2271b1
+    border-color: var(--cff-primary)
 }
 
 .cff-lang-panel {
@@ -828,22 +828,22 @@
 
 
 /* Input styling on plugin admin pages (CPT page etc) */
-.wrap.cff-admin input[type=color],
-.wrap.cff-admin input[type=date],
-.wrap.cff-admin input[type=datetime-local],
-.wrap.cff-admin input[type=datetime],
-.wrap.cff-admin input[type=email],
-.wrap.cff-admin input[type=month],
-.wrap.cff-admin input[type=number],
-.wrap.cff-admin input[type=password],
-.wrap.cff-admin input[type=search],
-.wrap.cff-admin input[type=tel],
-.wrap.cff-admin input[type=text],
-.wrap.cff-admin input[type=time],
-.wrap.cff-admin input[type=url],
-.wrap.cff-admin input[type=week],
-.wrap.cff-admin select,
-.wrap.cff-admin textarea,
+.wrap.cff-admin input[type=color]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=date]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=datetime-local]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=datetime]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=email]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=month]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=number]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=password]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=search]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=tel]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=text]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=time]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=url]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=week]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin select:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin textarea:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
 .cff-cpt-form input[type=color],
 .cff-cpt-form input[type=date],
 .cff-cpt-form input[type=datetime-local],
@@ -882,11 +882,11 @@
 
 /* Better input sizing like ACF */
 .wrap.cff-admin .regular-text,
-.wrap.cff-admin input[type=text].regular-text,
-.wrap.cff-admin .form-table input[type=text],
-.wrap.cff-admin .form-table input[type=number],
-.wrap.cff-admin .form-table select,
-.wrap.cff-admin .form-table textarea {
+.wrap.cff-admin input[type=text].regular-text:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin .form-table input[type=text]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin .form-table input[type=number]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin .form-table select:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin .form-table textarea:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)) {
     width: 100%;
     max-width: 720px;
 }
@@ -1070,9 +1070,9 @@
 
 .cff-cpt-action:hover,
 .cff-cpt-action-link:hover {
-    border-color: #2271b1;
+    border-color: var(--cff-primary);
     background: #f0f6ff;
-    color: #2271b1;
+    color: var(--cff-primary);
 }
 
 .cff-cpt-action-destructive {
@@ -1142,10 +1142,10 @@
 }
 
 .cff-tabs .cff-input,
-.wrap.cff-admin input[type=text],
-.wrap.cff-admin input[type=number],
-.wrap.cff-admin select,
-.wrap.cff-admin textarea {
+.wrap.cff-admin input[type=text]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=number]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin select:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin textarea:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)) {
     padding: 8px 10px;
     line-height: 1.4;
     min-height: 36px;
@@ -1173,22 +1173,22 @@
 .cff-tabs input[type=week],
 .cff-tabs select,
 .cff-tabs textarea,
-.wrap.cff-admin input[type=color],
-.wrap.cff-admin input[type=date],
-.wrap.cff-admin input[type=datetime-local],
-.wrap.cff-admin input[type=datetime],
-.wrap.cff-admin input[type=email],
-.wrap.cff-admin input[type=month],
-.wrap.cff-admin input[type=number],
-.wrap.cff-admin input[type=password],
-.wrap.cff-admin input[type=search],
-.wrap.cff-admin input[type=tel],
-.wrap.cff-admin input[type=text],
-.wrap.cff-admin input[type=time],
-.wrap.cff-admin input[type=url],
-.wrap.cff-admin input[type=week],
-.wrap.cff-admin select,
-.wrap.cff-admin textarea,
+.wrap.cff-admin input[type=color]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=date]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=datetime-local]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=datetime]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=email]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=month]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=number]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=password]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=search]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=tel]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=text]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=time]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=url]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=week]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin select:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin textarea:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
 .cff-cpt-form input[type=text],
 .cff-cpt-form select,
 .cff-cpt-form textarea {
@@ -1267,22 +1267,22 @@ body.post-type-cff_group .cff-tabs input[type=url],
 body.post-type-cff_group .cff-tabs input[type=week],
 body.post-type-cff_group .cff-tabs select,
 body.post-type-cff_group .cff-tabs textarea,
-.wrap.cff-admin input[type=color],
-.wrap.cff-admin input[type=date],
-.wrap.cff-admin input[type=datetime-local],
-.wrap.cff-admin input[type=datetime],
-.wrap.cff-admin input[type=email],
-.wrap.cff-admin input[type=month],
-.wrap.cff-admin input[type=number],
-.wrap.cff-admin input[type=password],
-.wrap.cff-admin input[type=search],
-.wrap.cff-admin input[type=tel],
-.wrap.cff-admin input[type=text],
-.wrap.cff-admin input[type=time],
-.wrap.cff-admin input[type=url],
-.wrap.cff-admin input[type=week],
-.wrap.cff-admin select,
-.wrap.cff-admin textarea,
+.wrap.cff-admin input[type=color]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=date]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=datetime-local]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=datetime]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=email]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=month]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=number]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=password]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=search]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=tel]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=text]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=time]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=url]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=week]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin select:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin textarea:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
 .cff-cpt-form input[type=color],
 .cff-cpt-form input[type=date],
 .cff-cpt-form input[type=datetime-local],
@@ -1599,8 +1599,8 @@ body.post-type-cff_group .cff-tabs textarea,
 }
 
 .cff-group-dropzone-hover {
-    box-shadow: 0 0 0 2px #2271b1 inset;
-    background: #f0f6fc
+    box-shadow: 0 0 0 2px var(--cff-primary) inset;
+    background: var(--cff-surface-soft)
 }
 
 .cff-advanced {
@@ -1907,7 +1907,7 @@ body.post-type-cff_group .cff-tabs textarea,
 }
 
 .cff-switch input:checked+.cff-slider {
-    background: #2271b1
+    background: var(--cff-primary)
 }
 
 .cff-switch input:checked+.cff-slider:before {
@@ -2143,8 +2143,8 @@ body.post-type-cff_group .cff-tabs textarea,
 }
 
 .cff-icon-btn:hover {
-    border-color: #2271b1;
-    box-shadow: 0 0 0 1px #2271b1
+    border-color: var(--cff-primary);
+    box-shadow: 0 0 0 1px var(--cff-primary)
 }
 
 .cff-icon-name {
@@ -2161,24 +2161,24 @@ body.post-type-cff_group .cff-tabs textarea,
 
 
 /* Global input styling (ACF-like) */
-.wrap.cff-admin input[type=color],
-.wrap.cff-admin input[type=date],
-.wrap.cff-admin input[type=datetime-local],
-.wrap.cff-admin input[type=datetime],
-.wrap.cff-admin input[type=email],
-.wrap.cff-admin input[type=month],
-.wrap.cff-admin input[type=number],
-.wrap.cff-admin input[type=password],
-.wrap.cff-admin input[type=search],
-.wrap.cff-admin input[type=tel],
-.wrap.cff-admin input[type=text],
-.wrap.cff-admin input[type=time],
-.wrap.cff-admin input[type=url],
-.wrap.cff-admin input[type=week],
-.wrap.cff-admin select,
-.wrap.cff-admin textarea,
+.wrap.cff-admin input[type=color]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=date]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=datetime-local]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=datetime]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=email]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=month]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=number]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=password]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=search]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=tel]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=text]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=time]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=url]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=week]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin select:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin textarea:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
 .wrap.cff-admin .regular-text,
-.wrap.cff-admin .cff-input {
+.wrap.cff-admin .cff-input:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)) {
     box-shadow: 0 0 0 transparent;
     border-radius: 4px;
     border: 1px solid #8c8f94;
@@ -2189,16 +2189,16 @@ body.post-type-cff_group .cff-tabs textarea,
     min-height: 30px;
 }
 
-.wrap.cff-admin select {
+.wrap.cff-admin select:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)) {
     padding-right: 28px
 }
 
-.wrap.cff-admin select[multiple] {
+.wrap.cff-admin select[multiple]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)) {
     min-height: 120px;
     padding: 6px 8px
 }
 
-.wrap.cff-admin .cff-tools-field select.regular-text {
+.wrap.cff-admin .cff-tools-field select.regular-text:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)) {
     width: 100%;
     max-width: 420px;
 }
@@ -2336,8 +2336,8 @@ body.post-type-cff_group .cff-tabs textarea,
 .post-type-cff_group .cff-input+.select2-container--default.select2-container--focus .select2-selection--multiple,
 .post-type-cff_group .cff-input+.select2-container--default.select2-container--open .select2-selection--single,
 .post-type-cff_group .cff-input+.select2-container--default.select2-container--open .select2-selection--multiple {
-    border-color: #2271b1;
-    box-shadow: 0 0 0 1px #2271b1;
+    border-color: var(--cff-primary);
+    box-shadow: 0 0 0 1px var(--cff-primary);
     outline: 2px solid transparent;
 }
 
@@ -2356,7 +2356,7 @@ body.post-type-cff_group .cff-tabs textarea,
 
 .cff-admin .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable,
 .post-type-cff_group .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
-    background: #2271b1;
+    background: var(--cff-primary);
 }
 
 
@@ -2378,7 +2378,7 @@ body.post-type-cff_group .cff-tabs textarea,
 }
 
 .cff-btn-group button.active {
-    background: #2271b1;
+    background: var(--cff-primary);
     color: #fff
 }
 
@@ -2435,8 +2435,8 @@ body.post-type-cff_group .cff-tabs textarea,
 }
 
 .cff-btn-group button.active {
-    background: #f0f6fc;
-    color: #135e96;
+    background: var(--cff-surface-soft);
+    color: var(--cff-primary-strong);
 }
 
 .cff-pres-right {
@@ -2510,8 +2510,8 @@ body.post-type-cff_group .cff-tabs textarea,
 }
 
 .cff-btn-group button.active {
-    background: #f0f6fc;
-    color: #135e96
+    background: var(--cff-surface-soft);
+    color: var(--cff-primary-strong)
 }
 
 .cff-check {
@@ -2570,7 +2570,7 @@ body.post-type-cff_group .cff-tabs textarea,
     --tk-text: #1f2937;
     --tk-muted: #6b7280;
     --tk-bg-soft: #f8fafc;
-    --tk-primary: #1d4ed8;
+    --tk-primary: var(--cff-primary-strong);
     --tk-success-bg: #e6f4ea;
     --tk-success-text: #0b6b2f;
     --tk-warn-bg: #fff4e5;
@@ -2596,7 +2596,7 @@ body.post-type-cff_group .cff-tabs textarea,
     right: -50px;
     width: 200px;
     height: 200px;
-    background: rgba(59, 130, 246, 0.1);
+    background: rgba(8, 127, 117, 0.1);
     border-radius: 100px;
     filter: blur(40px);
 }
@@ -2715,29 +2715,29 @@ body.post-type-cff_group .cff-tabs textarea,
     font-weight: 500;
 }
 
-.tk-card input.regular-text,
-.tk-card input[type="text"],
-.tk-card input[type="email"],
-.tk-card input[type="url"],
-.tk-card input[type="number"],
-.tk-card input[type="password"],
-.tk-card textarea,
-.tk-card select {
+.tk-card input.regular-text:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.tk-card input[type="text"]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.tk-card input[type="email"]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.tk-card input[type="url"]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.tk-card input[type="number"]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.tk-card input[type="password"]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.tk-card textarea:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.tk-card select:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)) {
     width: 100%;
     max-width: 620px;
 }
 
-.tk-card input.small-text {
+.tk-card input.small-text:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)) {
     width: 120px;
 }
 
-.tk-card textarea {
+.tk-card textarea:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)) {
     min-height: 84px;
 }
 
-.tk-card .button,
-.tk-card .button-primary,
-.tk-card .button-secondary {
+.tk-card .button:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.tk-card .button-primary:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.tk-card .button-secondary:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)) {
     margin-right: 6px;
 }
 
@@ -3014,7 +3014,7 @@ body.post-type-cff_group .cff-tabs textarea,
 
 .tk-progress-bar {
     height: 100%;
-    background: linear-gradient(90deg, #1d4ed8, #60a5fa);
+    background: linear-gradient(90deg, var(--cff-primary-strong), #60a5fa);
     transition: width .2s ease;
 }
 
@@ -3078,14 +3078,14 @@ body.post-type-cff_group .cff-tabs textarea,
         padding: 8px;
     }
 
-    .tk-card input.regular-text,
-    .tk-card input[type="text"],
-    .tk-card input[type="email"],
-    .tk-card input[type="url"],
-    .tk-card input[type="number"],
-    .tk-card input[type="password"],
-    .tk-card textarea,
-    .tk-card select {
+    .tk-card input.regular-text:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+    .tk-card input[type="text"]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+    .tk-card input[type="email"]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+    .tk-card input[type="url"]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+    .tk-card input[type="number"]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+    .tk-card input[type="password"]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+    .tk-card textarea:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+    .tk-card select:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)) {
         max-width: 100%;
     }
 }
@@ -3425,7 +3425,7 @@ body.post-type-cff_group .cff-tabs textarea,
 }
 
 .tk-dashboard-widget .button-primary:hover {
-    background: #1e40af !important;
+    background: var(--cff-primary-strong) !important;
     transform: translateY(-1px);
 }
 
@@ -3438,7 +3438,7 @@ body.post-type-cff_group .cff-tabs textarea,
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
 }
 
-.tk-wrap .button {
+.tk-wrap .button:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)) {
     border-radius: 8px;
     font-weight: 500;
 }
@@ -3600,9 +3600,9 @@ input:checked+.tk-slider:before {
 }
 
 .cff-meta-badge.name {
-    background: #eff6ff;
-    color: #1d4ed8;
-    border: 1px solid #dbeafe;
+    background: var(--cff-surface-soft);
+    color: var(--cff-primary-strong);
+    border: 1px solid #def4ed;
 }
 
 
@@ -3698,7 +3698,7 @@ input:checked+.tk-slider:before {
 
 .cff-btn-group button.active {
     background: #fff;
-    color: #1d4ed8;
+    color: var(--cff-primary-strong);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
@@ -3831,7 +3831,7 @@ input:checked+.tk-slider:before {
 
 .cff-choice-button input:checked+span {
     background: #fff;
-    color: #1d4ed8;
+    color: var(--cff-primary-strong);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
@@ -3853,7 +3853,7 @@ input:checked+.tk-slider:before {
 
 .cff-rep-row:hover {
     border-color: #cbd5e1;
-    border-left-color: #3b82f6;
+    border-left-color: var(--cff-primary);
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 
@@ -3922,7 +3922,7 @@ input:checked+.tk-slider:before {
 }
 
 .cff-rep-actions button:hover {
-    color: #1d4ed8;
+    color: var(--cff-primary-strong);
 }
 
 .cff-rep-row-body {
@@ -3951,7 +3951,7 @@ input:checked+.tk-slider:before {
 }
 
 .cff-rep-toggle:hover {
-    color: #3b82f6;
+    color: var(--cff-primary);
     background: transparent;
 }
 
@@ -3971,18 +3971,18 @@ input:checked+.tk-slider:before {
     font-weight: 500;
     padding: 6px 18px;
     height: auto;
-    background: #3b82f6;
-    border-color: #3b82f6;
-    box-shadow: 0 1px 2px rgba(59, 130, 246, 0.2);
+    background: var(--cff-primary);
+    border-color: var(--cff-primary);
+    box-shadow: 0 1px 2px rgba(8, 127, 117, 0.2);
     transition: all 0.2s;
     color: #fff;
     font-size: 13px;
 }
 
 .cff-rep-add:hover {
-    background: #2563eb;
-    border-color: #2563eb;
-    box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+    background: var(--cff-primary);
+    border-color: var(--cff-primary);
+    box-shadow: 0 4px 6px -1px rgba(8, 127, 117, 0.2);
     transform: translateY(-1px);
     color: #fff;
 }
@@ -4014,12 +4014,12 @@ input:checked+.tk-slider:before {
 }
 
 .cff-rep-clone {
-    color: #3b82f6;
+    color: var(--cff-primary);
 }
 
 .cff-rep-clone:hover {
     background: transparent;
-    color: #2563eb;
+    color: var(--cff-primary);
 }
 
 .cff-rep-remove .dashicons,
@@ -4068,9 +4068,9 @@ input:checked+.tk-slider:before {
 }
 
 .cff-flex-head .cff-pill {
-    background: #eff6ff;
-    color: #1d4ed8;
-    border: 1px solid #dbeafe;
+    background: var(--cff-surface-soft);
+    color: var(--cff-primary-strong);
+    border: 1px solid #def4ed;
     padding: 2px 8px;
     border-radius: 6px;
     font-size: 10px;
@@ -4145,7 +4145,7 @@ input:checked+.tk-slider:before {
 
 .cff-link-mode label:has(input:checked) {
     background: #fff;
-    color: #1d4ed8;
+    color: var(--cff-primary-strong);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
@@ -4301,7 +4301,7 @@ input:checked+.tk-slider:before {
 }
 
 .cff-reorder-handle:focus-visible {
-    outline: 2px solid #2271b1;
+    outline: 2px solid var(--cff-primary);
     outline-offset: 2px;
 }
 
@@ -4372,31 +4372,31 @@ input:checked+.tk-slider:before {
     border-radius: 14px !important;
     font-weight: 700 !important;
     font-size: 14px !important;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    box-shadow: 0 4px 12px rgba(8, 127, 117, 0.2);
 }
 
 .cff-floating-save .button:hover {
     transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.3);
+    box-shadow: 0 6px 16px rgba(8, 127, 117, 0.3);
 }
 
 /* Premium admin polish */
 :root {
     --cff-surface: #ffffff;
-    --cff-surface-soft: #f7f8fb;
-    --cff-surface-muted: #f1f4f8;
-    --cff-border: #d8dee8;
-    --cff-border-soft: #e8edf4;
-    --cff-text: #172033;
-    --cff-muted: #637083;
-    --cff-primary: #135e96;
-    --cff-primary-strong: #0b4f83;
-    --cff-accent: #b7791f;
+    --cff-surface-soft: #f3f8f6;
+    --cff-surface-muted: #eaf3ef;
+    --cff-border: #d4e3e0;
+    --cff-border-soft: #e9f0ee;
+    --cff-text: #183b3a;
+    --cff-muted: #526d6b;
+    --cff-primary: #087f75;
+    --cff-primary-strong: #06665e;
+    --cff-accent: #9b650d;
     --cff-success: #0f7b4f;
     --cff-danger: #b42318;
     --cff-shadow-sm: 0 1px 2px rgba(15, 23, 42, .05);
     --cff-shadow-md: 0 8px 24px rgba(15, 23, 42, .08);
-    --cff-radius: 8px;
+    --cff-radius: 14px;
 }
 
 .wrap.cff-admin,
@@ -4499,7 +4499,7 @@ input:checked+.tk-slider:before {
     border: 1px solid var(--cff-border);
     border-radius: var(--cff-radius);
     background:
-        linear-gradient(90deg, rgba(19, 94, 150, .08), transparent 42%),
+        linear-gradient(110deg, #edf9f3, transparent 72%),
         var(--cff-surface);
     color: var(--cff-text);
     box-shadow: var(--cff-shadow-sm);
@@ -4530,7 +4530,7 @@ input:checked+.tk-slider:before {
 .tk-hero-icon {
     width: 48px;
     height: 48px;
-    border: 1px solid rgba(19, 94, 150, .18);
+    border: 1px solid rgba(8, 127, 117, .18);
     border-radius: var(--cff-radius);
     background: #eef6fc;
     color: var(--cff-primary);
@@ -4611,25 +4611,25 @@ input:checked+.tk-slider:before {
     box-shadow: var(--cff-shadow-sm);
 }
 
-.wrap.cff-admin .button,
-body.post-type-cff_group .button {
+.wrap.cff-admin .button:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+body.post-type-cff_group .button:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)) {
     border-radius: 6px;
 }
 
-.wrap.cff-admin .button-primary,
-body.post-type-cff_group .button-primary,
+.wrap.cff-admin .button-primary:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+body.post-type-cff_group .button-primary:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
 .cff-floating-save .button {
     border-color: var(--cff-primary-strong) !important;
     background: var(--cff-primary) !important;
     color: #fff !important;
-    box-shadow: 0 1px 0 rgba(255, 255, 255, .2) inset, 0 6px 14px rgba(19, 94, 150, .18);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, .2) inset, 0 6px 14px rgba(8, 127, 117, .18);
 }
 
-.wrap.cff-admin .button-primary:hover,
-body.post-type-cff_group .button-primary:hover,
+.wrap.cff-admin .button-primary:hover:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+body.post-type-cff_group .button-primary:hover:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
 .cff-floating-save .button:hover {
     background: var(--cff-primary-strong) !important;
-    box-shadow: 0 8px 18px rgba(19, 94, 150, .24);
+    box-shadow: 0 8px 18px rgba(8, 127, 117, .24);
 }
 
 body.post-type-cff_group .cff-tabs input[type=color],
@@ -4648,22 +4648,22 @@ body.post-type-cff_group .cff-tabs input[type=url],
 body.post-type-cff_group .cff-tabs input[type=week],
 body.post-type-cff_group .cff-tabs select,
 body.post-type-cff_group .cff-tabs textarea,
-.wrap.cff-admin input[type=color],
-.wrap.cff-admin input[type=date],
-.wrap.cff-admin input[type=datetime-local],
-.wrap.cff-admin input[type=datetime],
-.wrap.cff-admin input[type=email],
-.wrap.cff-admin input[type=month],
-.wrap.cff-admin input[type=number],
-.wrap.cff-admin input[type=password],
-.wrap.cff-admin input[type=search],
-.wrap.cff-admin input[type=tel],
-.wrap.cff-admin input[type=text],
-.wrap.cff-admin input[type=time],
-.wrap.cff-admin input[type=url],
-.wrap.cff-admin input[type=week],
-.wrap.cff-admin select,
-.wrap.cff-admin textarea,
+.wrap.cff-admin input[type=color]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=date]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=datetime-local]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=datetime]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=email]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=month]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=number]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=password]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=search]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=tel]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=text]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=time]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=url]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin input[type=week]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin select:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin textarea:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
 .cff-tabs .cff-input {
     min-height: 36px;
     border-color: #cfd7e3;
@@ -4676,11 +4676,11 @@ body.post-type-cff_group .cff-tabs textarea,
 body.post-type-cff_group .cff-tabs input:focus,
 body.post-type-cff_group .cff-tabs select:focus,
 body.post-type-cff_group .cff-tabs textarea:focus,
-.wrap.cff-admin input:focus,
-.wrap.cff-admin select:focus,
-.wrap.cff-admin textarea:focus {
+.wrap.cff-admin input:focus:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin select:focus:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+.wrap.cff-admin textarea:focus:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)) {
     border-color: var(--cff-primary);
-    box-shadow: 0 0 0 2px rgba(19, 94, 150, .14);
+    box-shadow: 0 0 0 2px rgba(8, 127, 117, .14);
     outline: none;
 }
 
@@ -4818,4 +4818,49 @@ body.post-type-cff_group .cff-tabs textarea:focus,
     .tk-hero-main {
         align-items: flex-start;
     }
+}
+
+/* Friendly accent surfaces without altering WordPress list table styles. */
+.cff-admin .tk-hero-icon { background: #def4ed; color: var(--cff-primary); border-radius: 12px; }
+.cff-admin .tk-header-version { color: var(--cff-primary-strong); background: #e5f5ee; }
+.cff-admin .button-primary { background: var(--cff-primary); border-color: var(--cff-primary); }
+.cff-admin .button-primary:hover { background: var(--cff-primary-strong); border-color: var(--cff-primary-strong); }
+.cff-field-row { border-color: var(--cff-border); }
+.cff-field-row:focus-within { border-color: var(--cff-primary); }
+.cff-tab.active { color: var(--cff-primary); border-bottom-color: var(--cff-primary); }
+
+/* Field builder polish; native WordPress lists keep their core appearance. */
+:is(#cff-fields-builder, .cff-metabox, .cff-confirm-dialog, .cff-content-import) {
+    --wp-admin-theme-color: var(--cff-primary);
+    --wp-admin-theme-color--rgb: 8, 127, 117;
+    --wp-admin-theme-color-darker-10: var(--cff-primary-strong);
+    --wp-admin-theme-color-darker-20: #054f49;
+}
+.cff-field-row, .cff-subfield, .cff-layout { box-shadow: none; }
+.cff-field-row:focus-within, .cff-subfield:focus-within { border-color: var(--cff-primary); }
+.cff-field-row .cff-actions .button, .cff-subfield .cff-actions .button { color: var(--cff-primary); border-color: var(--cff-border); background: #fff; box-shadow: none; }
+.cff-field-row .cff-actions :is(.cff-remove, .cff-remove-sub), .cff-remove-layout { color: var(--cff-danger); }
+.cff-field-row .cff-actions .button:hover, .cff-subfield .cff-actions .button:hover { background: var(--cff-surface-soft); border-color: var(--cff-primary); }
+.cff-row-rules { min-width: 0; background: var(--cff-surface-soft); }
+.cff-row-rules .cff-tools-toggles strong { text-transform: none; letter-spacing: 0; color: var(--cff-text); }
+.cff-field-options { min-width: 0; border-top: 1px solid var(--cff-border); padding-top: 8px; }
+.cff-field-options > summary { cursor: pointer; color: var(--cff-primary-strong); font-size: 12px; font-weight: 600; line-height: 1.6; }
+.cff-field-options > summary:focus-visible { outline: 2px solid var(--cff-primary); outline-offset: 3px; border-radius: 3px; }
+.cff-field-options-status { display: block; margin-inline-start: 15px; font-size: 11px; color: var(--cff-muted); font-weight: 400; }
+.cff-field-options-body { display: grid; gap: 12px; padding-top: 14px; }
+.cff-field-options-body .cff-row-hide { margin: 0; }
+.cff-row-repeater-advanced { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.cff-row-repeater-col, .cff-field-structure, .cff-subfield-structure { min-width: 0; }
+:is(.cff-field-row, .cff-subfield) .cff-input { min-width: 0; max-width: 100%; box-sizing: border-box; }
+@media (max-width: 480px) {
+    .cff-row-repeater-advanced { grid-template-columns: minmax(0, 1fr); }
+    .cff-field-view-controls { flex-wrap: wrap; }
+    .cff-field-view-controls select { min-width: 0; max-width: 100%; }
+}
+.cff-confirm-dialog { border-radius: 14px; }
+.cff-confirm-accept.button-primary { background: var(--cff-primary); border-color: var(--cff-primary); color: #fff; }
+.cff-confirm-accept.is-destructive.button-primary { background: var(--cff-danger); border-color: var(--cff-danger); }
+.cff-confirm-accept.is-destructive.button-primary:hover { background: #912018; border-color: #912018; }
+@media (prefers-reduced-motion: reduce) {
+    :is(.cff-field-row, .cff-subfield, .cff-layout, .cff-floating-save) { transition: none; }
 }

@@ -2,6 +2,11 @@
   box-sizing: border-box;
 }
 
+/* Content fields share the builder's quieter surfaces and semantic actions. */
+.cff-metabox .cff-field { box-shadow: none; border-color: var(--cff-border); }
+.cff-metabox .cff-field:hover { box-shadow: none; border-color: #a5cec2; }
+.cff-metabox .cff-label { background: linear-gradient(110deg, #edf8f2, #fff); border-color: var(--cff-border); }
+
 .cff-field {
   display: flex;
   flex-direction: column;
@@ -33,7 +38,7 @@
 }
 
 .cff-label {
-  background: linear-gradient(135deg, #f4f7fb, #eef4ff);
+  background: linear-gradient(135deg, #f4f7fb, var(--cff-surface-soft));
   padding: 14px 16px;
   display: flex;
   flex-wrap: wrap;
@@ -83,8 +88,8 @@
   min-height: 22px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #eef4ff;
-  color: #315b8f;
+  background: var(--cff-surface-soft);
+  color: var(--cff-primary-strong);
   font-size: 11px;
   font-weight: 700;
   line-height: 1.2;
@@ -152,7 +157,7 @@
 }
 
 .cff-section-hide-switch input:focus-visible + .cff-slider {
-  outline: 2px solid var(--cff-editor-primary, #135e96);
+  outline: 2px solid var(--cff-editor-primary, var(--cff-primary-strong));
   outline-offset: 3px;
 }
 
@@ -209,9 +214,9 @@
 
 .cff-copy-field-action:hover,
 .cff-copy-field-action:focus {
-  border-color: #2271b1;
-  color: #135e96;
-  box-shadow: 0 0 0 1px #2271b1;
+  border-color: var(--cff-primary);
+  color: var(--cff-primary-strong);
+  box-shadow: 0 0 0 1px var(--cff-primary);
 }
 
 .cff-copy-field-action .dashicons {
@@ -600,7 +605,7 @@
   align-items: center;
   gap: 12px;
   box-shadow: 0 6px 16px rgba(15, 23, 42, .08);
-  background: linear-gradient(135deg, #f4f7fb, #eef4ff);
+  background: linear-gradient(135deg, #f4f7fb, var(--cff-surface-soft));
 }
 
 .cff-field.cff-postbox .postbox-header .cff-hndle {
@@ -637,12 +642,12 @@
 }
 
 .cff-field.cff-postbox .cff-handlediv:hover {
-  border-color: #135e96;
-  background: #eef4ff;
+  border-color: var(--cff-primary-strong);
+  background: var(--cff-surface-soft);
 }
 
 .cff-field.cff-postbox .cff-handlediv:focus-visible {
-  outline: 2px solid #135e96;
+  outline: 2px solid var(--cff-primary-strong);
   outline-offset: 2px;
 }
 
@@ -680,7 +685,7 @@
   font-size: 12px;
   line-height: 1;
   font-weight: 700;
-  color: #2271b1;
+  color: var(--cff-primary);
   transition: color .2s ease;
 }
 
@@ -754,7 +759,7 @@
 
 .cff-rep-row:hover {
   border-color: #cbd5e1;
-  border-left-color: #3b82f6;
+  border-left-color: var(--cff-primary);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 
@@ -1134,7 +1139,7 @@
 }
 
 .cff-rep-toggle:hover {
-  color: #3b82f6;
+  color: var(--cff-primary);
   background: transparent;
 }
 
@@ -1175,7 +1180,7 @@
   border-radius: 8px;
   background: transparent;
   box-shadow: none;
-  color: #2271b1;
+  color: var(--cff-primary);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1184,7 +1189,7 @@
 }
 
 .cff-field .cff-rep-clone:hover {
-  color: #2271b1;
+  color: var(--cff-primary);
   background: transparent;
 }
 
@@ -1266,7 +1271,7 @@
 }
 
 .cff-choice-button input:checked+span {
-  background: #2271b1;
+  background: var(--cff-primary);
   color: #fff;
 }
 
@@ -1302,8 +1307,8 @@
 }
 
 .cff-choice-true-toggle input[type=checkbox]:checked {
-  background: #2271b1;
-  border-color: #2271b1;
+  background: var(--cff-primary);
+  border-color: var(--cff-primary);
 }
 
 .cff-choice-true-toggle input[type=checkbox]:checked::after {
@@ -1445,7 +1450,7 @@
 .cff-metabox-reorder-type {
   padding: 2px 8px;
   border-radius: 999px;
-  background: #eef4ff;
+  background: var(--cff-surface-soft);
   color: #38527c;
   font-size: 11px;
   font-weight: 700;
@@ -1626,7 +1631,7 @@
   --cff-editor-border: #d8dee8;
   --cff-editor-border-soft: #e8edf4;
   --cff-editor-text: #172033;
-  --cff-editor-primary: #135e96;
+  --cff-editor-primary: var(--cff-primary-strong);
   --cff-editor-warn: #b7791f;
   --cff-editor-shadow: 0 8px 22px rgba(15, 23, 42, .07);
   --cff-editor-radius: 8px;
@@ -1662,7 +1667,7 @@
 .cff-label,
 .cff-field.cff-postbox .postbox-header {
   background:
-    linear-gradient(90deg, rgba(19, 94, 150, .07), transparent 50%),
+    linear-gradient(90deg, rgba(8, 127, 117, .07), transparent 50%),
     var(--cff-editor-soft);
   border-color: var(--cff-editor-border);
 }
@@ -1724,7 +1729,7 @@
 .cff-field textarea:focus,
 .cff-field-view-controls select:focus {
   border-color: var(--cff-editor-primary) !important;
-  box-shadow: 0 0 0 2px rgba(19, 94, 150, .14) !important;
+  box-shadow: 0 0 0 2px rgba(8, 127, 117, .14) !important;
   outline: none;
 }
 
@@ -2335,7 +2340,7 @@
 .cff-field .select2-container--default.select2-container--focus .select2-selection--multiple,
 .cff-field .select2-container--default.select2-container--open .select2-selection {
   border-color: var(--cff-editor-primary);
-  box-shadow: 0 0 0 2px rgba(19, 94, 150, .14);
+  box-shadow: 0 0 0 2px rgba(8, 127, 117, .14);
 }
 
 /* Repeater + flexible rows */
@@ -2417,7 +2422,7 @@
 .cff-field .cff-rep-clone:focus-visible,
 .cff-field .cff-rep-remove:focus-visible,
 .cff-field .cff-flex-remove:focus-visible {
-  outline: 2px solid var(--cff-primary, #135e96);
+  outline: 2px solid var(--cff-primary, var(--cff-primary-strong));
   outline-offset: 2px;
   box-shadow: none;
 }

@@ -114,6 +114,7 @@
       $message.text(options.message || 'Are you sure you want to continue?');
       $cancel.text(options.cancelText || 'Cancel');
       $confirm.text(options.confirmText || 'Delete');
+      $confirm.toggleClass('is-destructive', options.destructive === true || (!options.hideCancel && !options.confirmText));
       $cancel.toggle(!options.hideCancel);
       $overlay.removeAttr('hidden');
       $confirm.trigger('focus');
@@ -4718,7 +4719,49 @@
     CFF.conditionalLogic.init();
     initCptAutoSlug();
     initGlobalSettingsOptimizations();
+    initFieldOptions();
   });
+
+  // Progressive disclosure preserves the original controls and their change handlers.
+  function initFieldOptions(){
+    function prepare(root){
+      $(root).find('.cff-row-rules').addBack('.cff-row-rules').each(function(){
+        var rules = this;
+        if (rules.querySelector('.cff-field-options')) return;
+        var panels = $(rules).children('.cff-row-conditional, .cff-row-hide');
+        if (!panels.length) return;
+        var details = document.createElement('details');
+        details.className = 'cff-field-options';
+        var summary = document.createElement('summary');
+        summary.appendChild(document.createTextNode('Advanced options'));
+        var status = document.createElement('span');
+        status.className = 'cff-field-options-status';
+        summary.appendChild(status);
+        var body = document.createElement('div');
+        body.className = 'cff-field-options-body';
+        panels.each(function(){ body.appendChild(this); });
+        details.appendChild(summary);
+        details.appendChild(body);
+        rules.appendChild(details);
+        function update(){
+          var labels = [];
+          if ($(body).find('.cff-conditional-enabled').prop('checked')) labels.push('Conditional logic on');
+          if ($(body).find('.cff-hide-toggle').prop('checked')) labels.push('Hidden');
+          status.textContent = labels.length ? labels.join(' · ') : 'Optional';
+        }
+        update();
+        details.open = !!$(body).find('input:checked').length;
+        $(body).on('change.cffFieldOptions', update);
+        // Opening a disclosure must not change Select2 selections or submitted values.
+      });
+    }
+    prepare(document);
+    $(document).on('cff:refresh.cffFieldOptions', function(event, target){ prepare(target || document); });
+    document.addEventListener('invalid', function(event){
+      var details = event.target.closest('.cff-field-options');
+      if (details) details.open = true;
+    }, true);
+  }
 
   /* -------------------------
    * Global Settings Optimizations

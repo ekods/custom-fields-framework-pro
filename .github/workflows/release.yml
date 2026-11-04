@@ -28,6 +28,11 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: bash scripts/check-release-metadata.sh "$RELEASE_TAG"
+      - name: Prepare WordPress source for native table tests
+        run: |
+          curl --fail --silent --show-error --location https://wordpress.org/wordpress-6.8.3.tar.gz --output "$RUNNER_TEMP/wordpress.tar.gz"
+          tar -xzf "$RUNNER_TEMP/wordpress.tar.gz" -C "$RUNNER_TEMP"
+          echo "WP_ADMIN_TEST_ROOT=$RUNNER_TEMP/wordpress" >> "$GITHUB_ENV"
       - name: Lint plugin PHP
         run: |
           composer validate --no-check-publish --no-interaction
