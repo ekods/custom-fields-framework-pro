@@ -1,0 +1,11 @@
+/* Custom Dashicons-compatible glyph; loaded wherever the CFF admin menu appears. */
+.dashicons-cff::before {
+    content: "";
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    background-color: currentColor;
+    -webkit-mask: url("icons/cff-dashicon.svg") center / 20px 20px no-repeat;
+    mask: url("icons/cff-dashicon.svg") center / 20px 20px no-repeat;
+}
+.tk-header-brand .dashicons-cff::before { padding: 0; }

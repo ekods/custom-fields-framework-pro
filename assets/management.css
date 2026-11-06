@@ -4,12 +4,12 @@
 .cff-help-link { flex: 0 0 auto; font-size: 13px; line-height: 20px; white-space: nowrap; text-decoration: none; }
 .cff-section-nav { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 24px; padding: 6px; border: 1px solid var(--cff-border); border-radius: 12px; background: #fff; }
 .cff-section-nav a { padding: 9px 13px; border-radius: 5px; color: var(--cff-muted); text-decoration: none; font-size: 13px; font-weight: 500; }
-.cff-section-nav a:hover { color: var(--cff-primary); background: #f3f6f5; }
-.cff-section-nav a[aria-current="page"] { background: #edf2f8; color: var(--cff-primary); font-weight: 650; }
+.cff-section-nav a:hover { color: var(--cff-primary); background: #f5f8fc; }
+.cff-section-nav a[aria-current="page"] { background: #eaf3ff; color: var(--cff-primary); font-weight: 600; }
 .cff-management { max-width: 1440px; }
 .cff-management *, .cff-management *::before, .cff-management *::after { box-sizing: border-box; }
 .cff-management .tk-hero { padding: 12px 0 24px; background: transparent; box-shadow: none; }
-.cff-management .tk-hero-title { font-size: 30px !important; }
+.cff-management .tk-hero-title { font-size: 23px !important; }
 .cff-management .tk-hero-action .button { min-height: 38px; padding: 2px 16px; line-height: 32px; white-space: nowrap; }
 .cff-management .tk-card { padding: 24px; box-shadow: none; }
 .cff-management .cff-editor-main > .tk-card, .cff-management .cff-editor-sidebar > .tk-card,
@@ -18,17 +18,18 @@
 .cff-management .button:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)) { min-height: 34px; padding: 1px 12px; line-height: 30px; white-space: nowrap; font-weight: 500; }
 .cff-management .button-primary { box-shadow: none; }
 .cff-management a:focus-visible, .cff-management summary:focus-visible { outline: 2px solid var(--cff-primary); outline-offset: 3px; }
+.cff-admin :is(a, button, input, select, textarea, summary) { scroll-margin-block: 64px; }
 .cff-card-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
-.cff-card-heading h2 { margin: 0 0 6px; font-size: 17px; line-height: 1.4; }
+.cff-card-heading h2 { margin: 0 0 6px; font-size: 1.3em; line-height: 1.4; }
 .cff-card-heading p, .cff-form-section > .description { margin: 0; color: var(--cff-muted); font-size: 13px; line-height: 1.6; }
 .cff-total { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; min-height: 28px; border-radius: 6px; background: #f0f4f8; color: var(--cff-muted); font-weight: 600; }
 .cff-collection-name { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
-.cff-collection-name strong { font-size: 14px; font-weight: 650; color: var(--cff-text); }
+.cff-collection-name strong { font-size: 14px; font-weight: 600; color: var(--cff-text); }
 .cff-collection-name a { text-decoration: none; }
 .cff-collection-name a:hover strong { color: var(--cff-primary); }
 .cff-management code { font-size: 11px; padding: 2px 5px; border-radius: 4px; background: #f0f3f7; color: #59677a; overflow-wrap: anywhere; }
-.cff-cell-note { display: block; margin-top: 7px; color: var(--cff-muted); font-size: 12px; }
-.cff-status { display: inline-flex; align-items: center; gap: 5px; width: max-content; max-width: 100%; padding: 4px 8px; border-radius: 5px; font-size: 12px; font-weight: 550; white-space: nowrap; }
+.cff-cell-note { display: block; margin-top: 7px; color: var(--cff-muted); font-size: 13px; }
+.cff-status { display: inline-flex; align-items: center; gap: 5px; width: max-content; max-width: 100%; padding: 4px 8px; border-radius: 5px; font-size: 13px; font-weight: 600; white-space: nowrap; }
 .cff-status .dashicons { font-size: 14px; width: 14px; height: 14px; }
 .cff-status--public { color: #186144; background: #edf7f1; }
 .cff-status--muted { color: #526174; background: #eef1f5; }
@@ -40,22 +41,22 @@
 .cff-technical summary { cursor: pointer; }
 .cff-technical > div { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 10px; }
 .cff-tag-list { display: flex; flex-wrap: wrap; gap: 5px; max-width: 250px; }
-.cff-content-tag { padding: 3px 7px; border: 1px solid var(--cff-border-soft); border-radius: 4px; font-size: 12px; color: var(--cff-muted); }
+.cff-content-tag { padding: 3px 7px; border: 1px solid var(--cff-border-soft); border-radius: 4px; font-size: 13px; color: var(--cff-muted); }
 .cff-empty-state { padding: 30px 16px; text-align: center; border: 1px dashed var(--cff-border); border-radius: 8px; }
 .cff-empty-state > .dashicons { font-size: 30px; width: 30px; height: 30px; color: var(--cff-primary); }
 .cff-empty-state h3 { margin: 15px 0 8px; }
 .cff-empty-state p { margin: 0 0 20px; color: var(--cff-muted); }
 .cff-editor-main, .cff-editor-sidebar { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
-.cff-form-section h3 { margin: 0 0 6px; font-size: 15px; line-height: 1.5; }
+.cff-form-section h3 { margin: 0 0 6px; font-size: 1.3em; line-height: 1.5; }
 .cff-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .cff-form-field { min-width: 0; margin-top: 20px; }
 .cff-form-field > label { display: block; margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--cff-text); }
 .cff-management .cff-form-field > input, .cff-management .cff-form-field > select { width: 100%; max-width: none; min-height: 40px; margin: 0; padding: 7px 10px; }
 .cff-management .cff-form-field > input[readonly] { background: #f5f7fa; color: var(--cff-muted); }
-.cff-form-field .description { margin: 7px 0 0; font-size: 12px; line-height: 1.6; }
+.cff-form-field .description { margin: 7px 0 0; font-size: 13px; line-height: 1.6; }
 .cff-form-field .select2-container { width: 100% !important; }
 .cff-management .required { color: #b32d2e; }
-.cff-key-preview { margin: 18px 0 0; font-size: 12px; color: var(--cff-muted); }
+.cff-key-preview { margin: 18px 0 0; font-size: 13px; color: var(--cff-muted); }
 .cff-check-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 18px; }
 .cff-check-grid label { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--cff-border-soft); border-radius: 6px; font-size: 13px; cursor: pointer; }
 .cff-management .cff-check-grid input, .cff-management .cff-setting-toggle > input { flex: 0 0 auto; margin: 2px 0 0; }
@@ -63,8 +64,8 @@
 .cff-management .cff-setting-toggle { display: flex; align-items: flex-start; gap: 10px; padding: 16px 0; margin-bottom: 0; border-bottom: 1px solid var(--cff-border-soft); cursor: pointer; font-weight: 400; }
 .cff-setting-toggle:last-child { border-bottom: 0; padding-bottom: 0; }
 .cff-setting-toggle strong { display: block; font-size: 13px; line-height: 1.5; }
-.cff-setting-toggle .description { display: block; margin-top: 4px; font-size: 12px; font-weight: 400; line-height: 1.6; }
-.cff-visibility-note { padding: 12px; border-radius: 6px; background: #e8f5ee; color: #23614e; font-size: 12px; line-height: 1.65; }
+.cff-setting-toggle .description { display: block; margin-top: 4px; font-size: 13px; font-weight: 400; line-height: 1.6; }
+.cff-visibility-note { padding: 12px; border-radius: 6px; background: #e8f5ee; color: #23614e; font-size: 13px; line-height: 1.65; }
 .cff-visibility-note.is-hidden { background: #f1f4f7; color: #526174; }
 [data-cff-public-settings].is-overridden { padding-left: 12px; border-left: 2px solid #d6dde6; }
 [data-cff-public-settings].is-overridden .description { color: #64748b; }
@@ -73,16 +74,16 @@
 .cff-advanced-body { padding: 0 24px 24px; border-top: 1px solid var(--cff-border-soft); }
 .cff-advanced-body .cff-lang-tabs { margin-top: 20px; box-shadow: none; }
 .cff-editor-footer > div { display: flex; gap: 8px; }
-.cff-save-status { font-size: 12px; color: var(--cff-muted); }
+.cff-save-status { font-size: 13px; color: var(--cff-muted); }
 .cff-save-status.is-dirty { color: #8c5700; }
 .cff-save-status.is-dirty::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 7px; border-radius: 50%; background: #b7780b; }
 .cff-overview-stats, .cff-next-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 0 0 24px; }
 .cff-management .cff-overview-stat { display: flex; align-items: center; gap: 14px; text-decoration: none; }
-.cff-stat-icon { display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 42px; border-radius: 8px; background: #edf2f8; color: var(--cff-primary); font-size: 22px; }
-.cff-stat-label { display: block; font-size: 12px; color: var(--cff-muted); }
-.cff-stat-value { display: block; margin-top: 4px; font-size: 25px; font-weight: 650; line-height: 1.2; color: var(--cff-text); }
+.cff-stat-icon { display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 42px; border-radius: 8px; background: #eaf3ff; color: var(--cff-primary); font-size: 22px; }
+.cff-stat-label { display: block; font-size: 13px; color: var(--cff-muted); }
+.cff-stat-value { display: block; margin-top: 4px; font-size: 23px; font-weight: 600; line-height: 1.2; color: var(--cff-text); }
 .cff-overview-stat > .dashicons:last-child { margin-left: auto; color: #8b98a9; }
-.cff-content-counts { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--cff-muted); }
+.cff-content-counts { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--cff-muted); }
 .cff-content-counts > span:first-child { color: var(--cff-text); }
 .cff-next-steps { margin: 24px 0; }
 .cff-next-steps > a { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; text-decoration: none; }
@@ -129,9 +130,9 @@
 /* Content workbench: navigation reads as sections, the inventory as one surface. */
 .cff-admin, body.post-type-cff_group {
     --wp-admin-theme-color: var(--cff-primary);
-    --wp-admin-theme-color--rgb: 49, 94, 140;
+    --wp-admin-theme-color--rgb: 34, 113, 177;
     --wp-admin-theme-color-darker-10: var(--cff-primary-strong);
-    --wp-admin-theme-color-darker-20: #234566;
+    --wp-admin-theme-color-darker-20: #043959;
     font-family: var(--cff-font);
 }
 .cff-admin :is(.tablenav, .search-box, .cff-list-filter, .wp-list-table) {
@@ -139,25 +140,25 @@
 }
 .cff-admin .tk-header-branding { padding: 8px 0 18px; margin-bottom: 0; border: 0; border-bottom: 1px solid var(--cff-border); border-radius: 0; background: transparent; }
 .cff-admin .tk-header-brand > .dashicons { display: grid; place-items: center; flex: 0 0 28px; width: 28px; height: 28px; border-radius: 6px; background: var(--cff-primary-soft); color: var(--cff-primary); font-size: 18px; }
-.cff-admin .tk-header-name { font-weight: 650; }
-.cff-admin .tk-header-version { padding: 0; border: 0; background: transparent; font-size: 12px; font-weight: 400; color: var(--cff-muted); }
+.cff-admin .tk-header-name { font-weight: 600; }
+.cff-admin .tk-header-version { padding: 0; border: 0; background: transparent; font-size: 13px; font-weight: 400; color: var(--cff-muted); }
 .cff-section-nav { gap: 0 22px; padding: 0; border: 0; border-bottom: 1px solid var(--cff-border); border-radius: 0; background: transparent; }
 .cff-section-nav a { display: inline-flex; align-items: center; min-height: 48px; padding: 12px 0 10px; border-radius: 0; border-bottom: 2px solid transparent; }
 .cff-section-nav a:hover { background: transparent; color: var(--cff-primary); }
 .cff-section-nav a[aria-current="page"] { border-bottom-color: var(--cff-primary); background: transparent; color: var(--cff-primary); box-shadow: none; font-weight: 600; }
 .cff-admin .tk-hero { padding: 12px 0 26px; border: 0; border-bottom: 1px solid var(--cff-border); border-radius: 0; background: transparent; box-shadow: none; }
 .cff-admin .tk-hero-icon { width: 40px; height: 40px; flex-basis: 40px; border: 1px solid var(--cff-border); border-radius: 6px; background: var(--cff-surface); color: var(--cff-primary); }
-.cff-admin .tk-hero-subtitle { font-size: 14px !important; max-width: 72ch !important; line-height: 1.65 !important; }
+.cff-admin .tk-hero-subtitle { font-size: 13px !important; max-width: 72ch !important; line-height: 1.65 !important; }
 .cff-admin .button:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)) { border-radius: 6px; box-shadow: none; }
-.cff-admin .button-primary:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)) { border-color: var(--cff-primary); background: var(--cff-primary); color: #fff; }
-.cff-admin .button-primary:hover:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)) { border-color: var(--cff-primary-strong); background: var(--cff-primary-strong); }
+.cff-admin .button-primary:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)) { border-color: var(--cff-action-border); background: var(--cff-action-bg); color: var(--cff-action-text); }
+.cff-admin .button-primary:hover:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)) { border-color: var(--cff-primary); background: var(--cff-action-hover); }
 .cff-management .tk-card { border-radius: 10px; box-shadow: none; }
-.cff-management .cff-overview-stats { gap: 0; border: 1px solid var(--cff-border); border-radius: 10px; background: var(--cff-surface); overflow: hidden; }
+.cff-management .cff-overview-stats { gap: 0; border: 1px solid var(--cff-border); border-radius: 10px; background: var(--cff-primary-soft); overflow: hidden; }
 .cff-management .cff-overview-stat { padding: 20px; border: 0; border-inline-start: 1px solid var(--cff-border); border-radius: 0; background: transparent; }
 .cff-management .cff-overview-stat:first-child { border-inline-start: 0; }
 .cff-management .cff-overview-stat:hover { background: var(--cff-surface-soft); }
 .cff-stat-icon { background: transparent; color: var(--cff-primary); border-radius: 0; }
-.cff-stat-value { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -.03em; }
+.cff-stat-value { font-size: 23px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: 0; }
 .cff-next-steps { gap: 0; border-top: 1px solid var(--cff-border); }
 .cff-management .cff-next-steps > .tk-card { padding: 22px 20px 12px; border: 0; border-inline-start: 1px solid var(--cff-border); border-radius: 0; background: transparent; }
 .cff-management .cff-next-steps > .tk-card:first-child { border-inline-start: 0; padding-inline-start: 0; }
@@ -171,7 +172,7 @@
 .cff-definition-screen #poststuff #post-body::after { display: none; }
 .cff-definition-screen #poststuff #post-body > .postbox-container { width: auto; min-width: 0; float: none; margin: 0; }
 .cff-definition-screen .cff-definition-box { width: 100%; min-width: 0; margin: 0; padding: 0; border: 1px solid var(--cff-border); border-radius: 4px; background: var(--cff-surface); box-shadow: none; }
-.cff-definition-screen .postbox-header { min-height: 46px; padding: 0; border-bottom: 1px solid var(--cff-border); }
+.cff-definition-screen .postbox-header { min-height: 46px; padding: 0; border-bottom: 1px solid var(--cff-border); background: var(--cff-primary-soft); }
 .cff-definition-screen #poststuff .postbox-header h2 { margin: 0; padding: 13px 18px; font-size: 14px; line-height: 1.5; font-weight: 600; }
 .cff-definition-screen #poststuff .inside { margin: 0; padding: 18px; }
 .cff-definition-screen .inside > :first-child { margin-top: 0; }
@@ -214,9 +215,13 @@
 }
 @media (max-width: 782px) {
     .cff-section-nav { gap: 20px; padding: 0; }
+    .cff-admin .button:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
+    .cff-admin :is(.tk-hero-action, .cff-editor-footer) .button { min-height: 44px; white-space: normal; overflow-wrap: anywhere; }
+    .cff-definition-screen .cff-form-field > :is(input, select),
+    .cff-definition-screen .cff-check-grid label { min-height: 44px; }
     .cff-section-nav a { padding: 12px 0 10px; }
     .cff-admin .tk-hero { padding: 8px 0 22px; }
-    .cff-management .tk-hero-title { font-size: 25px !important; }
+    .cff-management .tk-hero-title { font-size: 23px !important; }
     .cff-management .cff-overview-stat { border-inline-start: 0; border-top: 1px solid var(--cff-border); padding: 14px 18px; }
     .cff-management .cff-overview-stat:first-child { border-top: 0; }
     .cff-management .cff-next-steps > .tk-card { border-inline-start: 0; border-top: 1px solid var(--cff-border); padding: 18px 0; }

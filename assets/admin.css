@@ -55,9 +55,9 @@
     align-items: center;
     padding: 6px 12px;
     color: #646970;
-    font-size: 12px;
+    font-size: 13px;
     text-transform: uppercase;
-    letter-spacing: .02em
+    letter-spacing: 0
 }
 
 .cff-builder-head-row .cff-head {
@@ -153,7 +153,7 @@
 }
 
 .cff-field-row .cff-col label {
-    font-size: 12px;
+    font-size: 13px;
     color: #646970;
     display: block;
     margin-bottom: 6px
@@ -165,7 +165,7 @@
 }
 
 .cff-hint {
-    font-size: 11px;
+    font-size: 13px;
     color: #646970;
     margin-top: 4px
 }
@@ -239,7 +239,7 @@
 }
 
 .cff-small {
-    font-size: 12px;
+    font-size: 13px;
     color: #646970
 }
 
@@ -249,7 +249,7 @@
     border: 1px solid #ddd;
     border-radius: 999px;
     background: #fff;
-    font-size: 12px;
+    font-size: 13px;
     color: #444;
     margin-left: 8px
 }
@@ -388,7 +388,7 @@
 
 .cff-reorder-meta {
     color: #646970;
-    font-size: 12px
+    font-size: 13px
 }
 
 .cff-reorder-empty {
@@ -439,7 +439,7 @@
     background: #f4f4f8;
     padding: 4px 8px;
     border-radius: 4px;
-    font-size: 12px;
+    font-size: 13px;
     color: #40464f
 }
 
@@ -658,7 +658,7 @@
 .cff-field-mapping-context {
     display: block;
     margin-top: 2px;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 500;
     color: #646970
 }
@@ -688,7 +688,7 @@
 
 .cff-field-mapping-jump {
     padding: 0 !important;
-    font-size: 12px !important;
+    font-size: 13px !important;
     line-height: 1.4 !important;
     white-space: nowrap
 }
@@ -708,7 +708,7 @@
     border: 1px solid #d0d7e2;
     background: #f7f9fc;
     color: #344054;
-    font-size: 11px;
+    font-size: 13px;
     line-height: 1.4;
     font-weight: 600;
 }
@@ -739,7 +739,7 @@
 
 .cff-field-mapping-summary {
     margin-top: 4px;
-    font-size: 12px;
+    font-size: 13px;
     color: #667085
 }
 
@@ -904,7 +904,7 @@
 
 .cff-row-repeater-options .description {
     margin: 4px 0 0;
-    font-size: 12px;
+    font-size: 13px;
     color: #56606a;
 }
 
@@ -967,8 +967,8 @@
 }
 
 .cff-row-rules .cff-tools-toggles strong {
-    font-size: 12px;
-    letter-spacing: .02em;
+    font-size: 13px;
+    letter-spacing: 0;
     text-transform: uppercase;
     color: #364152;
 }
@@ -989,7 +989,7 @@
 }
 
 .cff-row-conditional .cff-conditional-config label {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     color: #4a5565;
 }
@@ -1493,13 +1493,13 @@ body.post-type-cff_group .cff-tabs textarea,
 }
 
 .cff-relational-archive-url {
-    font-size: 12px;
+    font-size: 13px;
     color: #7a869a;
     word-break: break-all;
 }
 
 .cff-relational-archive-empty {
-    font-size: 12px;
+    font-size: 13px;
     color: #7a869a;
 }
 
@@ -1536,7 +1536,7 @@ body.post-type-cff_group .cff-tabs textarea,
     display: block;
     font-weight: 600;
     color: #1d2327;
-    font-size: 12px;
+    font-size: 13px;
 }
 
 .cff-icon-button {
@@ -1645,7 +1645,7 @@ body.post-type-cff_group .cff-tabs textarea,
     grid-template-columns: 2fr 2fr 220px 120px;
     gap: 12px;
     padding: 0 12px 8px 40px;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     color: #50575e;
 }
@@ -2579,7 +2579,7 @@ body.post-type-cff_group .cff-tabs textarea,
     right: -50px;
     width: 200px;
     height: 200px;
-    background: rgba(49, 94, 140, 0.1);
+    background: rgba(34, 113, 177, 0.1);
     border-radius: 100px;
     filter: blur(40px);
 }
@@ -2603,13 +2603,13 @@ body.post-type-cff_group .cff-tabs textarea,
 .tk-hero-title {
     color: #fff !important;
     margin: 0 !important;
-    font-size: 36px !important;
-    font-weight: 800 !important;
+    font-size: 23px !important;
+    font-weight: 400 !important;
 }
 
 .tk-hero-subtitle {
     color: #94a3b8 !important;
-    font-size: 18px !important;
+    font-size: 13px !important;
     margin-top: 10px !important;
     max-width: 500px !important;
 }
@@ -2741,9 +2741,9 @@ body.post-type-cff_group .cff-tabs textarea,
     padding: 3px 9px;
     border-radius: 999px;
     background: #f0f0f1;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 600;
-    letter-spacing: .02em;
+    letter-spacing: 0;
 }
 
 .tk-badge.tk-on {
@@ -2821,10 +2821,10 @@ body.post-type-cff_group .cff-tabs textarea,
 }
 
 .tk-pairs-table th {
-    font-size: 11px;
+    font-size: 13px;
     text-transform: uppercase;
     color: var(--tk-muted);
-    letter-spacing: .08em;
+    letter-spacing: 0;
     text-align: left;
 }
 
@@ -2933,9 +2933,9 @@ body.post-type-cff_group .cff-tabs textarea,
 .tk-pairs-summary strong {
     display: block;
     margin-bottom: 10px;
-    font-size: 12px;
+    font-size: 13px;
     text-transform: uppercase;
-    letter-spacing: .08em;
+    letter-spacing: 0;
     color: var(--tk-primary);
 }
 
@@ -2952,9 +2952,9 @@ body.post-type-cff_group .cff-tabs textarea,
 .tk-pair-label {
     font-weight: 600;
     margin-right: 4px;
-    font-size: 11px;
+    font-size: 13px;
     text-transform: uppercase;
-    letter-spacing: .08em;
+    letter-spacing: 0;
     color: var(--tk-muted);
 }
 
@@ -3250,9 +3250,9 @@ body.post-type-cff_group .cff-tabs textarea,
 
 .tk-rt-card h4 {
     margin: 0 0 8px;
-    font-size: 11px;
+    font-size: 13px;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0;
     color: var(--tk-muted);
 }
 
@@ -3320,10 +3320,10 @@ body.post-type-cff_group .cff-tabs textarea,
 }
 
 .tk-score-label {
-    font-size: 10px;
+    font-size: 13px;
     color: var(--tk-muted);
     text-transform: uppercase;
-    letter-spacing: 0.1em;
+    letter-spacing: 0;
     margin-top: 4px;
 }
 
@@ -3360,7 +3360,7 @@ body.post-type-cff_group .cff-tabs textarea,
 
 .tk-control-info .description {
     margin: 0;
-    font-size: 12px;
+    font-size: 13px;
 }
 
 /* Dashboard Widget */
@@ -3454,7 +3454,7 @@ input:checked+.tk-slider:before {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 12px;
+    font-size: 13px;
     color: var(--tk-muted);
     background: #f8fafc;
     padding: 6px 12px;
@@ -3535,10 +3535,10 @@ input:checked+.tk-slider:before {
 }
 
 .cff-meta-badge {
-    font-size: 10px;
+    font-size: 13px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0;
     padding: 3px 8px;
     border-radius: 6px;
     display: inline-flex;
@@ -3556,7 +3556,7 @@ input:checked+.tk-slider:before {
 .cff-meta-badge.name {
     background: var(--cff-surface-soft);
     color: var(--cff-primary-strong);
-    border: 1px solid #edf2f8;
+    border: 1px solid #eaf3ff;
 }
 
 .cff-label {
@@ -3643,7 +3643,7 @@ input:checked+.tk-slider:before {
     cursor: pointer;
     padding: 8px 12px;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     color: #64748b;
     transition: all 0.2s;
@@ -3681,7 +3681,7 @@ input:checked+.tk-slider:before {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 700;
     cursor: help;
 }
@@ -3719,7 +3719,7 @@ input:checked+.tk-slider:before {
 }
 
 .cff-field .description {
-    font-size: 11px;
+    font-size: 13px;
     color: #94a3b8;
     margin-top: 6px;
 }
@@ -3748,7 +3748,7 @@ input:checked+.tk-slider:before {
 
 .cff-media-limit-label {
     margin-top: 10px;
-    font-size: 11px;
+    font-size: 13px;
     color: #64748b;
     font-weight: 500;
 }
@@ -3774,7 +3774,7 @@ input:checked+.tk-slider:before {
     display: inline-block;
     padding: 6px 14px;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     color: #64748b;
     transition: all 0.2s;
@@ -3924,7 +3924,7 @@ input:checked+.tk-slider:before {
     height: auto;
     background: var(--cff-primary);
     border-color: var(--cff-primary);
-    box-shadow: 0 1px 2px rgba(49, 94, 140, 0.2);
+    box-shadow: 0 1px 2px rgba(34, 113, 177, 0.2);
     transition: all 0.2s;
     color: #fff;
     font-size: 13px;
@@ -3933,7 +3933,7 @@ input:checked+.tk-slider:before {
 .cff-rep-add:hover {
     background: var(--cff-primary);
     border-color: var(--cff-primary);
-    box-shadow: 0 4px 6px -1px rgba(49, 94, 140, 0.2);
+    box-shadow: 0 4px 6px -1px rgba(34, 113, 177, 0.2);
     transform: translateY(-1px);
     color: #fff;
 }
@@ -4021,10 +4021,10 @@ input:checked+.tk-slider:before {
 .cff-flex-head .cff-pill {
     background: var(--cff-surface-soft);
     color: var(--cff-primary-strong);
-    border: 1px solid #edf2f8;
+    border: 1px solid #eaf3ff;
     padding: 2px 8px;
     border-radius: 6px;
-    font-size: 10px;
+    font-size: 13px;
     font-weight: 600;
     text-transform: uppercase;
 }
@@ -4032,7 +4032,7 @@ input:checked+.tk-slider:before {
 .cff-flex-remove {
     margin-left: auto;
     color: #94a3b8;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     transition: color 0.2s;
 }
@@ -4084,7 +4084,7 @@ input:checked+.tk-slider:before {
     cursor: pointer;
     padding: 6px 14px;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     color: #64748b;
     transition: all 0.2s;
@@ -4115,7 +4115,7 @@ input:checked+.tk-slider:before {
 
 .cff-link-row label {
     min-width: 80px;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     color: #475569;
 }
@@ -4263,7 +4263,7 @@ input:checked+.tk-slider:before {
 }
 
 .cff-reorder-meta {
-    font-size: 11px;
+    font-size: 13px;
     color: #94a3b8;
     background: #f1f5f9;
     padding: 2px 8px;
@@ -4323,34 +4323,41 @@ input:checked+.tk-slider:before {
     border-radius: 14px !important;
     font-weight: 700 !important;
     font-size: 14px !important;
-    box-shadow: 0 4px 12px rgba(49, 94, 140, 0.2);
+    box-shadow: 0 4px 12px rgba(34, 113, 177, 0.2);
 }
 
 .cff-floating-save .button:hover {
     transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(49, 94, 140, 0.3);
+    box-shadow: 0 6px 16px rgba(34, 113, 177, 0.3);
 }
 
 /* CFF workbench foundations: quiet surfaces, content hierarchy and blue actions. */
 :root {
     --cff-surface: #ffffff;
-    --cff-surface-soft: #f3f6f5;
-    --cff-surface-muted: #edf2f5;
-    --cff-border: #d4dfe2;
-    --cff-border-soft: #e7edee;
-    --cff-text: #203432;
-    --cff-muted: #536873;
-    --cff-primary: #315e8c;
-    --cff-primary-strong: #254c74;
-    --cff-accent: #14b8a6;
-    --cff-primary-soft: #edf2f8;
-    --cff-accent-soft: #e6faf6;
+    --cff-surface-soft: #f5f8fc;
+    --cff-surface-muted: #eef4fb;
+    --cff-border: #d6e2f0;
+    --cff-border-soft: #e8eff7;
+    --cff-text: #1d2327;
+    --cff-muted: #646970;
+    --cff-primary: #2271b1;
+    --cff-primary-strong: #135e96;
+    --cff-accent: #a8ccef;
+    --cff-primary-soft: #eaf3ff;
+    --cff-accent-soft: #eaf3ff;
+    --cff-action-bg: #dbeafe;
+    --cff-action-hover: #c8dff9;
+    --cff-action-border: #6482a0;
+    --cff-control-border: #8c8f94;
+    --cff-action-text: #1d4f7c;
+    --cff-control-size: 14px;
+    --cff-button-size: 13px;
     --cff-success: #0f7b4f;
     --cff-danger: #b42318;
     --cff-shadow-sm: none;
     --cff-shadow-md: 0 6px 24px rgba(32, 52, 50, .12);
     --cff-radius: 10px;
-    --cff-font: "Avenir Next", "Segoe UI", system-ui, sans-serif;
+    --cff-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
 }
 
 .wrap.cff-admin,
@@ -4414,7 +4421,7 @@ input:checked+.tk-slider:before {
     border-radius: 999px;
     background: var(--cff-surface-soft);
     color: var(--cff-muted);
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 700;
     line-height: 18px;
     white-space: nowrap;
@@ -4432,7 +4439,7 @@ input:checked+.tk-slider:before {
     border-radius: 999px;
     background: var(--cff-surface);
     color: var(--cff-muted);
-    font-size: 12px;
+    font-size: 13px;
     line-height: 1.3;
 }
 
@@ -4482,7 +4489,7 @@ input:checked+.tk-slider:before {
 .tk-hero-icon {
     width: 48px;
     height: 48px;
-    border: 1px solid rgba(49, 94, 140, .18);
+    border: 1px solid rgba(34, 113, 177, .18);
     border-radius: var(--cff-radius);
     background: #eef6fc;
     color: var(--cff-primary);
@@ -4501,16 +4508,16 @@ input:checked+.tk-slider:before {
 .tk-hero-title {
     margin: 0 !important;
     color: var(--cff-text) !important;
-    font-size: 30px !important;
-    line-height: 1.2 !important;
-    font-weight: 650 !important;
+    font-size: 23px !important;
+    line-height: 1.3 !important;
+    font-weight: 400 !important;
 }
 
 .tk-hero-subtitle {
     max-width: 680px !important;
     margin: 7px 0 0 !important;
     color: var(--cff-muted) !important;
-    font-size: 14px !important;
+    font-size: 13px !important;
     line-height: 1.55 !important;
 }
 
@@ -4571,16 +4578,17 @@ body.post-type-cff_group .button:not(:where(.tablenav *, .search-box *, .cff-lis
 .wrap.cff-admin .button-primary:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
 body.post-type-cff_group .button-primary:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
 .cff-floating-save .button {
-    border-color: var(--cff-primary-strong) !important;
-    background: var(--cff-primary) !important;
-    color: #fff !important;
+    border-color: var(--cff-action-border) !important;
+    background: var(--cff-action-bg) !important;
+    color: var(--cff-action-text) !important;
     box-shadow: none;
 }
 
 .wrap.cff-admin .button-primary:hover:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
 body.post-type-cff_group .button-primary:hover:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
 .cff-floating-save .button:hover {
-    background: var(--cff-primary-strong) !important;
+    background: var(--cff-action-hover) !important;
+    border-color: var(--cff-primary) !important;
     box-shadow: none;
 }
 
@@ -4618,7 +4626,7 @@ body.post-type-cff_group .cff-tabs textarea,
 .wrap.cff-admin textarea:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
 .cff-tabs .cff-input {
     min-height: 36px;
-    border-color: #cfd7e3;
+    border-color: var(--cff-control-border);
     border-radius: 6px;
     background-color: #fff;
     color: var(--cff-text);
@@ -4632,7 +4640,7 @@ body.post-type-cff_group .cff-tabs textarea:focus,
 .wrap.cff-admin select:focus:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
 .wrap.cff-admin textarea:focus:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)) {
     border-color: var(--cff-primary);
-    box-shadow: 0 0 0 2px rgba(49, 94, 140, .14);
+    box-shadow: 0 0 0 2px rgba(34, 113, 177, .14);
     outline: none;
 }
 
@@ -4770,7 +4778,7 @@ body.post-type-cff_group .cff-tabs textarea:focus,
 
 /* Friendly accent surfaces without altering WordPress list table styles. */
 .cff-admin .tk-hero-icon { background: var(--cff-primary-soft); color: var(--cff-primary); border-radius: 6px; }
-.cff-admin .tk-header-version { color: var(--cff-primary-strong); background: #edf2f8; }
+.cff-admin .tk-header-version { color: var(--cff-primary-strong); background: #eaf3ff; }
 .cff-admin .button-primary { background: var(--cff-primary); border-color: var(--cff-primary); }
 .cff-admin .button-primary:hover { background: var(--cff-primary-strong); border-color: var(--cff-primary-strong); }
 .cff-field-row { border-color: var(--cff-border); }
@@ -4780,9 +4788,9 @@ body.post-type-cff_group .cff-tabs textarea:focus,
 /* Field builder polish; native WordPress lists keep their core appearance. */
 :is(#cff-fields-builder, .cff-metabox, .cff-confirm-dialog, .cff-content-import) {
     --wp-admin-theme-color: var(--cff-primary);
-    --wp-admin-theme-color--rgb: 49, 94, 140;
+    --wp-admin-theme-color--rgb: 34, 113, 177;
     --wp-admin-theme-color-darker-10: var(--cff-primary-strong);
-    --wp-admin-theme-color-darker-20: #234566;
+    --wp-admin-theme-color-darker-20: #043959;
 }
 .cff-field-row, .cff-subfield, .cff-layout { box-shadow: none; }
 .cff-tabs, .cff-metabox, #cff-fields-builder, .cff-confirm-dialog { font-family: var(--cff-font); }
@@ -4809,9 +4817,9 @@ body.post-type-cff_group .cff-tabs textarea:focus,
 .cff-row-rules { min-width: 0; background: var(--cff-surface-soft); }
 .cff-row-rules .cff-tools-toggles strong { text-transform: none; letter-spacing: 0; color: var(--cff-text); }
 .cff-field-options { min-width: 0; border-top: 1px solid var(--cff-border); padding-top: 8px; }
-.cff-field-options > summary { cursor: pointer; color: var(--cff-primary-strong); font-size: 12px; font-weight: 600; line-height: 1.6; }
+.cff-field-options > summary { cursor: pointer; color: var(--cff-primary-strong); font-size: 13px; font-weight: 600; line-height: 1.6; }
 .cff-field-options > summary:focus-visible { outline: 2px solid var(--cff-primary); outline-offset: 3px; border-radius: 3px; }
-.cff-field-options-status { display: block; margin-inline-start: 15px; font-size: 11px; color: var(--cff-muted); font-weight: 400; }
+.cff-field-options-status { display: block; margin-inline-start: 15px; font-size: 13px; color: var(--cff-muted); font-weight: 400; }
 .cff-field-options-body { display: grid; gap: 12px; padding-top: 14px; }
 .cff-field-options-body .cff-row-hide { margin: 0; }
 .cff-row-repeater-advanced { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -4823,9 +4831,26 @@ body.post-type-cff_group .cff-tabs textarea:focus,
     .cff-field-view-controls select { min-width: 0; max-width: 100%; }
 }
 .cff-confirm-dialog { border-radius: 14px; }
-.cff-confirm-accept.button-primary { background: var(--cff-primary); border-color: var(--cff-primary); color: #fff; }
-.cff-confirm-accept.is-destructive.button-primary { background: var(--cff-danger); border-color: var(--cff-danger); }
+.cff-confirm-accept.button-primary { background: var(--cff-action-bg); border-color: var(--cff-action-border); color: var(--cff-action-text); }
+.cff-confirm-accept.is-destructive.button-primary { background: var(--cff-danger); border-color: var(--cff-danger); color: #fff; }
 .cff-confirm-accept.is-destructive.button-primary:hover { background: #912018; border-color: #912018; }
 @media (prefers-reduced-motion: reduce) {
     :is(.cff-field-row, .cff-subfield, .cff-layout, .cff-floating-save) { transition: none; }
+}
+
+/* Match core admin type sizes; keep Dashicons and code in their own font. */
+:is(.cff-admin, .cff-tabs, .cff-metabox, #cff-fields-builder, .cff-confirm-dialog) {
+    font-family: var(--cff-font);
+    font-size: 13px;
+}
+:is(.cff-admin, .cff-tabs, .cff-metabox, #cff-fields-builder, .cff-confirm-dialog) .button:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)) {
+    font-size: var(--cff-button-size);
+    font-weight: 400;
+}
+:is(.wrap.cff-admin, .cff-tabs, .cff-metabox, #cff-fields-builder) :is(input:not([type="checkbox"], [type="radio"], [type="button"], [type="submit"]), textarea, select):not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)) {
+    font-size: var(--cff-control-size);
+}
+.cff-floating-save .button { font-size: var(--cff-button-size) !important; font-weight: 400 !important; }
+@media (max-width: 782px) {
+    :root { --cff-control-size: 16px; --cff-button-size: 14px; }
 }

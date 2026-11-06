@@ -12,8 +12,8 @@
 .cff-import-help pre { overflow-x: auto; padding: 16px; background: #f6f7f7; }
 .cff-import-help li { margin: 10px 0; }
 .cff-content-import [hidden] { display: none !important; }
-.cff-import-result progress { height: 8px; accent-color: var(--cff-primary, #315e8c); }
-#cff-import-message:not(:empty) { padding: 12px 14px; border-inline-start: 3px solid #315e8c; border-radius: 6px; background: #edf8f4; color: #236157; line-height: 1.6; }
+.cff-import-result progress { height: 8px; accent-color: var(--cff-primary, #2271b1); }
+#cff-import-message:not(:empty) { padding: 12px 14px; border-inline-start: 3px solid #2271b1; border-radius: 6px; background: #edf8f4; color: #236157; line-height: 1.6; }
 #cff-import-message[data-state="success"] { border-color: #20824f; background: #edf8f0; color: #225b3b; }
 #cff-import-message[data-state="warning"] { border-color: #ad740b; background: #fff8e8; color: #79520d; }
 #cff-import-message[data-state="error"] { border-color: #b42318; background: #fff1ef; color: #92251b; }

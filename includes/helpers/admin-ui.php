@@ -3,7 +3,7 @@ namespace CFF;
 
 if (!defined('ABSPATH')) exit;
 
-function cff_render_page_hero($title, $description, $icon = 'dashicons-admin-tools', $action_html = '') {
+function cff_render_page_hero($title, $description, $icon = 'dashicons-cff', $action_html = '') {
     ?>
     <div class="tk-hero">
         <div class="tk-hero-content">
@@ -30,7 +30,7 @@ function cff_render_header_branding() {
     ?>
     <div class="tk-header-branding">
         <div class="tk-header-brand">
-            <span class="dashicons dashicons-feedback" aria-hidden="true"></span>
+            <span class="dashicons dashicons-cff" aria-hidden="true"></span>
             <span class="tk-header-name">Custom Fields Framework Pro</span>
             <span class="tk-header-version">v<?php echo esc_html(defined('CFFP_VERSION') ? CFFP_VERSION : '2.3'); ?></span>
         </div>

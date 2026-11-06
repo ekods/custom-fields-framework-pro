@@ -1,3 +1,11 @@
+## 2.5.45
+
+- Add a Custom Fields icon to the admin menu, page headings and the content overview, replacing the generic feedback icon.
+- In the mobile section navigation, scroll the current section into view without moving the page.
+- Avoid redundant text updates in the Post Types and Taxonomies editors, and refine admin, management, content import and post editor styling.
+
+Validation: PHP 7.4.33 and 8.4 lint; language-clone (171), frontend-visibility (56), runtime-integrity (388), relational-labels (367) and content-import (107) checks on both PHP versions.
+
 ## 2.5.44
 
 - Give Post Types and Taxonomies dedicated add/edit views using the WordPress post.php layout while retaining their CFF page URLs.

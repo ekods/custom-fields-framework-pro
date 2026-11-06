@@ -9,7 +9,7 @@ unset($types['cff_group'], $types['cff_options']);
 <div class="wrap tk-wrap cff-admin cff-management">
     <?php
     cff_render_header_branding();
-    cff_render_page_hero(__('Content overview', 'cff'), __('Everything you need to add, organize, and update your website content.', 'cff'), 'dashicons-feedback', '<a class="button button-primary" href="'.esc_url(admin_url('admin.php?page=cff-global-settings')).'">'.esc_html__('Edit global content', 'cff').'</a>');
+    cff_render_page_hero(__('Content overview', 'cff'), __('Everything you need to add, organize, and update your website content.', 'cff'), 'dashicons-cff', '<a class="button button-primary" href="'.esc_url(admin_url('admin.php?page=cff-global-settings')).'">'.esc_html__('Edit global content', 'cff').'</a>');
     ?>
     <div class="cff-overview-stats">
         <?php $this->render_stat_card(__('Field Groups', 'cff'), wp_count_posts('cff_group')->publish, 'dashicons-layout', admin_url('edit.php?post_type=cff_group')); ?>

@@ -121,7 +121,7 @@ class Plugin {
       'show_ui' => true,
       'show_in_menu' => false,
       'supports' => ['title'],
-      'menu_icon' => 'dashicons-feedback',
+      'menu_icon' => 'dashicons-cff',
       'capability_type' => 'cff_group',
       'capabilities' => self::internal_post_type_capabilities(),
       'map_meta_cap' => false,
@@ -243,7 +243,7 @@ class Plugin {
 
   public function admin_menu() {
     $cap = self::admin_capability();
-    add_menu_page(__('Custom Fields', 'cff'), __('Custom Fields', 'cff'), $cap, 'cff', [$this,'page_dashboard'], 'dashicons-feedback', 58);
+    add_menu_page(__('Custom Fields', 'cff'), __('Custom Fields', 'cff'), $cap, 'cff', [$this,'page_dashboard'], 'dashicons-cff', 58);
     add_submenu_page('cff', __('Field Groups','cff'), __('Field Groups','cff'), $cap, 'edit.php?post_type=cff_group');
     add_submenu_page('cff', __('Post Types','cff'), __('Post Types','cff'), $cap, 'cff-post-types', [$this,'page_post_types']);
     add_submenu_page('cff', __('Taxonomies','cff'), __('Taxonomies','cff'), $cap, 'cff-taxonomies', [$this,'page_taxonomies']);
@@ -1141,6 +1141,9 @@ TEXT;
   }
 
   public function assets($hook) {
+    if (current_user_can(self::admin_capability())) {
+      wp_enqueue_style('cff-admin-menu', CFFP_URL . 'assets/admin-menu.css', [], $this->asset_ver('assets/admin-menu.css'));
+    }
     $screen = function_exists('get_current_screen') ? get_current_screen() : null;
     $is_group = $screen && $screen->post_type === 'cff_group';
     $is_group_editor = $is_group && in_array($screen->base, ['post', 'post-new'], true);
