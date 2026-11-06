@@ -6,6 +6,7 @@
   "scripts": {
     "test:content-import": "php tests/content-import.php",
     "test:content-import-ui": "node tests/content-import-ui.cjs",
+    "test:hero-ui": "node tests/hero-ui.cjs",
     "test:frontend-visibility": "php tests/frontend-visibility.php",
     "test:language-clone": "php tests/language-clone.php",
     "test:runtime-integrity": "php tests/runtime-integrity.php",

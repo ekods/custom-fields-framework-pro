@@ -1,6 +1,6 @@
 === Custom Fields Framework Pro ===
 Contributors: ekods
-Stable tag: 2.5.45
+Stable tag: 2.5.46
 
 Custom fields with Field Groups, Repeater, Flexible Content, Location rules, and CFF-compatible frontend helpers.
 
@@ -15,6 +15,10 @@ Build structured WordPress content with custom fields, nested repeaters, groups,
 3. Open Custom Fields and create a Field Group with location rules.
 
 == Changelog ==
+
+= 2.5.46 =
+- Page headings use a new header: a blue-to-mint background, an accent edge and a filled icon tile, matching Tool Kits.
+- Buttons in the page heading are WordPress's standard buttons; their colors follow the accent color.
 
 = 2.5.45 =
 - Add a Custom Fields icon to the admin menu, page headings and the content overview, replacing the generic feedback icon.

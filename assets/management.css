@@ -8,15 +8,12 @@
 .cff-section-nav a[aria-current="page"] { background: #eaf3ff; color: var(--cff-primary); font-weight: 600; }
 .cff-management { max-width: 1440px; }
 .cff-management *, .cff-management *::before, .cff-management *::after { box-sizing: border-box; }
-.cff-management .tk-hero { padding: 12px 0 24px; background: transparent; box-shadow: none; }
-.cff-management .tk-hero-title { font-size: 23px !important; }
-.cff-management .tk-hero-action .button { min-height: 38px; padding: 2px 16px; line-height: 32px; white-space: nowrap; }
 .cff-management .tk-card { padding: 24px; box-shadow: none; }
 .cff-management .cff-editor-main > .tk-card, .cff-management .cff-editor-sidebar > .tk-card,
 .cff-management .cff-overview-stats > .tk-card, .cff-management .cff-next-steps > .tk-card { margin: 0; }
 .cff-management h2, .cff-management h3 { color: var(--cff-text); }
-.cff-management .button:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)) { min-height: 34px; padding: 1px 12px; line-height: 30px; white-space: nowrap; font-weight: 500; }
-.cff-management .button-primary { box-shadow: none; }
+.cff-management .button:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *, .tk-hero-action *)) { min-height: 34px; padding: 1px 12px; line-height: 30px; white-space: nowrap; font-weight: 500; }
+.cff-management .button-primary:not(:where(.tk-hero-action *)) { box-shadow: none; }
 .cff-management a:focus-visible, .cff-management summary:focus-visible { outline: 2px solid var(--cff-primary); outline-offset: 3px; }
 .cff-admin :is(a, button, input, select, textarea, summary) { scroll-margin-block: 64px; }
 .cff-card-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
@@ -101,7 +98,6 @@
     .cff-section-nav { flex-wrap: nowrap; overflow-x: auto; padding: 5px; gap: 2px; }
     .cff-section-nav a { white-space: nowrap; padding: 9px 11px; }
     .cff-help-link { align-self: flex-start; }
-    .cff-management .tk-hero { padding: 18px; }
     .cff-management .tk-card { padding: 18px; }
     .cff-management .cff-advanced-section { padding: 0; }
     .cff-management .tk-hero-action .button { width: 100%; text-align: center; }
@@ -146,12 +142,9 @@
 .cff-section-nav a { display: inline-flex; align-items: center; min-height: 48px; padding: 12px 0 10px; border-radius: 0; border-bottom: 2px solid transparent; }
 .cff-section-nav a:hover { background: transparent; color: var(--cff-primary); }
 .cff-section-nav a[aria-current="page"] { border-bottom-color: var(--cff-primary); background: transparent; color: var(--cff-primary); box-shadow: none; font-weight: 600; }
-.cff-admin .tk-hero { padding: 12px 0 26px; border: 0; border-bottom: 1px solid var(--cff-border); border-radius: 0; background: transparent; box-shadow: none; }
-.cff-admin .tk-hero-icon { width: 40px; height: 40px; flex-basis: 40px; border: 1px solid var(--cff-border); border-radius: 6px; background: var(--cff-surface); color: var(--cff-primary); }
-.cff-admin .tk-hero-subtitle { font-size: 13px !important; max-width: 72ch !important; line-height: 1.65 !important; }
-.cff-admin .button:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)) { border-radius: 6px; box-shadow: none; }
-.cff-admin .button-primary:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)) { border-color: var(--cff-action-border); background: var(--cff-action-bg); color: var(--cff-action-text); }
-.cff-admin .button-primary:hover:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)) { border-color: var(--cff-primary); background: var(--cff-action-hover); }
+.cff-admin .button:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *, .tk-hero-action *)) { border-radius: 6px; box-shadow: none; }
+.cff-admin .button-primary:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *, .tk-hero-action *)) { border-color: var(--cff-action-border); background: var(--cff-action-bg); color: var(--cff-action-text); }
+.cff-admin .button-primary:hover:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *, .tk-hero-action *)) { border-color: var(--cff-primary); background: var(--cff-action-hover); }
 .cff-management .tk-card { border-radius: 10px; box-shadow: none; }
 .cff-management .cff-overview-stats { gap: 0; border: 1px solid var(--cff-border); border-radius: 10px; background: var(--cff-primary-soft); overflow: hidden; }
 .cff-management .cff-overview-stat { padding: 20px; border: 0; border-inline-start: 1px solid var(--cff-border); border-radius: 0; background: transparent; }
@@ -215,13 +208,11 @@
 }
 @media (max-width: 782px) {
     .cff-section-nav { gap: 20px; padding: 0; }
-    .cff-admin .button:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
-    .cff-admin :is(.tk-hero-action, .cff-editor-footer) .button { min-height: 44px; white-space: normal; overflow-wrap: anywhere; }
+    .cff-admin .button:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *, .tk-hero-action *)),
+    .cff-admin .cff-editor-footer .button { min-height: 44px; white-space: normal; overflow-wrap: anywhere; }
     .cff-definition-screen .cff-form-field > :is(input, select),
     .cff-definition-screen .cff-check-grid label { min-height: 44px; }
     .cff-section-nav a { padding: 12px 0 10px; }
-    .cff-admin .tk-hero { padding: 8px 0 22px; }
-    .cff-management .tk-hero-title { font-size: 23px !important; }
     .cff-management .cff-overview-stat { border-inline-start: 0; border-top: 1px solid var(--cff-border); padding: 14px 18px; }
     .cff-management .cff-overview-stat:first-child { border-top: 0; }
     .cff-management .cff-next-steps > .tk-card { border-inline-start: 0; border-top: 1px solid var(--cff-border); padding: 18px 0; }
