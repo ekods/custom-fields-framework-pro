@@ -1,6 +1,6 @@
 === Custom Fields Framework Pro ===
 Contributors: ekods
-Stable tag: 2.5.43
+Stable tag: 2.5.44
 
 Custom fields with Field Groups, Repeater, Flexible Content, Location rules, and CFF-compatible frontend helpers.
 
@@ -15,6 +15,15 @@ Build structured WordPress content with custom fields, nested repeaters, groups,
 3. Open Custom Fields and create a Field Group with location rules.
 
 == Changelog ==
+
+= 2.5.44 =
+- Give Post Types and Taxonomies dedicated add/edit views using the WordPress post.php layout while retaining their CFF page URLs.
+- Put Save definition controls in the right sidebar and use consistent postbox headers, panel spacing and full-width columns; keep list tables out of the editor workspace.
+- Refresh CFF navigation, content inventory, field hierarchy and editor controls with blue accents and quieter surfaces.
+- Preserve form fields, nonces, translation settings, connected post types, frontend visibility and independent REST settings. Legacy add links remain supported.
+- Stack editor columns cleanly on smaller screens and retain native WordPress list-table controls and visible keyboard focus.
+
+Validation: 119 real WordPress add/edit, create/update/cancel, layout and compatibility checks at five viewport widths; 388 runtime-integrity checks; native-table and isolated WordPress builder/save checks.
 
 = 2.5.43 =
 - Use native WordPress list tables for content overview, post types and taxonomies, with server-side search, visibility filters, sorting and pagination; restore native Field Groups row actions.

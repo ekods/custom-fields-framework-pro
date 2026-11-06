@@ -2,7 +2,6 @@
     box-sizing: border-box;
 }
 
-
 /* Ultimate UI - ACF-like (original, not copied) */
 .cff-tabs {
     margin-top: 12px
@@ -576,7 +575,6 @@
     display: none
 }
 
-
 #cff-field-list {
     display: flex;
     flex-direction: column;
@@ -801,7 +799,6 @@
     }
 }
 
-
 /* Input styling (ACF-like) */
 .cff-tabs input[type=color],
 .cff-tabs input[type=date],
@@ -825,7 +822,6 @@
     background-color: #fff;
     color: #2c3338;
 }
-
 
 /* Input styling on plugin admin pages (CPT page etc) */
 .wrap.cff-admin input[type=color]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
@@ -878,7 +874,6 @@
 .cff-cpt-form label {
     font-weight: 500
 }
-
 
 /* Better input sizing like ACF */
 .wrap.cff-admin .regular-text,
@@ -1155,7 +1150,6 @@
     min-height: 90px;
 }
 
-
 /* Input sizing tweaks */
 .cff-tabs input[type=color],
 .cff-tabs input[type=date],
@@ -1197,7 +1191,6 @@
     min-height: 30px;
     box-sizing: border-box;
 }
-
 
 /* Layout fixes to avoid overlap */
 .cff-field-row {
@@ -1248,7 +1241,6 @@
         display: none
     }
 }
-
 
 /* === GLOBAL INPUT STYLING (ACF-like, plugin surfaces) === */
 body.post-type-cff_group .cff-tabs input[type=color],
@@ -1310,7 +1302,6 @@ body.post-type-cff_group .cff-tabs textarea,
     min-height: 30px;
     box-sizing: border-box;
 }
-
 
 /* === ACF-like spacing for Field Builder === */
 .cff-tabpanel {
@@ -2159,7 +2150,6 @@ body.post-type-cff_group .cff-tabs textarea,
     align-items: center
 }
 
-
 /* Global input styling (ACF-like) */
 .wrap.cff-admin input[type=color]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
 .wrap.cff-admin input[type=date]:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
@@ -2359,8 +2349,6 @@ body.post-type-cff_group .cff-tabs textarea,
     background: var(--cff-primary);
 }
 
-
-
 .cff-grid {
     display: grid;
     grid-template-columns: 2fr 1fr;
@@ -2395,7 +2383,6 @@ body.post-type-cff_group .cff-tabs textarea,
     border: none;
     box-shadow: none;
 }
-
 
 .cff-presentation-grid {
     display: grid;
@@ -2474,8 +2461,6 @@ body.post-type-cff_group .cff-tabs textarea,
     max-width: 220px;
 }
 
-
-
 .cff-presentation-grid {
     display: grid;
     grid-template-columns: 1fr 340px;
@@ -2547,8 +2532,6 @@ body.post-type-cff_group .cff-tabs textarea,
     border-radius: 6px;
 }
 
-
-
 #postimagediv .inside img {
     width: 100%;
     height: 100%;
@@ -2596,7 +2579,7 @@ body.post-type-cff_group .cff-tabs textarea,
     right: -50px;
     width: 200px;
     height: 200px;
-    background: rgba(8, 127, 117, 0.1);
+    background: rgba(49, 94, 140, 0.1);
     border-radius: 100px;
     filter: blur(40px);
 }
@@ -2800,30 +2783,6 @@ body.post-type-cff_group .cff-tabs textarea,
 
 .tk-table-scroll {
     overflow-x: auto;
-}
-
-.tk-table {
-    border-collapse: separate;
-    border-spacing: 0;
-    width: 100%;
-}
-
-.tk-table td,
-.tk-table th {
-    vertical-align: top;
-}
-
-.tk-table th {
-    font-weight: 600;
-}
-
-.tk-table tr td,
-.tk-table tr th {
-    padding: 10px;
-}
-
-.tk-table-scroll .tk-table {
-    min-width: 960px;
 }
 
 .tk-list {
@@ -3071,11 +3030,6 @@ body.post-type-cff_group .cff-tabs textarea,
 @media (max-width: 782px) {
     .tk-wrap .tk-card {
         padding: 14px;
-    }
-
-    .tk-wrap .tk-table tr td,
-    .tk-wrap .tk-table tr th {
-        padding: 8px;
     }
 
     .tk-card input.regular-text:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
@@ -3602,9 +3556,8 @@ input:checked+.tk-slider:before {
 .cff-meta-badge.name {
     background: var(--cff-surface-soft);
     color: var(--cff-primary-strong);
-    border: 1px solid #def4ed;
+    border: 1px solid #edf2f8;
 }
-
 
 .cff-label {
     width: 25%;
@@ -3755,8 +3708,6 @@ input:checked+.tk-slider:before {
     font-size: 13px;
     color: #475569;
 }
-
-
 
 .cff-input {
     flex: 1;
@@ -3973,7 +3924,7 @@ input:checked+.tk-slider:before {
     height: auto;
     background: var(--cff-primary);
     border-color: var(--cff-primary);
-    box-shadow: 0 1px 2px rgba(8, 127, 117, 0.2);
+    box-shadow: 0 1px 2px rgba(49, 94, 140, 0.2);
     transition: all 0.2s;
     color: #fff;
     font-size: 13px;
@@ -3982,7 +3933,7 @@ input:checked+.tk-slider:before {
 .cff-rep-add:hover {
     background: var(--cff-primary);
     border-color: var(--cff-primary);
-    box-shadow: 0 4px 6px -1px rgba(8, 127, 117, 0.2);
+    box-shadow: 0 4px 6px -1px rgba(49, 94, 140, 0.2);
     transform: translateY(-1px);
     color: #fff;
 }
@@ -4070,7 +4021,7 @@ input:checked+.tk-slider:before {
 .cff-flex-head .cff-pill {
     background: var(--cff-surface-soft);
     color: var(--cff-primary-strong);
-    border: 1px solid #def4ed;
+    border: 1px solid #edf2f8;
     padding: 2px 8px;
     border-radius: 6px;
     font-size: 10px;
@@ -4372,31 +4323,34 @@ input:checked+.tk-slider:before {
     border-radius: 14px !important;
     font-weight: 700 !important;
     font-size: 14px !important;
-    box-shadow: 0 4px 12px rgba(8, 127, 117, 0.2);
+    box-shadow: 0 4px 12px rgba(49, 94, 140, 0.2);
 }
 
 .cff-floating-save .button:hover {
     transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(8, 127, 117, 0.3);
+    box-shadow: 0 6px 16px rgba(49, 94, 140, 0.3);
 }
 
-/* Premium admin polish */
+/* CFF workbench foundations: quiet surfaces, content hierarchy and blue actions. */
 :root {
     --cff-surface: #ffffff;
-    --cff-surface-soft: #f3f8f6;
-    --cff-surface-muted: #eaf3ef;
-    --cff-border: #d4e3e0;
-    --cff-border-soft: #e9f0ee;
-    --cff-text: #183b3a;
-    --cff-muted: #526d6b;
-    --cff-primary: #087f75;
-    --cff-primary-strong: #06665e;
-    --cff-accent: #9b650d;
+    --cff-surface-soft: #f3f6f5;
+    --cff-surface-muted: #edf2f5;
+    --cff-border: #d4dfe2;
+    --cff-border-soft: #e7edee;
+    --cff-text: #203432;
+    --cff-muted: #536873;
+    --cff-primary: #315e8c;
+    --cff-primary-strong: #254c74;
+    --cff-accent: #14b8a6;
+    --cff-primary-soft: #edf2f8;
+    --cff-accent-soft: #e6faf6;
     --cff-success: #0f7b4f;
     --cff-danger: #b42318;
-    --cff-shadow-sm: 0 1px 2px rgba(15, 23, 42, .05);
-    --cff-shadow-md: 0 8px 24px rgba(15, 23, 42, .08);
-    --cff-radius: 14px;
+    --cff-shadow-sm: none;
+    --cff-shadow-md: 0 6px 24px rgba(32, 52, 50, .12);
+    --cff-radius: 10px;
+    --cff-font: "Avenir Next", "Segoe UI", system-ui, sans-serif;
 }
 
 .wrap.cff-admin,
@@ -4498,9 +4452,7 @@ input:checked+.tk-slider:before {
     padding: 24px;
     border: 1px solid var(--cff-border);
     border-radius: var(--cff-radius);
-    background:
-        linear-gradient(110deg, #edf9f3, transparent 72%),
-        var(--cff-surface);
+    background: transparent;
     color: var(--cff-text);
     box-shadow: var(--cff-shadow-sm);
 }
@@ -4530,7 +4482,7 @@ input:checked+.tk-slider:before {
 .tk-hero-icon {
     width: 48px;
     height: 48px;
-    border: 1px solid rgba(8, 127, 117, .18);
+    border: 1px solid rgba(49, 94, 140, .18);
     border-radius: var(--cff-radius);
     background: #eef6fc;
     color: var(--cff-primary);
@@ -4549,9 +4501,9 @@ input:checked+.tk-slider:before {
 .tk-hero-title {
     margin: 0 !important;
     color: var(--cff-text) !important;
-    font-size: 28px !important;
-    line-height: 1.15 !important;
-    font-weight: 760 !important;
+    font-size: 30px !important;
+    line-height: 1.2 !important;
+    font-weight: 650 !important;
 }
 
 .tk-hero-subtitle {
@@ -4622,14 +4574,14 @@ body.post-type-cff_group .button-primary:not(:where(.tablenav *, .search-box *, 
     border-color: var(--cff-primary-strong) !important;
     background: var(--cff-primary) !important;
     color: #fff !important;
-    box-shadow: 0 1px 0 rgba(255, 255, 255, .2) inset, 0 6px 14px rgba(8, 127, 117, .18);
+    box-shadow: none;
 }
 
 .wrap.cff-admin .button-primary:hover:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
 body.post-type-cff_group .button-primary:hover:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
 .cff-floating-save .button:hover {
     background: var(--cff-primary-strong) !important;
-    box-shadow: 0 8px 18px rgba(8, 127, 117, .24);
+    box-shadow: none;
 }
 
 body.post-type-cff_group .cff-tabs input[type=color],
@@ -4680,7 +4632,7 @@ body.post-type-cff_group .cff-tabs textarea:focus,
 .wrap.cff-admin select:focus:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)),
 .wrap.cff-admin textarea:focus:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)) {
     border-color: var(--cff-primary);
-    box-shadow: 0 0 0 2px rgba(8, 127, 117, .14);
+    box-shadow: 0 0 0 2px rgba(49, 94, 140, .14);
     outline: none;
 }
 
@@ -4731,7 +4683,6 @@ body.post-type-cff_group .cff-tabs textarea:focus,
     gap: 8px;
 }
 
-.tk-table,
 .tk-pairs-table {
     border: 1px solid var(--cff-border-soft);
     border-radius: var(--cff-radius);
@@ -4739,7 +4690,6 @@ body.post-type-cff_group .cff-tabs textarea:focus,
     background: var(--cff-surface);
 }
 
-.tk-table th,
 .tk-pairs-table th {
     background: var(--cff-surface-soft);
     color: var(--cff-muted);
@@ -4747,8 +4697,6 @@ body.post-type-cff_group .cff-tabs textarea:focus,
     font-weight: 700;
 }
 
-.tk-table tr td,
-.tk-table tr th,
 .tk-pairs-table th,
 .tk-pairs-table td {
     border-bottom-color: var(--cff-border-soft);
@@ -4821,8 +4769,8 @@ body.post-type-cff_group .cff-tabs textarea:focus,
 }
 
 /* Friendly accent surfaces without altering WordPress list table styles. */
-.cff-admin .tk-hero-icon { background: #def4ed; color: var(--cff-primary); border-radius: 12px; }
-.cff-admin .tk-header-version { color: var(--cff-primary-strong); background: #e5f5ee; }
+.cff-admin .tk-hero-icon { background: var(--cff-primary-soft); color: var(--cff-primary); border-radius: 6px; }
+.cff-admin .tk-header-version { color: var(--cff-primary-strong); background: #edf2f8; }
 .cff-admin .button-primary { background: var(--cff-primary); border-color: var(--cff-primary); }
 .cff-admin .button-primary:hover { background: var(--cff-primary-strong); border-color: var(--cff-primary-strong); }
 .cff-field-row { border-color: var(--cff-border); }
@@ -4832,11 +4780,28 @@ body.post-type-cff_group .cff-tabs textarea:focus,
 /* Field builder polish; native WordPress lists keep their core appearance. */
 :is(#cff-fields-builder, .cff-metabox, .cff-confirm-dialog, .cff-content-import) {
     --wp-admin-theme-color: var(--cff-primary);
-    --wp-admin-theme-color--rgb: 8, 127, 117;
+    --wp-admin-theme-color--rgb: 49, 94, 140;
     --wp-admin-theme-color-darker-10: var(--cff-primary-strong);
-    --wp-admin-theme-color-darker-20: #054f49;
+    --wp-admin-theme-color-darker-20: #234566;
 }
 .cff-field-row, .cff-subfield, .cff-layout { box-shadow: none; }
+.cff-tabs, .cff-metabox, #cff-fields-builder, .cff-confirm-dialog { font-family: var(--cff-font); }
+.cff-field-row { border-inline-start: 3px solid var(--cff-border); }
+.cff-field-row:focus-within { border-inline-start-color: var(--cff-primary); }
+.cff-groupbuilder, .cff-subgroupbuilder, .cff-subbuilder, .cff-flexbuilder {
+    border: 0;
+    border-inline-start: 2px solid var(--cff-border);
+    border-radius: 0;
+    padding: 12px 0 4px 16px;
+    background: transparent;
+}
+.cff-subfield { border-radius: 6px; background: var(--cff-surface-soft); }
+.cff-row-rules { border-radius: 6px; }
+.cff-field-row .cff-col label, .cff-subfield .cff-col label { text-transform: none; letter-spacing: 0; }
+.cff-floating-save { backdrop-filter: none; background: var(--cff-surface); border-radius: 8px; }
+.cff-floating-save .button { box-shadow: none; }
+.cff-floating-save .button:hover { transform: none; box-shadow: none; }
+.cff-admin :is(a, button, summary):focus-visible, #cff-fields-builder :is(button, summary):focus-visible { outline: 2px solid var(--cff-primary); outline-offset: 3px; }
 .cff-field-row:focus-within, .cff-subfield:focus-within { border-color: var(--cff-primary); }
 .cff-field-row .cff-actions .button, .cff-subfield .cff-actions .button { color: var(--cff-primary); border-color: var(--cff-border); background: #fff; box-shadow: none; }
 .cff-field-row .cff-actions :is(.cff-remove, .cff-remove-sub), .cff-remove-layout { color: var(--cff-danger); }

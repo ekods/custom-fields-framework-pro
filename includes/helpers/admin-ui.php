@@ -9,7 +9,7 @@ function cff_render_page_hero($title, $description, $icon = 'dashicons-admin-too
         <div class="tk-hero-content">
             <div class="tk-hero-main">
                 <div class="tk-hero-icon">
-                    <span class="dashicons <?php echo esc_attr($icon); ?>"></span>
+                    <span class="dashicons <?php echo esc_attr($icon); ?>" aria-hidden="true"></span>
                 </div>
                 <div>
                     <h1 class="tk-hero-title"><?php echo esc_html($title); ?></h1>
@@ -110,9 +110,14 @@ function cff_render_editor_toggle($name, $label, $description, $checked) {
 
 function cff_render_editor_footer($label, $url) {
     ?>
-    <div class="cff-editor-footer">
-        <span class="cff-save-status" role="status" data-clean="<?php echo esc_attr__('No unsaved changes', 'cff'); ?>" data-dirty="<?php echo esc_attr__('Unsaved changes', 'cff'); ?>"><?php echo esc_html__('No unsaved changes', 'cff'); ?></span>
-        <div><a class="button" href="<?php echo esc_url($url); ?>"><?php echo esc_html__('Cancel', 'cff'); ?></a><button type="submit" class="button button-primary"><?php echo esc_html($label); ?></button></div>
-    </div>
+    <section class="postbox cff-definition-box cff-definition-savebox">
+        <div class="postbox-header"><h2><?php echo esc_html__('Save definition', 'cff'); ?></h2></div>
+        <div class="inside">
+            <div class="cff-editor-footer">
+                <span class="cff-save-status" role="status" data-clean="<?php echo esc_attr__('No unsaved changes', 'cff'); ?>" data-dirty="<?php echo esc_attr__('Unsaved changes', 'cff'); ?>"><?php echo esc_html__('No unsaved changes', 'cff'); ?></span>
+                <div><a class="button" href="<?php echo esc_url($url); ?>"><?php echo esc_html__('Cancel', 'cff'); ?></a><button type="submit" class="button button-primary"><?php echo esc_html($label); ?></button></div>
+            </div>
+        </div>
+    </section>
     <?php
 }

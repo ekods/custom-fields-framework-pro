@@ -9,7 +9,7 @@
     var editor = root.querySelector('#cff-definition-editor');
     function openEditor(focus) {
       if (!editor) return;
-      editor.open = true;
+      if (editor.tagName === 'DETAILS') editor.open = true;
       if (focus) {
         editor.scrollIntoView({ block: 'start' });
         var input = editor.querySelector('input[type="text"]:not([readonly])');
@@ -26,6 +26,16 @@
         }
       });
     });
+    // Old add links used a fragment to open a form beneath the list.
+    if (!editor && location.hash === '#cff-definition-editor') {
+      var legacyAdd = new URL(location.href);
+      if (['cff-post-types', 'cff-taxonomies'].indexOf(legacyAdd.searchParams.get('page')) !== -1) {
+        legacyAdd.searchParams.set('action', 'add');
+        legacyAdd.hash = '';
+        location.replace(legacyAdd.href);
+        return;
+      }
+    }
     if (location.hash === '#cff-definition-editor') openEditor(true);
     window.addEventListener('hashchange', function () {
       if (location.hash === '#cff-definition-editor') openEditor(true);

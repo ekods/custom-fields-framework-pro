@@ -1626,14 +1626,14 @@
 /* Premium content editor polish */
 :root {
   --cff-editor-surface: #ffffff;
-  --cff-editor-soft: #f7f8fb;
+  --cff-editor-soft: #f3f6f5;
   --cff-editor-muted: #637083;
-  --cff-editor-border: #d8dee8;
+  --cff-editor-border: #d4dfe2;
   --cff-editor-border-soft: #e8edf4;
-  --cff-editor-text: #172033;
+  --cff-editor-text: #203432;
   --cff-editor-primary: var(--cff-primary-strong);
   --cff-editor-warn: #b7791f;
-  --cff-editor-shadow: 0 8px 22px rgba(15, 23, 42, .07);
+  --cff-editor-shadow: none;
   --cff-editor-radius: 8px;
 }
 
@@ -1666,9 +1666,7 @@
 
 .cff-label,
 .cff-field.cff-postbox .postbox-header {
-  background:
-    linear-gradient(90deg, rgba(8, 127, 117, .07), transparent 50%),
-    var(--cff-editor-soft);
+  background: var(--cff-editor-soft);
   border-color: var(--cff-editor-border);
 }
 
@@ -1729,7 +1727,7 @@
 .cff-field textarea:focus,
 .cff-field-view-controls select:focus {
   border-color: var(--cff-editor-primary) !important;
-  box-shadow: 0 0 0 2px rgba(8, 127, 117, .14) !important;
+  box-shadow: 0 0 0 2px rgba(49, 94, 140, .14) !important;
   outline: none;
 }
 
@@ -2340,7 +2338,7 @@
 .cff-field .select2-container--default.select2-container--focus .select2-selection--multiple,
 .cff-field .select2-container--default.select2-container--open .select2-selection {
   border-color: var(--cff-editor-primary);
-  box-shadow: 0 0 0 2px rgba(8, 127, 117, .14);
+  box-shadow: 0 0 0 2px rgba(49, 94, 140, .14);
 }
 
 /* Repeater + flexible rows */
