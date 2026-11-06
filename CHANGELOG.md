@@ -1,3 +1,13 @@
+## 2.5.47
+
+- Repeater rows show a title taken from the first filled text field when no Row Label Field is set, and the title follows typing.
+- Repeaters gain a row count with Collapse all / Expand all, and say why Add, Duplicate or Remove is disabled at a minimum or maximum.
+- Update opens a collapsed repeater row (or closed box) and focuses the empty required field instead of failing silently; rows needing attention are marked.
+- Import Content is reached from Custom Fields → Import Content with the destination page fixed in the URL; the side box in the page editor is removed.
+- All buttons use WordPress's standard button styles; only layout rules remain.
+
+Validation: PHP 7.4 and 8.4 lint; runtime-integrity (396), content-import (107), 28 repeater and 19 hero browser checks, content-import UI.
+
 ## 2.5.46
 
 - Page headings use a new header: a blue-to-mint background, an accent edge and a filled icon tile, matching Tool Kits.

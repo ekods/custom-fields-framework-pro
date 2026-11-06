@@ -17,7 +17,6 @@ class Content_Import {
   public function register() {
     add_action('admin_menu', [$this, 'menu'], 20);
     add_action('admin_enqueue_scripts', [$this, 'assets']);
-    add_action('add_meta_boxes', [$this, 'editor_box'], 20, 2);
     add_action('wp_ajax_cff_content_import', [$this, 'ajax']);
     add_action('admin_post_cff_content_import_sample', [$this, 'sample_download']);
     add_action('cff_content_import_expire', [$this, 'expire'], 10, 3);
@@ -47,20 +46,6 @@ class Content_Import {
     if (!$post || !isset($this->post_types()[$post->post_type]) || !current_user_can('edit_post', $post->ID)
       || in_array($post->post_status, ['trash', 'auto-draft'], true)) throw new \RuntimeException('Save and select an accessible destination page first.');
     return $post;
-  }
-
-  public function editor_box($type, $post) {
-    if (!$post || !current_user_can(Plugin::admin_capability()) || !isset($this->post_types()[$type])) return;
-    if (!$this->plugin->get_field_definitions_for_import($type, $post->ID, get_page_template_slug($post->ID) ?: 'default')) return;
-    add_meta_box('cff-import-content', __('Import Content', 'cff'), [$this, 'editor_box_content'], $type, 'side');
-  }
-
-  public function editor_box_content($post) {
-    if ($post->post_status === 'auto-draft') {
-      echo '<p>' . esc_html__('Save this page as a draft before importing content.', 'cff') . '</p>'; return;
-    }
-    echo '<p>' . esc_html__('Import one JSON file into this page. Save any editor changes before opening the importer.', 'cff') . '</p>';
-    echo '<a class="button" href="' . esc_url(admin_url('admin.php?page=cff-import-content&post_id=' . (int) $post->ID)) . '">' . esc_html__('Import JSON into this page', 'cff') . '</a>';
   }
 
   public function page() {

@@ -1,6 +1,6 @@
 # JSON content import
 
-Open a saved page's editor, then **Import Content → Import JSON into this page**. Save editor changes before opening the importer. Alternatively, choose an existing page through **Custom Fields → Import Content**. The destination is fixed in the URL (`admin.php?page=cff-import-content&post_id=123`) and checked on every request. This workflow updates only that page's CFF values; it does not change its title, URL, template, publication status, language or other translations.
+Open **Custom Fields → Import Content** and choose an existing destination page. Save any editor changes before importing. The destination is fixed in the URL (`admin.php?page=cff-import-content&post_id=123`) and checked on every request. This workflow updates only that page's CFF values; it does not change its title, URL, template, publication status, language or other translations.
 
 Choose **Fill empty fields only** (default) or **Replace supplied fields**, upload one JSON object and review the preview before starting. Download example JSON to get the actual registered field names for that page. Configuration must already exist: **Export / Import** handles field groups/post types/taxonomies.
 

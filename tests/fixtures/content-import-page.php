@@ -30,5 +30,5 @@ eval('namespace CFF; function cff_render_header_branding() { echo "<p>Custom Fie
 $plugin = (new ReflectionClass(\CFF\Plugin::class))->newInstanceWithoutConstructor();
 echo '<!doctype html><html><head><meta charset="utf-8"><title>Import Content fixture</title></head><body>';
 $import = new \CFF\Content_Import($plugin);
-if ($fixture_mode === 'editor') $import->editor_box_content(get_post(50)); else $import->page();
+$import->page();
 echo '</body></html>';

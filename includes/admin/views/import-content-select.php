@@ -4,7 +4,7 @@ if (!defined('ABSPATH')) exit;
 ?>
 <div class="wrap tk-wrap cff-admin cff-tools-page cff-content-import">
   <?php cff_render_header_branding(); ?>
-  <?php cff_render_page_hero(__('Import Content', 'cff'), __('Import one JSON file into an existing page. Choose a page below or open Import Content from its editor.', 'cff'), 'dashicons-upload'); ?>
+  <?php cff_render_page_hero(__('Import Content', 'cff'), __('Import one JSON file into an existing page. Choose a destination page below.', 'cff'), 'dashicons-upload'); ?>
   <div class="tk-card">
     <form method="get" action="<?php echo esc_url(admin_url('admin.php')); ?>">
       <input type="hidden" name="page" value="cff-import-content">

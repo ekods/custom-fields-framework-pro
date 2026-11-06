@@ -257,13 +257,7 @@
   margin-top: 8px;
 }
 
-.cff-subfield-input>.cff-field-actions .button {
-  min-height: 28px;
-  font-size: 12px;
-  line-height: 26px;
-  display: flex;
-  align-items: center;
-}
+.cff-subfield-input>.cff-field-actions .button { display: flex; align-items: center; }
 
 .cff-subfield-input>.cff-field-actions .cff-copy-field-action {
   min-width: 30px;
@@ -477,20 +471,7 @@
   gap: 8px;
 }
 
-.cff-media-actions .button {
-  min-width: 34px;
-  min-height: 34px;
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  border-color: rgba(15, 23, 42, .12);
-  background: rgba(255, 255, 255, .92);
-  box-shadow: 0 4px 10px rgba(15, 23, 42, .12);
-}
+.cff-media-actions .button { min-width: 34px; width: 34px; display: inline-flex; align-items: center; justify-content: center; }
 
 .cff-media-actions .dashicons {
   font-size: 16px;
@@ -1377,14 +1358,8 @@
   min-height: 36px !important;
 }
 
-.cff-field-view-controls .button {
-  min-height: 36px;
-  border-radius: 8px;
-}
 
-.wp-core-ui .cff-field-view-controls .button-secondary {
-  min-height: 30px;
-}
+
 
 .cff-metabox-reorder {
   margin-top: 2px;
@@ -2478,13 +2453,7 @@
 }
 
 /* Gallery toolbar: labelled buttons instead of floating round icons. */
-.cff-gallery > .cff-media-actions .button {
-  width: auto;
-  height: auto;
-  min-width: 0;
-  background: #fff;
-  box-shadow: none;
-}
+.cff-gallery > .cff-media-actions .button { width: auto; min-width: 0; }
 
 .cff-gallery > .cff-media-actions .cff-gallery-clear {
   color: #b32d2e;
@@ -2550,3 +2519,25 @@
     flex-wrap: wrap;
   }
 }
+
+/* Repeater toolbar: row count, limits and Collapse all / Expand all. */
+.cff-repeater > .cff-rep-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px 16px;
+    min-height: 24px;
+    margin: 0 0 10px;
+}
+.cff-rep-count { color: var(--cff-muted, #646970); font-size: 12px; }
+.cff-rep-count.is-limit { color: #8a4b00; font-weight: 600; }
+.cff-rep-bulk { display: flex; gap: 14px; }
+.cff-rep-bulk[hidden] { display: none; }
+.cff-rep-bulk .button-link { font-size: 12px; text-decoration: none; }
+.cff-rep-bulk .button-link:disabled { color: #8c8f94; cursor: default; }
+
+/* A row whose required fields are still empty stays recognisable while it is collapsed. */
+.cff-rep-row.has-invalid > .cff-rep-row-head,
+.cff-repeater[data-layout="table"] tr.cff-rep-row.has-invalid > td:first-child { box-shadow: inset 3px 0 0 #d63638; }
+.cff-repeater[data-layout="simple"] .cff-rep-row.cff-rep-row-simple.has-invalid { box-shadow: inset 3px 0 0 #d63638; }

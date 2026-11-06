@@ -405,4 +405,15 @@ CFF\render_relational_input('cff_values[capability_service]', $service_field['re
 $import_html = ob_get_clean();
 check(strpos($import_html, 'data-relational-type="taxonomy"') !== false && strpos($import_html, 'data-relational-subtype="service"') !== false, 'Imported field renders the wrong AJAX namespace');
 check(strpos($import_html, '<option value="149" selected>Packaging</option>') !== false && strpos($import_html, '814306f0') === false, 'Imported taxonomy label resolved an unrelated post with the same ID');
+// Repeater row titles: a configured label field wins; otherwise the first filled text or textarea field names the row.
+$title_subs = [['name' => 'note', 'type' => 'textarea'], ['name' => 'headline', 'type' => 'text'], ['name' => 'photo', 'type' => 'image']];
+check(CFF\cff_build_repeater_row_title(['headline' => 'Brand Strategy'], '', 3, $title_subs) === 'Row 3: Brand Strategy', 'Row title falls back to the first filled text field');
+check(CFF\cff_build_repeater_row_title(['note' => 'Intro', 'headline' => 'Brand Strategy'], '', 1, $title_subs) === 'Row 1: Intro', 'Row title follows sub field order');
+check(CFF\cff_build_repeater_row_title(['note' => "  <b>Two</b>\n lines  "], '', 2, $title_subs) === 'Row 2: Two lines', 'Row title strips tags and collapses whitespace');
+check(CFF\cff_build_repeater_row_title(['photo' => 12, 'headline' => ''], '', 4, $title_subs) === 'Row 4', 'Row title ignores empty text fields and non-text types');
+check(CFF\cff_build_repeater_row_title(['note' => 'Intro', 'headline' => 'Brand'], 'headline', 5, $title_subs) === 'Row 5: Brand', 'A configured label field still wins');
+check(CFF\cff_build_repeater_row_title(['note' => 'Intro'], 'headline', 6, $title_subs) === 'Row 6', 'A configured but empty label field does not fall back');
+$long_title = CFF\cff_build_repeater_row_title(['headline' => str_repeat('A', 90)], '', 7, $title_subs);
+check($long_title === 'Row 7: ' . str_repeat('A', 59) . "\u{2026}", 'Long automatic titles are shortened to 60 characters');
+check(CFF\cff_build_repeater_row_title(['headline' => 'Brand'], '', 8) === 'Row 8', 'Callers that pass no sub fields keep the plain title');
 echo 'Runtime integrity: ' . $checks . " checks passed.\n";

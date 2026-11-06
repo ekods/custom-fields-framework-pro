@@ -83,7 +83,7 @@ const {execFileSync} = require('node:child_process');
     await page.waitForFunction(() => fixture.calls.length > 0 && !document.querySelector('#cff-import-continue').hidden);
     assert.deepEqual(await page.evaluate(() => fixture.calls), ['status'], 'Page restore is read-only');
 
-    // The primary workflow imports one raw page object into the page selected in its editor.
+    // The primary workflow imports one raw page object into the selected destination page.
     const singleHtml = execFileSync(process.env.CFFP_PHP || 'php', [path.join(__dirname, 'fixtures/content-import-page.php'), 'page'], {encoding: 'utf8'});
     await page.setContent(singleHtml);
     await page.evaluate(() => {
@@ -134,9 +134,7 @@ const {execFileSync} = require('node:child_process');
     await page.setContent(selectorHtml);
     assert.equal(await page.$('#cff-content-import-form'), null, 'Menu first requires a destination, not a bulk upload');
     assert.equal(await page.$$eval('tbody a', nodes => nodes.filter(node => node.href.includes('post_id=')).length), 2, 'Menu offers one-page destinations');
-    const editorHtml = execFileSync(process.env.CFFP_PHP || 'php', [path.join(__dirname, 'fixtures/content-import-page.php'), 'editor'], {encoding: 'utf8'});
-    assert.match(editorHtml, /page=cff-import-content&amp;post_id=50/, 'Editor import button fixes current page ID');
     assert.deepEqual(errors, [], 'No uncaught browser errors');
-    console.log('Content import UI: page selection, editor context, policies, raw JSON, mappings, media warnings, single-page import, bulk compatibility, pause/resume and response loss passed.');
+    console.log('Content import UI: page selection, destination context, policies, raw JSON, mappings, media warnings, single-page import, bulk compatibility, pause/resume and response loss passed.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

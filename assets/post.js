@@ -1079,7 +1079,100 @@ jQuery(function($){
     if ($row.data('cff-rep-sorting') || !$row.children('.cff-rep-row-body').length) return;
     $row.toggleClass('is-collapsed');
     syncRepeaterRowExpanded($row);
+    refreshRowInvalid($row);
+    updateRepeaterToolbar($row.closest('.cff-repeater'));
   }
+
+  /* -------------------------
+   * Repeater toolbar (row count, limits, collapse all), "needs attention" marker, invalid-field reveal
+   * ------------------------- */
+  // A row whose required (or otherwise invalid) fields are still unfilled is marked, so it is visible even when collapsed.
+  function refreshRowInvalid($row){
+    var invalid = false;
+    try { invalid = $row.find(':invalid').length > 0; } catch(e){}
+    $row.toggleClass('has-invalid', invalid);
+  }
+
+  function updateRepeaterToolbar($rep){
+    if (!$rep.length || String($rep.data('layout') || '') === 'gallery') return;
+    var $toolbar = $rep.children('.cff-rep-toolbar');
+    if (!$toolbar.length) {
+      $toolbar = $('<div class="cff-rep-toolbar"><span class="cff-rep-count" role="status" aria-live="polite"></span>'
+        + '<span class="cff-rep-bulk" hidden><button type="button" class="button-link cff-rep-collapse-all">Collapse all</button>'
+        + '<button type="button" class="button-link cff-rep-expand-all">Expand all</button></span></div>');
+      var $anchor = $rep.children('.cff-rep-present').first();
+      if ($anchor.length) { $anchor.after($toolbar); } else { $rep.prepend($toolbar); }
+    }
+    var $rows = getRepeaterRowsWrap($rep).children('.cff-rep-row');
+    var count = $rows.length;
+    var limits = getRepeaterMinMax($rep);
+    var text = count + (limits.max > 0 ? ' / ' + limits.max : '') + (count === 1 && !limits.max ? ' row' : ' rows');
+    var note = '';
+    if (limits.max > 0 && count >= limits.max) {
+      note = ' \u2014 maximum reached';
+    } else if (limits.min > 0 && count <= limits.min) {
+      note = ' \u2014 minimum ' + limits.min;
+    }
+    $toolbar.find('.cff-rep-count').text(text + note).toggleClass('is-limit', !!note);
+
+    // Only layouts with a toggle can collapse; offer the bulk buttons when there is something to collapse.
+    var $collapsible = $rows.filter(function(){
+      return $(this).find('> .cff-rep-row-head > .cff-rep-left > .cff-rep-toggle').length > 0;
+    });
+    var collapsed = $collapsible.filter('.is-collapsed').length;
+    $toolbar.find('.cff-rep-bulk').prop('hidden', $collapsible.length < 2);
+    $toolbar.find('.cff-rep-collapse-all').prop('disabled', collapsed === $collapsible.length);
+    $toolbar.find('.cff-rep-expand-all').prop('disabled', collapsed === 0);
+    $rows.filter('.is-collapsed').each(function(){ refreshRowInvalid($(this)); });
+  }
+
+  function setRepeaterRowsCollapsed($rep, collapsed){
+    getRepeaterRowsWrap($rep).children('.cff-rep-row').each(function(){
+      var $row = $(this);
+      if (!$row.children('.cff-rep-row-body').length) return;
+      if (!$row.find('> .cff-rep-row-head > .cff-rep-left > .cff-rep-toggle').length) return;
+      $row.toggleClass('is-collapsed', collapsed);
+      syncRepeaterRowExpanded($row);
+      refreshRowInvalid($row);
+    });
+    updateRepeaterToolbar($rep);
+  }
+
+  $(document).on('click.cffRepBulk', '.cff-rep-collapse-all, .cff-rep-expand-all', function(e){
+    e.preventDefault();
+    setRepeaterRowsCollapsed($(this).closest('.cff-repeater'), $(this).hasClass('cff-rep-collapse-all'));
+  });
+
+  // Native validation cannot focus a required field inside a collapsed row or a closed field: the browser then blocks
+  // Update without any visible message. Open whatever hides an invalid field so the browser can focus it and explain.
+  function revealInvalidField($field){
+    $field.parents('.cff-field.cff-postbox.closed').each(function(){ togglePostbox($(this)); });
+    $field.parents('.cff-rep-row').each(function(){
+      var $row = $(this);
+      if ($row.hasClass('is-collapsed')) {
+        $row.removeClass('is-collapsed');
+        syncRepeaterRowExpanded($row);
+      }
+      $row.addClass('has-invalid');
+    });
+    $field.parents('.cff-repeater').each(function(){ updateRepeaterToolbar($(this)); });
+  }
+
+  // "invalid" does not bubble, so listen while the event travels down.
+  document.addEventListener('invalid', function(event){
+    var $field = $(event.target);
+    if ($field.closest('.cff-metabox, .cff-repeater, .cff-field').length) revealInvalidField($field);
+  }, true);
+
+  // Typing: refresh the row title and the attention marker shortly after the last keystroke.
+  $(document).on('input.cffRowState change.cffRowState', '.cff-rep-row :input', function(){
+    var $row = $(this).closest('.cff-rep-row');
+    window.clearTimeout($row.data('cffRowStateTimer'));
+    $row.data('cffRowStateTimer', window.setTimeout(function(){
+      refreshRepeaterRowTitle($row);
+      $row.parents('.cff-rep-row').addBack().each(function(){ refreshRowInvalid($(this)); });
+    }, 120));
+  });
 
   $(document).on('click', '.cff-rep-toggle', function(e){
     e.preventDefault();
@@ -1209,17 +1302,41 @@ jQuery(function($){
     return $.trim(String(value || ''));
   }
 
+  // Without a label field the first filled text or textarea sub field names the row (same rule as cff_build_repeater_row_title).
+  function getRepeaterAutoLabel($row){
+    var label = '';
+    $row.find('.cff-subfield-input').filter(function(){
+      return $(this).closest('.cff-rep-row')[0] === $row[0];
+    }).each(function(){
+      var $field = $(this);
+      if (!$field.is('.cff-subfield-type-text, .cff-subfield-type-textarea')) return;
+      var value = $.trim(String($field.find(':input[name]').not('[type=hidden]').first().val() || '')).replace(/\s+/g, ' ');
+      if (!value) return;
+      label = value.length > 60 ? value.slice(0, 59) + '\u2026' : value;
+      return false;
+    });
+    return label;
+  }
+
+  function buildRepeaterRowTitle($rep, $row, index){
+    var rowLabelField = String($rep.data('row-label') || '');
+    var title = 'Row ' + (index + 1);
+    var labelValue = rowLabelField ? getRepeaterRowLabelValue($row, rowLabelField) : getRepeaterAutoLabel($row);
+    return labelValue ? title + ': ' + labelValue : title;
+  }
+
+  function refreshRepeaterRowTitle($row){
+    var $rep = $row.closest('.cff-repeater');
+    if (!$rep.length || String($rep.data('layout') || '') === 'table') return;
+    var index = $row.parent().children('.cff-rep-row').index($row);
+    $row.find('> .cff-rep-row-head .cff-rep-row-title').text(buildRepeaterRowTitle($rep, $row, index));
+  }
+
   function updateRepeaterRowTitles($rep){
     if (String($rep.data('layout') || '') === 'table') return;
-    var rowLabelField = String($rep.data('row-label') || '');
     getRepeaterRowsWrap($rep).children('.cff-rep-row').each(function(index){
       var $row = $(this);
-      var title = 'Row ' + (index + 1);
-      var labelValue = getRepeaterRowLabelValue($row, rowLabelField);
-      if (labelValue) {
-        title += ': ' + labelValue;
-      }
-      $row.find('> .cff-rep-row-head .cff-rep-row-title').text(title);
+      $row.find('> .cff-rep-row-head .cff-rep-row-title').text(buildRepeaterRowTitle($rep, $row, index));
       syncRepeaterRowExpanded($row);
     });
   }
@@ -1436,12 +1553,14 @@ jQuery(function($){
         .toggleClass('is-disabled', !canRemove)
         .attr('aria-disabled', canRemove ? null : 'true');
       try { $(this).prop('disabled', !canRemove); } catch(e){}
+      setLimitTitle($(this), !canRemove, 'Minimum number of rows reached');
     });
     $rowsWrap.children('.cff-rep-row').find('> .cff-rep-row-head .cff-rep-clone').each(function(){
       $(this)
         .toggleClass('is-disabled', !canAdd)
         .attr('aria-disabled', canAdd ? null : 'true');
       try { $(this).prop('disabled', !canAdd); } catch(e){}
+      setLimitTitle($(this), !canAdd, 'Maximum number of rows reached');
     });
 
     $rep.children('p').find('> .cff-rep-add').each(function(){
@@ -1451,11 +1570,19 @@ jQuery(function($){
       try { $(this).prop('disabled', !canAdd); } catch(e){}
     });
 
-    // optional: tooltip kecil biar jelas
-    if (!canAdd && max) {
-      $rep.children('p').find('> .cff-rep-add').attr('title', 'Max rows: ' + max);
-    } else {
-      $rep.children('p').find('> .cff-rep-add').removeAttr('title');
+    setLimitTitle($rep.children('p').find('> .cff-rep-add'), !canAdd && !!max, 'Maximum number of rows reached');
+    updateRepeaterToolbar($rep);
+  }
+
+  // A disabled button says why; its own tooltip comes back once it is enabled again.
+  function setLimitTitle($button, limited, message){
+    if (limited) {
+      if ($button.data('cffTitle') === undefined) { $button.data('cffTitle', $button.attr('title') || ''); }
+      $button.attr('title', message);
+    } else if ($button.data('cffTitle') !== undefined) {
+      var original = $button.data('cffTitle');
+      if (original) { $button.attr('title', original); } else { $button.removeAttr('title'); }
+      $button.removeData('cffTitle');
     }
   }
 

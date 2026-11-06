@@ -841,10 +841,24 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     echo '</label>';
   }
 
-  function cff_build_repeater_row_title($row, $row_label_field, $display_index) {
+  /**
+   * Title of a repeater row: "Row 3: <value of the chosen label field>". Without a label field the first filled text or
+   * textarea sub field is used, so rows can be told apart without any setup (assets/post.js applies the same rule live).
+   */
+  function cff_build_repeater_row_title($row, $row_label_field, $display_index, $subs = []) {
     $base = sprintf(__('Row %d', 'cff'), max(1, intval($display_index)));
     $row_label_field = sanitize_key($row_label_field);
-    if (!$row_label_field || !is_array($row)) return $base;
+    if (!is_array($row)) return $base;
+    if (!$row_label_field) {
+      foreach ((array) $subs as $sub) {
+        if (!is_array($sub) || !in_array($sub['type'] ?? '', ['text', 'textarea'], true)) continue;
+        $auto = trim(preg_replace('/\s+/u', ' ', sanitize_text_field((string) ($row[$sub['name'] ?? ''] ?? ''))));
+        if ($auto === '') continue;
+        if (mb_strlen($auto) > 60) $auto = mb_substr($auto, 0, 59) . "\u{2026}";
+        return $base . ': ' . $auto;
+      }
+      return $base;
+    }
 
     $raw = $row[$row_label_field] ?? '';
     if (is_array($raw)) {
@@ -1005,7 +1019,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       $row_classes .= ' is-collapsed';
     }
     $display_index = (is_numeric($i) ? intval($i) + 1 : 1);
-    $row_title = cff_build_repeater_row_title($row, $row_label_field, $display_index);
+    $row_title = cff_build_repeater_row_title($row, $row_label_field, $display_index, $subs);
     $row_id = ($i === '__INDEX__') ? '__ROWID__' : cff_generate_row_id($row['__cff_row_id'] ?? '');
     if ($layout === 'table') {
       $row_prefix = ($name_prefix !== null ? $name_prefix : 'cff_values['.$parent.']') . '['.$i.']';

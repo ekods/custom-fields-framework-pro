@@ -304,10 +304,7 @@
     align-items: center
 }
 
-.cff-loc-rule .button {
-    height: 30px;
-    margin-top: 12px;
-}
+.cff-loc-rule .button { margin-top: 12px; }
 
 /* Reorder UI */
 #cff-reorder {
@@ -793,10 +790,7 @@
         align-items: stretch
     }
 
-    .cff-loc-rule .button {
-        height: auto;
-        margin-top: 0
-    }
+    .cff-loc-rule .button { margin-top: 0; }
 }
 
 /* Input styling (ACF-like) */
@@ -1347,11 +1341,7 @@ body.post-type-cff_group .cff-tabs textarea,
     align-items: center
 }
 
-.cff-field-row .cff-actions .button {
-    height: 32px;
-    line-height: 30px;
-    display: flex;
-}
+.cff-field-row .cff-actions .button { display: flex; }
 
 .cff-field-row .cff-type {
     width: 100%
@@ -1671,10 +1661,6 @@ body.post-type-cff_group .cff-tabs textarea,
     justify-content: flex-end
 }
 
-.cff-subfield .cff-actions .button {
-    height: 32px;
-    line-height: 30px
-}
 
 .cff-subfield .cff-subgroupbuilder,
 .cff-subfield .cff-subbuilder {
@@ -3369,19 +3355,8 @@ body.post-type-cff_group .cff-tabs textarea,
     padding: 12px;
 }
 
-.tk-dashboard-widget .button-primary {
-    background: var(--tk-primary) !important;
-    border-color: var(--tk-primary) !important;
-    box-shadow: 0 4px 6px -1px rgba(29, 78, 216, 0.2) !important;
-    font-weight: 600 !important;
-    height: 36px !important;
-    line-height: 34px !important;
-}
 
-.tk-dashboard-widget .button-primary:hover {
-    background: var(--cff-primary-strong) !important;
-    transform: translateY(-1px);
-}
+
 
 /* UI Polish */
 .tk-card {
@@ -3392,10 +3367,6 @@ body.post-type-cff_group .cff-tabs textarea,
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
 }
 
-.tk-wrap .button:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *, .tk-hero-action *)) {
-    border-radius: 8px;
-    font-weight: 500;
-}
 
 .tk-switch {
     position: relative;
@@ -4278,17 +4249,9 @@ input:checked+.tk-slider:before {
     font-style: italic;
 }
 
-.cff-reorder-section .button-primary {
-    margin-top: 20px !important;
-    border-radius: 8px !important;
-    padding: 6px 20px !important;
-    font-weight: 600 !important;
-}
+.cff-reorder-section .button-primary { margin-top: 20px !important; }
 
 /* Floating Save Bar */
-.wp-core-ui .button-secondary:not(:where(.tk-hero-action *)) {
-    min-height: 30px;
-}
 
 .cff-floating-save {
     position: fixed;
@@ -4315,21 +4278,8 @@ input:checked+.tk-slider:before {
     opacity: 1;
 }
 
-.cff-floating-save .button {
-    margin: 0 !important;
-    height: 46px !important;
-    line-height: 44px !important;
-    padding: 0 28px !important;
-    border-radius: 14px !important;
-    font-weight: 700 !important;
-    font-size: 14px !important;
-    box-shadow: 0 4px 12px rgba(34, 113, 177, 0.2);
-}
+.cff-floating-save .button { margin: 0 !important; }
 
-.cff-floating-save .button:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(34, 113, 177, 0.3);
-}
 
 /* CFF workbench foundations: quiet surfaces, content hierarchy and blue actions. */
 :root {
@@ -4570,27 +4520,10 @@ input:checked+.tk-slider:before {
     box-shadow: var(--cff-shadow-sm);
 }
 
-.wrap.cff-admin .button:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *, .tk-hero-action *)),
-body.post-type-cff_group .button:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *, .tk-hero-action *)) {
-    border-radius: 6px;
-}
 
-.wrap.cff-admin .button-primary:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *, .tk-hero-action *)),
-body.post-type-cff_group .button-primary:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *, .tk-hero-action *)),
-.cff-floating-save .button {
-    border-color: var(--cff-action-border) !important;
-    background: var(--cff-action-bg) !important;
-    color: var(--cff-action-text) !important;
-    box-shadow: none;
-}
 
-.wrap.cff-admin .button-primary:hover:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *, .tk-hero-action *)),
-body.post-type-cff_group .button-primary:hover:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *, .tk-hero-action *)),
-.cff-floating-save .button:hover {
-    background: var(--cff-action-hover) !important;
-    border-color: var(--cff-primary) !important;
-    box-shadow: none;
-}
+
+
 
 body.post-type-cff_group .cff-tabs input[type=color],
 body.post-type-cff_group .cff-tabs input[type=date],
@@ -4743,12 +4676,6 @@ body.post-type-cff_group .cff-tabs textarea:focus,
     box-shadow: var(--cff-shadow-md);
 }
 
-.cff-floating-save .button {
-    height: 40px !important;
-    line-height: 38px !important;
-    border-radius: 6px !important;
-    padding: 0 18px !important;
-}
 
 @media (max-width: 782px) {
     .tk-header-branding,
@@ -4778,8 +4705,7 @@ body.post-type-cff_group .cff-tabs textarea:focus,
 
 /* Friendly accent surfaces without altering WordPress list table styles. */
 .cff-admin .tk-header-version { color: var(--cff-primary-strong); background: #eaf3ff; }
-.cff-admin .button-primary:not(:where(.tk-hero-action *)) { background: var(--cff-primary); border-color: var(--cff-primary); }
-.cff-admin .button-primary:not(:where(.tk-hero-action *)):hover { background: var(--cff-primary-strong); border-color: var(--cff-primary-strong); }
+
 .cff-field-row { border-color: var(--cff-border); }
 .cff-field-row:focus-within { border-color: var(--cff-primary); }
 .cff-tab.active { color: var(--cff-primary); border-bottom-color: var(--cff-primary); }
@@ -4806,13 +4732,10 @@ body.post-type-cff_group .cff-tabs textarea:focus,
 .cff-row-rules { border-radius: 6px; }
 .cff-field-row .cff-col label, .cff-subfield .cff-col label { text-transform: none; letter-spacing: 0; }
 .cff-floating-save { backdrop-filter: none; background: var(--cff-surface); border-radius: 8px; }
-.cff-floating-save .button { box-shadow: none; }
-.cff-floating-save .button:hover { transform: none; box-shadow: none; }
+
 .cff-admin :is(a, button, summary):focus-visible, #cff-fields-builder :is(button, summary):focus-visible { outline: 2px solid var(--cff-primary); outline-offset: 3px; }
 .cff-field-row:focus-within, .cff-subfield:focus-within { border-color: var(--cff-primary); }
-.cff-field-row .cff-actions .button, .cff-subfield .cff-actions .button { color: var(--cff-primary); border-color: var(--cff-border); background: #fff; box-shadow: none; }
 .cff-field-row .cff-actions :is(.cff-remove, .cff-remove-sub), .cff-remove-layout { color: var(--cff-danger); }
-.cff-field-row .cff-actions .button:hover, .cff-subfield .cff-actions .button:hover { background: var(--cff-surface-soft); border-color: var(--cff-primary); }
 .cff-row-rules { min-width: 0; background: var(--cff-surface-soft); }
 .cff-row-rules .cff-tools-toggles strong { text-transform: none; letter-spacing: 0; color: var(--cff-text); }
 .cff-field-options { min-width: 0; border-top: 1px solid var(--cff-border); padding-top: 8px; }
@@ -4830,9 +4753,8 @@ body.post-type-cff_group .cff-tabs textarea:focus,
     .cff-field-view-controls select { min-width: 0; max-width: 100%; }
 }
 .cff-confirm-dialog { border-radius: 14px; }
-.cff-confirm-accept.button-primary { background: var(--cff-action-bg); border-color: var(--cff-action-border); color: var(--cff-action-text); }
-.cff-confirm-accept.is-destructive.button-primary { background: var(--cff-danger); border-color: var(--cff-danger); color: #fff; }
-.cff-confirm-accept.is-destructive.button-primary:hover { background: #912018; border-color: #912018; }
+
+
 @media (prefers-reduced-motion: reduce) {
     :is(.cff-field-row, .cff-subfield, .cff-layout, .cff-floating-save) { transition: none; }
 }
@@ -4842,14 +4764,9 @@ body.post-type-cff_group .cff-tabs textarea:focus,
     font-family: var(--cff-font);
     font-size: 13px;
 }
-:is(.cff-admin, .cff-tabs, .cff-metabox, #cff-fields-builder, .cff-confirm-dialog) .button:not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *, .tk-hero-action *)) {
-    font-size: var(--cff-button-size);
-    font-weight: 400;
-}
 :is(.wrap.cff-admin, .cff-tabs, .cff-metabox, #cff-fields-builder) :is(input:not([type="checkbox"], [type="radio"], [type="button"], [type="submit"]), textarea, select):not(:where(.tablenav *, .search-box *, .cff-list-filter *, .wp-list-table *)) {
     font-size: var(--cff-control-size);
 }
-.cff-floating-save .button { font-size: var(--cff-button-size) !important; font-weight: 400 !important; }
 @media (max-width: 782px) {
     :root { --cff-control-size: 16px; --cff-button-size: 14px; }
 }
