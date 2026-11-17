@@ -5,7 +5,18 @@ if (!defined('ABSPATH')) exit;
 <div class="wrap tk-wrap cff-admin cff-tools-page cff-content-import">
   <?php cff_render_header_branding(); ?>
   <?php cff_render_page_hero(__('Import Content', 'cff'), $destination ? __('Import one JSON content object into the selected page. Review field mappings before writing.', 'cff') : __('Import post, page and custom field values from JSON. Review a preview before writing content.', 'cff'), 'dashicons-upload'); ?>
-  <?php if ($destination) : ?>
+  <?php if (!empty($bulk_destinations)) : ?>
+    <div class="tk-card cff-import-destination">
+      <h2><?php echo esc_html(sprintf(_n('%d selected page', '%d selected pages', count($bulk_destinations), 'cff'), count($bulk_destinations))); ?></h2>
+      <ul>
+      <?php foreach ($bulk_destinations as $item) : ?>
+        <li><?php echo str_repeat('<span aria-hidden="true">— </span>', count(get_post_ancestors($item))); echo esc_html($item->post_title ?: '(untitled)'); ?> <small>#<?php echo (int) $item->ID; ?></small></li>
+      <?php endforeach; ?>
+      </ul>
+      <a class="button" href="<?php echo esc_url(admin_url('admin.php?page=cff-import-content&post_type=' . $destination->post_type)); ?>"><?php esc_html_e('Change selection', 'cff'); ?></a>
+      <p class="description"><?php esc_html_e('The same JSON is applied to every selected page. Only each page’s CFF values change; titles, URLs, templates, publication status and translations are kept. Sections not available on a page’s template are reported for that page only.', 'cff'); ?></p>
+    </div>
+  <?php elseif ($destination) : ?>
     <div class="tk-card cff-import-destination">
       <h2><?php echo esc_html($destination->post_title); ?> <small>#<?php echo (int) $destination->ID; ?></small></h2>
       <p><?php echo esc_html($destination->post_type . ' · ' . (get_page_template_slug($destination->ID) ?: 'default')); ?><?php if (function_exists('pll_get_post_language')) echo ' · ' . esc_html(strtoupper((string) pll_get_post_language($destination->ID, 'slug'))); ?></p>

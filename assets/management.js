@@ -6,20 +6,6 @@
     var root = document.querySelector('.cff-admin');
     if (!root) return;
 
-    // Reveal the current section in the mobile navigation without scrolling the page.
-    var navigation = root.querySelector('.cff-section-nav');
-    function revealCurrentSection() {
-      if (!navigation) return;
-      var current = navigation.querySelector('[aria-current="page"]');
-      if (!current) return;
-      var viewport = navigation.getBoundingClientRect();
-      var item = current.getBoundingClientRect();
-      var offset = item.left < viewport.left ? item.left - viewport.left : (item.right > viewport.right ? item.right - viewport.right : 0);
-      if (offset) navigation.scrollLeft += offset;
-    }
-    requestAnimationFrame(revealCurrentSection);
-    window.addEventListener('resize', revealCurrentSection);
-
     var editor = root.querySelector('#cff-definition-editor');
     function openEditor(focus) {
       if (!editor) return;

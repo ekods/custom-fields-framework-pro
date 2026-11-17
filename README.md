@@ -1,5 +1,82 @@
 # Custom Fields Framework Pro
 
+## Revision per ID konten
+
+Pada editor post, page, atau CPT yang memakai CFF, buka panel **CFF Revision
+History → View revisions** untuk membuka popup **Revisions**. Daftar terbaru
+lebih dulu menampilkan avatar, pengguna, waktu relatif, dan tanggal/jam lengkap
+sebagai tautan. Klik tanggal untuk membuka versi tersebut sebagai **To** pada
+halaman perbandingan, atau **Compare revisions** untuk tampilan perbandingan
+umum. Daftar mendukung scroll dengan mouse, sentuhan, atau keyboard, sementara
+header dan tombol tutup tetap terlihat. Tutup popup dengan **×** atau Escape.
+Riwayat melekat pada ID konten tersebut, termasuk
+ID terjemahan Polylang masing-masing; tidak ada daftar revisi global. Fitur ini
+terpisah dari checkbox Revisions WordPress untuk judul/konten utama dan tidak
+memerlukan checkbox tersebut diaktifkan.
+
+Perubahan nilai CFF dari editor, REST API, import, dan salinan terjemahan dicatat
+sebagai satu versi lengkap per ID per request. Versi mencakup group, repeater,
+flexible content, urutan field, serta Hide Section. Penyimpanan pertama yang
+mengubah CFF juga menyimpan keadaan sebelum perubahan. Autosave tidak menjadi
+versi tersimpan. Maksimal 20 versi terakhir disimpan per ID; penyimpanan tanpa
+perubahan dan import yang di-rollback tidak menambah versi.
+
+Gunakan slider atau **Previous / Next** untuk memilih versi **To**. Aktifkan
+**Compare any two revisions** untuk memilih **From** dan **To** secara terpisah.
+Setiap sisi menampilkan nama pengguna, tanggal/jam hingga detik beserta zona
+waktu situs WordPress, dan waktu relatif. Nilai yang dihapus berwarna merah dan
+yang ditambahkan hijau, termasuk sorotan per kata memakai renderer diff
+WordPress. Nama pengguna disimpan bersama versi sebagai cadangan jika akun
+kemudian dihapus. Snapshot sebelum perubahan pertama diberi keterangan waktu
+capture; pembuat dan waktu perubahan aslinya tidak diasumsikan.
+
+Gunakan **User**, **From date**, dan **To date**, lalu klik **Filter** untuk
+membatasi versi pada ID ini. Batas tanggal mencakup seluruh hari menurut zona
+waktu WordPress. User juga mencakup pengguna yang mencatat snapshot sebelum
+perubahan. Slider dan pilihan From/To hanya memuat hasil yang cocok; **Reset**
+menampilkan kembali seluruh riwayat ID ini. Batas penyimpanan tetap 20 versi.
+
+**Restore This Revision** memulihkan versi **To**, seluruh nilai CFF pada ID itu,
+termasuk menghapus nilai yang belum ada di versi terpilih. Simpan perubahan
+editor terlebih dahulu sebelum membuka halaman revisi. Restore menyimpan keadaan saat ini sebagai titik
+pemulihan, memerlukan izin edit konten, dan ditolak jika pengguna lain sedang
+mengedit atau data berubah sejak perbandingan. Judul, konten utama, template,
+metadata plugin lain, dan terjemahan lain tidak dipulihkan. Media dipulihkan
+sebagai referensi ID/URL yang tersimpan; berkas media tidak digandakan atau
+dipulihkan dari penghapusan.
+
+Untuk sebagian konten saja, gunakan tombol **Restore: nama field/section** pada
+perbandingan, atau buka **Restore selected fields / sections**, centang satu atau
+beberapa pilihan, lalu klik **Restore selected**. Sumber tetap versi **To** dan
+pilihannya dibandingkan dengan nilai tersimpan sekarang, walaupun From dan To
+menunjuk versi yang sama. Field utama berupa group, repeater atau flexible
+dipulihkan sebagai satu kesatuan termasuk subfield, row/layout ID, dan status
+Hide Section miliknya; modul ini tidak memulihkan satu subfield/row secara
+terpisah. Field lain dan pengaturan urutannya tetap dipertahankan. Pilih
+**Field order** atau **Section visibility** secara eksplisit untuk memulihkan
+seluruh metadata urutan atau visibilitas. URL media lama mengikuti field image/
+file terkait. Nilai field terpilih yang belum ada di versi lama akan dihapus.
+
+Restore sebagian juga membuat titik pemulihan lengkap dan mencatat cakupan
+field yang dipulihkan. Pemilihan kosong/tidak valid ditolak; izin edit, lock,
+dan pemeriksaan nilai tersimpan berlaku sama seperti restore penuh.
+
+Duplikasi dan Language Clone menyalin nilai sesuai pengaturannya tanpa membawa
+riwayat sumber. Konten tujuan membangun riwayatnya sendiri. Revisi baru tersedia
+mulai fitur ini digunakan; tidak dapat merekonstruksi versi lama sebelum
+pencatatan aktif. Riwayat mengikuti pengaturan Keep data saat uninstall.
+
+Verifikasi dengan source WordPress lokal tanpa database situs:
+
+```bash
+WP_ADMIN_TEST_ROOT=/path/to/wordpress composer test:content-revisions
+WP_ADMIN_TEST_ROOT=/path/to/wordpress composer test:content-revisions-ui
+```
+
+Tes PHP memakai fungsi metadata/hook WordPress asli dengan SQLite sementara;
+tes browser membutuhkan Puppeteer dan menjalankan AJAX compare/restore nyata
+pada server loopback dengan database SQLite sementara.
+
 ## Hide Section controls
 
 Di **Custom Fields → Global Settings → Editor UI Settings**, aktifkan **Hide Section Controls** untuk menyembunyikan switch **Hide Section** di editor konten. Status visibilitas section yang sudah tersimpan tetap dipertahankan saat konten disimpan. Nonaktifkan opsi untuk menampilkan switch kembali.

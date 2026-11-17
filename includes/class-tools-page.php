@@ -114,6 +114,8 @@ class Tools_Page {
     echo '</form>';
     echo '</div>';
 
+    $this->plugin->local_json()->render_status_card();
+
     echo '<div class="tk-card">';
     echo '<h2>' . esc_html__('Migrate from ACF', 'cff') . '</h2>';
     echo '<p class="description">' . esc_html__('Import ACF field groups into CFF using the current basic field mapping.', 'cff') . '</p>';

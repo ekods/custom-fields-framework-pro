@@ -185,7 +185,62 @@
   CFF.fieldBuilder = (function(){
     var $input, $root;
     var tplField, tplSub, tplLayout;
+    // Mirrors Plugin::supports_default_value() in PHP.
+    var defaultValueTypes = {
+      text: true, number: true, textarea: true, wysiwyg: true, email: true, url: true, color: true,
+      range: true, shortcode: true, date_picker: true, datetime_picker: true, time_picker: true, checkbox: true
+    };
+
+    // Instructions, default value and wrapper width live in the field's own meta row.
+    function getCommonSettings($element){
+      var $meta = getFieldMetaRow($element);
+      return {
+        instructions: $meta.children('.cff-row-instructions').find('.cff-instructions-input').first(),
+        defaultValue: $meta.children('.cff-row-default').find('.cff-default-value').first(),
+        width: $meta.children('.cff-row-width').find('.cff-wrapper-width').first(),
+        rangeMin: $meta.children('.cff-row-range-options').find('.cff-range-min').first(),
+        rangeMax: $meta.children('.cff-row-range-options').find('.cff-range-max').first(),
+        rangeStep: $meta.children('.cff-row-range-options').find('.cff-range-step').first(),
+        message: $meta.children('.cff-row-message-options').find('.cff-message-input').first(),
+        accordionOpen: $meta.children('.cff-row-accordion-options').find('.cff-accordion-open-toggle').first()
+      };
+    }
+
+    function populateCommonSettings($element, data){
+      var common = getCommonSettings($element);
+      common.instructions.val(data.instructions || '');
+      common.defaultValue.val(data.default_value !== undefined ? data.default_value : '');
+      common.width.val(parseInt(data.wrapper_width, 10) > 0 ? parseInt(data.wrapper_width, 10) : '');
+      common.rangeMin.val(data.range_min !== undefined ? data.range_min : 0);
+      common.rangeMax.val(data.range_max !== undefined ? data.range_max : 100);
+      common.rangeStep.val(data.range_step !== undefined ? data.range_step : 1);
+      common.message.val(data.message || '');
+      common.accordionOpen.prop('checked', !!data.accordion_open);
+    }
+
+    function readCommonSettings($element, item){
+      var common = getCommonSettings($element);
+      var instructions = String(common.instructions.val() || '').trim();
+      if (instructions) item.instructions = instructions;
+      if (defaultValueTypes[item.type]) {
+        var defaultValue = String(common.defaultValue.val() || '');
+        if (defaultValue !== '') item.default_value = defaultValue;
+      }
+      var width = parseInt(common.width.val(), 10);
+      if (width > 0 && width < 100) item.wrapper_width = width;
+      if (item.type === 'range') {
+        item.range_min = parseFloat(common.rangeMin.val()) || 0;
+        item.range_max = parseFloat(common.rangeMax.val());
+        if (isNaN(item.range_max)) item.range_max = 100;
+        item.range_step = parseFloat(common.rangeStep.val()) || 1;
+      }
+      if (item.type === 'message') item.message = String(common.message.val() || '');
+      if (item.type === 'accordion') item.accordion_open = common.accordionOpen.is(':checked');
+      return item;
+    }
+
     var placeholderTypes = {
+      email: true,
       text: true,
       number: true,
       textarea: true,
@@ -796,6 +851,7 @@
       $input.val(JSON.stringify(normalized));
       $input.trigger('change');
       refreshSecondaryViews(normalized);
+      refreshSummaries();
     }
 
     function syncFieldsInput(){
@@ -848,10 +904,21 @@
     function togglePlaceholderRow($element, type){
       if (!$element || !$element.length) return;
       var $meta = getFieldMetaRow($element);
+      var selectedType = String(type || '').trim();
+      $meta.children('.cff-row-default').toggle(!!defaultValueTypes[selectedType]);
+      $meta.children('.cff-row-range-options').toggle(selectedType === 'range');
+      $meta.children('.cff-row-message-options').toggle(selectedType === 'message');
+      $meta.children('.cff-row-accordion-options').toggle(selectedType === 'accordion');
       var $row = $meta.children('.cff-row-placeholder').first();
       if (!$row.length) return;
       var allowed = placeholderTypes[String(type || '').trim()];
       $row.toggle(!!allowed);
+    }
+
+    // A field's own switch only; group/repeater fields contain sub-field switches too.
+    function ownToggle($element, selector){
+      var $row = getFieldMetaRow($element);
+      return ($row.length ? $row : $element).find(selector).first();
     }
 
     function getFieldMetaRow($element){
@@ -1020,11 +1087,6 @@
       var isGroup = (t === 'group');
       $sub.toggleClass('is-group', isGroup);
       $builder.toggle(isGroup);
-      $sub.find('.cff-sub-acc-toggle').toggle(isGroup);
-      if (t !== 'group') {
-        $sub.removeClass('is-collapsed');
-        $sub.find('.cff-sub-acc-toggle').attr('aria-expanded', 'true');
-      }
       if (t === 'group') {
         sortableSubs($builder.find('> .cff-group-fields').first());
         $(document).trigger('cff:refresh', $builder);
@@ -1042,6 +1104,143 @@
       if (isRepeater) {
         sortableSubs($builder.find('> .cff-subfields').first());
       }
+    }
+
+    /* Field list rows: a summary line (# | label | name | type) that opens a tabbed settings body.
+       Settings controls stay in their original DOM positions; tabs only hide/show them. */
+    var typeIcons = {
+      text: 'editor-textcolor', number: 'editor-ol', textarea: 'editor-paragraph', wysiwyg: 'editor-kitchensink',
+      shortcode: 'shortcode', color: 'art', url: 'admin-links', link: 'admin-links', embed: 'embed-generic',
+      choice: 'list-view', relational: 'networking', date_picker: 'calendar-alt', datetime_picker: 'clock',
+      checkbox: 'yes-alt', image: 'format-image', gallery: 'format-gallery', file: 'media-default',
+      repeater: 'controls-repeat', group: 'screenoptions', flexible: 'layout',
+      email: 'email', range: 'leftright', time_picker: 'clock', message: 'format-chat', tab: 'index-card', accordion: 'menu-alt3'
+    };
+    var itemTabs = [
+      ['general', 'General'],
+      ['validation', 'Validation'],
+      ['presentation', 'Presentation'],
+      ['conditional', 'Conditional Logic']
+    ];
+    var listHead = '<div class="cff-list-head" aria-hidden="true">' +
+      '<span>#</span><span></span><span>Label</span><span>Name</span><span>Type</span>' +
+    '</div>';
+
+    function itemStructure($item){
+      return $item.children('.cff-field-structure, .cff-subfield-structure').first();
+    }
+
+    function itemPanes($item){
+      var $structure = itemStructure($item);
+      var $meta = $structure.children('.cff-field-meta-row');
+      return $structure.children('[data-cff-pane]')
+        .add($meta.children('[data-cff-pane]'))
+        .add($meta.children('.cff-row-rules').children('[data-cff-pane]'))
+        .add($item.children('[data-cff-pane]'));
+    }
+
+    function decorateItem($item){
+      if (!$item || !$item.length || $item.data('cffDecorated')) return;
+      $item.data('cffDecorated', 1);
+
+      var $structure = itemStructure($item);
+      var $meta = $structure.children('.cff-field-meta-row');
+      var $rules = $meta.children('.cff-row-rules');
+      $structure.children('.cff-field-head, .cff-field-choice, .cff-field-relational').attr('data-cff-pane', 'general');
+      $meta.children('.cff-row-repeater-options, .cff-row-datetime-options, .cff-row-media-options, .cff-row-gallery-options').attr('data-cff-pane', 'general');
+      $meta.children('.cff-row-placeholder, .cff-row-width').attr('data-cff-pane', 'presentation');
+      $meta.children('.cff-row-instructions, .cff-row-default, .cff-row-range-options, .cff-row-message-options, .cff-row-accordion-options').attr('data-cff-pane', 'general');
+      $rules.children('.cff-row-required').attr('data-cff-pane', 'validation');
+      $rules.children('.cff-row-hide').attr('data-cff-pane', 'presentation');
+      $rules.children('.cff-row-conditional').attr('data-cff-pane', 'conditional');
+      $item.children('.cff-advanced, .cff-subbuilder, .cff-groupbuilder').attr('data-cff-pane', 'general');
+
+      $item.children('.cff-handle-wrap').first().addClass('cff-item-summary').append(
+        '<div class="cff-sum-main">' +
+          '<button type="button" class="cff-sum-label"></button>' +
+          '<span class="cff-sum-actions">' +
+            '<button type="button" class="cff-sum-action" data-action="edit">Edit</button>' +
+            '<button type="button" class="cff-sum-action" data-action="duplicate">Duplicate</button>' +
+            '<button type="button" class="cff-sum-action is-danger" data-action="delete">Delete</button>' +
+          '</span>' +
+        '</div>' +
+        '<span class="cff-sum-name"></span>' +
+        '<span class="cff-sum-type"><span class="cff-sum-type-icon dashicons" aria-hidden="true"></span><span class="cff-sum-type-label"></span></span>'
+      );
+
+      var tabs = '<div class="cff-item-tabs" role="tablist">';
+      itemTabs.forEach(function(tab){
+        tabs += '<button type="button" role="tab" class="cff-item-tab" data-tab="' + tab[0] + '">' + tab[1] + '</button>';
+      });
+      $structure.prepend(tabs + '</div>');
+
+      var $builders = $item.children('.cff-advanced').children('.cff-subbuilder, .cff-groupbuilder')
+        .add($item.children('.cff-subbuilder, .cff-groupbuilder'));
+      $builders.each(function(){
+        var $builder = $(this);
+        $builder.children('.cff-subhead').after(listHead);
+        $builder.append('<div class="cff-list-foot"><button type="button" class="button button-primary cff-list-add">Add Field</button></div>');
+      });
+
+      $item.append(
+        '<div class="cff-item-footer">' +
+          '<button type="button" class="button cff-item-close">Close Field</button>' +
+          '<button type="button" class="button cff-item-close-add">Close and Add Field</button>' +
+        '</div>'
+      );
+
+      setItemTab($item, 'general');
+      setItemOpen($item, !$item.hasClass('is-collapsed'));
+    }
+
+    function setItemTab($item, tab){
+      $item.attr('data-cff-tab', tab);
+      itemStructure($item).children('.cff-item-tabs').children('.cff-item-tab').each(function(){
+        var active = $(this).attr('data-tab') === tab;
+        $(this).toggleClass('is-active', active).attr('aria-selected', active ? 'true' : 'false');
+      });
+      itemPanes($item).each(function(){
+        $(this).toggleClass('cff-pane-hidden', $(this).attr('data-cff-pane') !== tab);
+      });
+    }
+
+    function setItemOpen($item, open){
+      $item.toggleClass('is-collapsed', !open);
+      $item.children('.cff-handle-wrap').children('.cff-acc-toggle, .cff-sub-acc-toggle').attr('aria-expanded', open ? 'true' : 'false');
+    }
+
+    function openNewItem($item){
+      setItemOpen($item, true);
+      setItemTab($item, 'general');
+      var $label = getFieldHeadRow($item).find('.cff-label, .cff-slabel').first();
+      setTimeout(function(){
+        if ($item[0] && $item[0].scrollIntoView) $item[0].scrollIntoView({ block: 'nearest' });
+        $label.trigger('focus');
+      }, 0);
+    }
+
+    function updateSummary($item){
+      var isSub = $item.hasClass('cff-subfield');
+      var $head = getFieldHeadRow($item);
+      var label = $head.find(isSub ? '.cff-slabel' : '.cff-label').first().val() || '';
+      var name = $head.find(isSub ? '.cff-sname' : '.cff-name').first().val() || '';
+      var type = $head.find(isSub ? '.cff-stype' : '.cff-type').first().val() || 'text';
+      var $wrap = $item.children('.cff-handle-wrap');
+      $wrap.find('> .cff-sum-main > .cff-sum-label').text(label || '(no label)').toggleClass('is-empty', !label);
+      $wrap.children('.cff-sum-name').text(name);
+      $wrap.find('> .cff-sum-type > .cff-sum-type-icon').attr('class', 'cff-sum-type-icon dashicons dashicons-' + (typeIcons[type] || 'admin-generic'));
+      $wrap.find('> .cff-sum-type > .cff-sum-type-label').text(typeLabel(type));
+    }
+
+    function refreshSummaries(){
+      if (!$root || !$root.length) return;
+      $root.find('.cff-field-row, .cff-subfield').each(function(){
+        var $item = $(this);
+        decorateItem($item);
+        updateSummary($item);
+        var index = $item.parent().children('.cff-field-row, .cff-subfield').index($item) + 1;
+        $item.children('.cff-handle-wrap').children('.cff-handle').text(index);
+      });
     }
 
     function sortableSubs($container){
@@ -1103,7 +1302,11 @@
         gallery: true,
         file: true,
         repeater: true,
-        group: true
+        group: true,
+        email: true,
+        range: true,
+        time_picker: true,
+        message: true
       };
 
       return !!allowed[String(type || '').trim()];
@@ -1250,11 +1453,12 @@
       });
       toggleRelationalPanel($el, s.type || 'text');
       $el.find('.cff-placeholder').val(s.placeholder || '');
+      populateCommonSettings($el, s);
       getMediaOptions($el).fileLibrary.val(normalizeFileLibrary(s.file_library));
       getMediaOptions($el).maxUploadMb.val(normalizeMediaMaxUploadMb(s.max_upload_mb));
       getGalleryOptions($el).previewFit.val(normalizeGalleryPreviewFit(s.gallery_preview_fit));
-      $el.find('.cff-required-toggle').prop('checked', !!s.required);
-      $el.find('.cff-hide-toggle').prop('checked', !!s.hide);
+      ownToggle($el, '.cff-required-toggle').prop('checked', !!s.required);
+      ownToggle($el, '.cff-hide-toggle').prop('checked', !!s.hide);
       $el.find('.cff-datetime-use-time-toggle').prop('checked', (s.datetime_use_time !== false));
       toggleDatetimeOptions($el, s.type || 'text');
       toggleMediaOptions($el, s.type || 'text');
@@ -1283,6 +1487,9 @@
       subRepeaterOptions.collapsed.prop('checked', !!s.repeater_collapsed);
       toggleRepeaterOptions($el, s.type || 'text');
       syncRepeaterBuilderLayout($el);
+      $el.addClass('is-collapsed');
+      decorateItem($el);
+      updateSummary($el);
       $(document).trigger('cff:refresh', $el);
       return $el;
     }
@@ -1871,8 +2078,8 @@
         if (aliases.length) item.aliases = aliases;
         $f.attr('data-original-name', name);
         setAliasesAttr($f, 'data-field-aliases', aliases);
-        item.required = $f.find('.cff-required-toggle').is(':checked');
-        item.hide = $f.find('.cff-hide-toggle').is(':checked');
+        item.required = ownToggle($f, '.cff-required-toggle').is(':checked');
+        item.hide = ownToggle($f, '.cff-hide-toggle').is(':checked');
         item.placeholder = $f.find('.cff-placeholder').val() || '';
         if (type === 'image' || type === 'file') {
           item.file_library = normalizeFileLibrary(getMediaOptions($f).fileLibrary.val());
@@ -1933,7 +2140,7 @@
             var $l = $(this);
             var litem = {
               label: $l.find('.cff-llabel').val() || '',
-              name:  CFF.utils.sanitizeName($l.find('.cff-lname').val() || ''),
+              name:  CFF.utils.sanitizeName($l.find('.cff-lname').val() || $l.find('.cff-llabel').val() || ''),
               sub_fields: []
             };
 
@@ -1944,7 +2151,7 @@
           item.layouts = layouts;
         }
 
-      return item;
+      return readCommonSettings($f, item);
     }
 
     function readFromDOM(){
@@ -2419,13 +2626,7 @@
         '<strong>Fields</strong>' +
         '<button type="button" class="button button-primary" id="cff-add-field">Add Field</button>' +
       '</div>';
-      var builderHeadRow = '<div class="cff-builder-head-row">' +
-        '<div class="cff-head-spacer"></div>' +
-        '<div class="cff-head">Label</div>' +
-        '<div class="cff-head">Name</div>' +
-        '<div class="cff-head">Type</div>' +
-        '<div class="cff-head">Actions</div>' +
-      '</div>';
+      var builderHeadRow = listHead;
       var viewControl = '<div class="cff-field-view-controls">' +
         '<label for="cff-field-view-mode">View</label>' +
         '<select id="cff-field-view-mode">' +
@@ -2448,6 +2649,7 @@
 
       var $list = $('<div id="cff-field-list"></div>');
       $builderView.append($list);
+      $builderView.append('<div class="cff-list-foot"><button type="button" class="button button-primary cff-add-field-trigger">Add Field</button></div>');
       $builderRoot.append($builderView);
 
       var $reorderView = $(
@@ -2562,6 +2764,7 @@
       initGroupDropzones($root);
       refreshConditionalFieldDropdowns();
       refreshSecondaryViews(data);
+      refreshSummaries();
       $(document).trigger('cff:refresh', $root);
     }
 
@@ -2600,8 +2803,9 @@
       toggleMediaOptions($el, f.type || 'text');
       toggleGalleryOptions($el, f.type || 'text');
       $el.find('.cff-placeholder').val(f.placeholder || '');
-      $el.find('.cff-required-toggle').prop('checked', !!f.required);
-      $el.find('.cff-hide-toggle').prop('checked', !!f.hide);
+      populateCommonSettings($el, f);
+      ownToggle($el, '.cff-required-toggle').prop('checked', !!f.required);
+      ownToggle($el, '.cff-hide-toggle').prop('checked', !!f.hide);
       $el.find('.cff-datetime-use-time-toggle').prop('checked', (f.datetime_use_time !== false));
       renderConditionalPanel($el, f);
       var fieldKey = CFF.utils.sanitizeName(f.key || '');
@@ -2631,6 +2835,8 @@
       }
 
       initGroupDropzones($el);
+      decorateItem($el);
+      updateSummary($el);
       return $el;
     }
 
@@ -2733,7 +2939,7 @@
           item.repeater_collapsed = subRepeaterOptions.collapsed.is(':checked');
         }
 
-      return item;
+      return readCommonSettings($sub, item);
     }
 
     function readSubfields($container){
@@ -2863,6 +3069,7 @@
         if ($list.hasClass('ui-sortable')) {
           $list.sortable('refresh');
         }
+        openNewItem($field);
         save(readFromDOM());
         refreshReorderList();
         refreshConditionalFieldDropdowns();
@@ -2918,7 +3125,7 @@
       });
 
 
-      $root.on('input', '.cff-slabel, .cff-sname, .cff-stype, .cff-placeholder, .cff-choice-label, .cff-choice-value, .cff-max-upload-mb', CFF.utils.debounce(function(){
+      $root.on('input', '.cff-slabel, .cff-sname, .cff-stype, .cff-placeholder, .cff-choice-label, .cff-choice-value, .cff-max-upload-mb, .cff-instructions-input, .cff-default-value, .cff-wrapper-width, .cff-range-min, .cff-range-max, .cff-range-step, .cff-message-input', CFF.utils.debounce(function(){
         var $panel = $(this).closest('.cff-field-choice');
         if ($panel.length) updateChoiceDefaultOptions($panel);
         save(readFromDOM());
@@ -3005,9 +3212,20 @@
         save(readFromDOM());
       });
 
-      // Layout name sanitize
+      // Layout name sanitize; an emptied name follows the label again.
       $root.on('input', '.cff-lname', function(){
-        $(this).val(CFF.utils.sanitizeName($(this).val()));
+        var value = CFF.utils.sanitizeName($(this).val());
+        $(this).val(value).data('manual', value ? 1 : 0);
+        if (!value) {
+          $(this).val(CFF.utils.sanitizeName($(this).closest('.cff-layout').find('.cff-llabel').first().val()));
+        }
+      });
+
+      // Layout label -> name until the name is edited by hand (layouts without a name are dropped on save).
+      $root.on('input', '.cff-llabel', function(){
+        var $name = $(this).closest('.cff-layout').find('.cff-lname').first();
+        if ($name.data('manual') || ($name.val() && !$name.data('auto'))) return;
+        $name.val(CFF.utils.sanitizeName($(this).val())).data('auto', 1);
       });
 
       // Type change
@@ -3103,6 +3321,7 @@
         var $sub = renderSub({ label:'', name:'', type:'text' }, Date.now());
         $container.append($sub);
         sortableSubs($container);
+        openNewItem($sub);
         save(readFromDOM());
         $(document).trigger('cff:refresh', $sub);
       });
@@ -3113,6 +3332,7 @@
         var $fields = $builder.find('> .cff-group-fields').first();
         if (!$fields.length) $fields = $builder.find('.cff-group-fields').first();
         $fields.append($sub);
+        openNewItem($sub);
         save(readFromDOM());
         $(document).trigger('cff:refresh', $sub);
       });
@@ -3178,11 +3398,72 @@
         var $layout = $(this).closest('.cff-layout');
         var $sub = renderSub({ label:'', name:'', type:'text' }, Date.now());
         $layout.find('.cff-layout-fields').append($sub);
+        openNewItem($sub);
         save(readFromDOM());
         $(document).trigger('cff:refresh', $sub);
       });
 
+      $root.on('click', '.cff-item-summary', function(e){
+        if ($(e.target).closest('.cff-handle, .cff-acc-toggle, .cff-sub-acc-toggle, .cff-sum-actions').length) return;
+        var $item = $(this).parent();
+        setItemOpen($item, $item.hasClass('is-collapsed'));
+      });
+
+      $root.on('click', '.cff-sum-action', function(){
+        var $item = $(this).closest('.cff-field-row, .cff-subfield');
+        var action = $(this).attr('data-action');
+        if (action === 'edit') {
+          setItemOpen($item, true);
+          return;
+        }
+        var $actions = getFieldHeadRow($item).children('.cff-actions');
+        var selector = action === 'duplicate' ? '.cff-duplicate, .cff-duplicate-sub' : '.cff-remove, .cff-remove-sub';
+        $actions.children(selector).first().trigger('click');
+      });
+
+      $root.on('click', '.cff-item-tab', function(){
+        setItemTab($(this).closest('.cff-field-row, .cff-subfield'), $(this).attr('data-tab'));
+      });
+
+      $root.on('click', '.cff-item-close', function(){
+        var $item = $(this).closest('.cff-field-row, .cff-subfield');
+        setItemOpen($item, false);
+        $item.children('.cff-handle-wrap').find('.cff-sum-label').first().trigger('focus');
+      });
+
+      $root.on('click', '.cff-item-close-add', function(){
+        var $item = $(this).closest('.cff-field-row, .cff-subfield');
+        var blank = { label:'', name:'', type:'text' };
+        var $new = $item.hasClass('cff-field-row') ? renderField(blank, Date.now()) : renderSub(blank, Date.now());
+        setItemOpen($item, false);
+        $item.after($new);
+        if ($item.parent().hasClass('ui-sortable')) {
+          $item.parent().sortable('refresh');
+        }
+        openNewItem($new);
+        save(readFromDOM());
+        refreshReorderList();
+        refreshConditionalFieldDropdowns();
+        $(document).trigger('cff:refresh', $new);
+      });
+
+      $root.on('click', '.cff-add-field-trigger', function(){
+        $('#cff-add-field').trigger('click');
+      });
+
+      $root.on('click', '.cff-list-add', function(){
+        $(this).closest('.cff-subbuilder, .cff-groupbuilder').children('.cff-subhead').find('.cff-add-sub, .cff-add-group-sub').first().trigger('click');
+      });
+
+      $root.on('input change', '.cff-label, .cff-name, .cff-type, .cff-slabel, .cff-sname, .cff-stype', function(){
+        updateSummary($(this).closest('.cff-field-row, .cff-subfield'));
+      });
+
       $root.on('change', '.cff-required-toggle', function(){
+        commit();
+      });
+
+      $root.on('change', '.cff-accordion-open-toggle', function(){
         commit();
       });
 
@@ -4084,7 +4365,8 @@
 
       var $postSelect = $root.find('#cff-reorder-post-type');
       var $taxSelect = $root.find('#cff-reorder-taxonomy');
-      var $postList = $root.find('.cff-reorder-list[data-kind="post"]');
+      var $postList = $root.find('.cff-reorder-list[data-kind="post"]').not('[data-post-type]');
+      var $typeLists = $root.find('.cff-reorder-list[data-kind="post"][data-post-type]');
       var $termList = $root.find('.cff-reorder-list[data-kind="term"]');
       var $groupList = $root.find('.cff-reorder-list[data-kind="group"]');
 
@@ -4096,6 +4378,7 @@
       };
       if ($.fn.sortable) {
         $postList.sortable(sortableOptions);
+        $typeLists.sortable(sortableOptions);
         $termList.sortable(sortableOptions);
         $groupList.sortable(sortableOptions);
       }
@@ -4120,6 +4403,20 @@
 
       $root.on('click', '#cff-reorder-save-posts', function(){
         savePosts($postSelect.val(), $postList);
+      });
+
+      // One accordion panel per post type: load on first open, save independently.
+      $root.find('.cff-reorder-type').on('toggle', function(){
+        if (!this.open) return;
+        var $list = $(this).find('.cff-reorder-list[data-post-type]').first();
+        if ($list.data('loaded')) return;
+        $list.data('loaded', 1);
+        loadPosts($list.attr('data-post-type'), $list, $(this).find('[data-reorder-count]').first());
+      });
+
+      $root.on('click', '.cff-reorder-save-type', function(){
+        var $list = $(this).closest('.cff-reorder-type').find('.cff-reorder-list[data-post-type]').first();
+        savePosts($list.attr('data-post-type'), $list);
       });
 
       $root.on('click', '#cff-reorder-load-terms', function(){
@@ -4159,6 +4456,11 @@
       });
     }
 
+    var statusLabels = {
+      publish: 'Published', draft: 'Draft', pending: 'Pending', future: 'Scheduled',
+      private: 'Private', trash: 'Trash', inherit: 'Inherit', 'auto-draft': 'Auto Draft'
+    };
+
     function renderList($list, items){
       $list.empty();
       if (!items || !items.length) {
@@ -4171,7 +4473,8 @@
           metaParts.push('<span class="cff-reorder-meta">Order ' + esc(String(it.order)) + '</span>');
         }
         if (it.status) {
-          metaParts.push('<span class="cff-reorder-meta">' + esc(it.status) + '</span>');
+          var status = String(it.status);
+          metaParts.push('<span class="cff-reorder-meta cff-reorder-status is-' + escAttr(status.replace(/[^a-z0-9_-]/gi, '')) + '">' + esc(statusLabels[status] || status) + '</span>');
         }
         if (it.count !== undefined) {
           metaParts.push('<span class="cff-reorder-meta">(' + esc(String(it.count)) + ')</span>');
@@ -4191,11 +4494,15 @@
       });
     }
 
-    function loadPosts(postType, $list){
+    function loadPosts(postType, $list, $count){
       if (!postType) return;
       $list.html('<li class="cff-reorder-empty">Loading…</li>');
       $.post(CFFP.ajax, { action:'cff_reorder_get_posts', nonce:CFFP.nonce, post_type:postType }, function(res){
-        renderList($list, res && res.success ? res.data : []);
+        var items = res && res.success ? res.data : [];
+        renderList($list, items);
+        if ($count && $count.length) {
+          $count.text(items.length + (items.length === 1 ? ' item' : ' items'));
+        }
       });
     }
 
@@ -4719,49 +5026,7 @@
     CFF.conditionalLogic.init();
     initCptAutoSlug();
     initGlobalSettingsOptimizations();
-    initFieldOptions();
   });
-
-  // Progressive disclosure preserves the original controls and their change handlers.
-  function initFieldOptions(){
-    function prepare(root){
-      $(root).find('.cff-row-rules').addBack('.cff-row-rules').each(function(){
-        var rules = this;
-        if (rules.querySelector('.cff-field-options')) return;
-        var panels = $(rules).children('.cff-row-conditional, .cff-row-hide');
-        if (!panels.length) return;
-        var details = document.createElement('details');
-        details.className = 'cff-field-options';
-        var summary = document.createElement('summary');
-        summary.appendChild(document.createTextNode('Advanced options'));
-        var status = document.createElement('span');
-        status.className = 'cff-field-options-status';
-        summary.appendChild(status);
-        var body = document.createElement('div');
-        body.className = 'cff-field-options-body';
-        panels.each(function(){ body.appendChild(this); });
-        details.appendChild(summary);
-        details.appendChild(body);
-        rules.appendChild(details);
-        function update(){
-          var labels = [];
-          if ($(body).find('.cff-conditional-enabled').prop('checked')) labels.push('Conditional logic on');
-          if ($(body).find('.cff-hide-toggle').prop('checked')) labels.push('Hidden');
-          status.textContent = labels.length ? labels.join(' · ') : 'Optional';
-        }
-        update();
-        details.open = !!$(body).find('input:checked').length;
-        $(body).on('change.cffFieldOptions', update);
-        // Opening a disclosure must not change Select2 selections or submitted values.
-      });
-    }
-    prepare(document);
-    $(document).on('cff:refresh.cffFieldOptions', function(event, target){ prepare(target || document); });
-    document.addEventListener('invalid', function(event){
-      var details = event.target.closest('.cff-field-options');
-      if (details) details.open = true;
-    }, true);
-  }
 
   /* -------------------------
    * Global Settings Optimizations

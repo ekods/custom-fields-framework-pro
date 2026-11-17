@@ -13,8 +13,10 @@ require_once __DIR__ . '/class-ajax-controller.php';
 require_once __DIR__ . '/class-dynamic-content-manager.php';
 require_once __DIR__ . '/class-term-meta-manager.php';
 require_once __DIR__ . '/class-content-field-saver.php';
+require_once __DIR__ . '/class-content-revisions.php';
 require_once __DIR__ . '/class-language-clone.php';
 require_once __DIR__ . '/class-content-import.php';
+require_once __DIR__ . '/class-local-json.php';
 require_once __DIR__ . '/helpers/acf-compat.php';
 require_once __DIR__ . '/helpers/frontend-helpers.php';
 require_once __DIR__ . '/helpers/frontend-shortcodes.php';
@@ -28,6 +30,7 @@ add_action('admin_init', function(){
     return [
       'cb'           => $cols['cb'] ?? 'cb',
       'title'        => __('Title', 'cff'),
+      'cff_desc'     => __('Description', 'cff'),
       'cff_key'      => __('Key', 'cff'),
       'cff_location' => __('Location', 'cff'),
       'cff_fields'   => __('Fields', 'cff'),
@@ -37,10 +40,17 @@ add_action('admin_init', function(){
   // columns content (FIX: closure, jadi nggak kena masalah namespace)
   add_action('manage_cff_group_posts_custom_column', function($col, $post_id){
     switch ($col) {
+      case 'cff_desc':
+        $description = trim((string) get_post_field('post_excerpt', $post_id));
+        echo $description !== ''
+          ? esc_html(wp_trim_words($description, 20))
+          : '<span class="cff-col-empty" aria-hidden="true">—</span><span class="screen-reader-text">' . esc_html__('No description', 'cff') . '</span>';
+        break;
+
       case 'cff_key':
         $key = get_post_meta($post_id, 'cff_group_key', true);
         if (!$key) $key = 'group_' . $post_id;
-        echo '<code>' . esc_html($key) . '</code>';
+        echo '<span class="cff-col-meta"><span class="dashicons dashicons-admin-network" aria-hidden="true"></span>' . esc_html($key) . '</span>';
         break;
 
       case 'cff_location':
@@ -48,7 +58,7 @@ add_action('admin_init', function(){
         break;
 
       case 'cff_fields':
-        echo cffp_field_group_fields_count($post_id);
+        echo '<a href="' . esc_url(get_edit_post_link($post_id, 'raw')) . '">' . intval(cffp_field_group_fields_total($post_id)) . '</a>';
         break;
     }
   }, 10, 2);
@@ -80,39 +90,6 @@ add_action('in_admin_header', function() {
   }
 });
 
-
-function cffp_cff_group_columns($cols){
-  return [
-    'cb'           => $cols['cb'] ?? 'cb',
-    'title'        => __('Title', 'cff'),
-    'cff_desc'     => __('Description', 'cff'),
-    'cff_key'      => __('Key', 'cff'),
-    'cff_location' => __('Location', 'cff'),
-    'cff_fields'   => __('Fields', 'cff'),
-  ];
-}
-
-function cffp_cff_group_column_content($col, $post_id){
-  switch ($col) {
-    case 'cff_key':
-      $key = get_post_meta($post_id, 'cff_group_key', true);
-      if (!$key) $key = 'group_' . $post_id;
-      echo '<code>' . esc_html($key) . '</code>';
-      break;
-
-    case 'cff_location':
-      echo cffp_field_group_location_summary($post_id);
-      break;
-
-    case 'cff_fields':
-      echo cffp_field_group_fields_count($post_id);
-      break;
-  }
-}
-
-function cffp_cff_group_sortable_columns($cols){
-  return $cols; // placeholder kalau nanti mau sortable
-}
 
 
 // add_action('admin_notices', function(){

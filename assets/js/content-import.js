@@ -17,7 +17,8 @@
   async function request(command, body) {
     body = body || new FormData();
     body.set('action', 'cff_content_import'); body.set('nonce', config.nonce); body.set('command', command);
-    if (config.postId) { body.set('scope', 'page'); body.set('post_id', String(config.postId)); }
+    if (config.postIds && config.postIds.indexOf(',') > -1) { body.set('scope', 'page'); body.set('post_ids', config.postIds); }
+    else if (config.postId) { body.set('scope', 'page'); body.set('post_id', String(config.postId)); }
     if (job.token) body.set('job', job.token);
     const response = await fetch(config.ajax, {method: 'POST', credentials: 'same-origin', body: body});
     let data;
@@ -108,7 +109,7 @@
   });
   el('start').addEventListener('click', () => {
     if (busy || job.phase !== 'ready') return;
-    const prompt = config.postId ? 'Import into this page using ' + (job.rows[0]?.policy === 'replace' ? 'Replace supplied fields' : 'Fill empty fields only') + '? Review the field mappings and media notes before proceeding.' : 'Import ' + job.valid + ' valid items? Existing content will be changed in update modes. ' + (job.invalid || 0) + ' invalid item(s) will be excluded.';
+    const prompt = (config.postId || config.postIds) ? 'Import into ' + (config.postIds ? job.valid + ' selected page(s)' : 'this page') + ' using ' + (job.rows[0]?.policy === 'replace' ? 'Replace supplied fields' : 'Fill empty fields only') + '? Review the field mappings and media notes before proceeding.' : 'Import ' + job.valid + ' valid items? Existing content will be changed in update modes. ' + (job.invalid || 0) + ' invalid item(s) will be excluded.';
     if (!window.confirm(prompt)) return;
     drive('start', null, true);
   });

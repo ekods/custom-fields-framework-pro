@@ -42,6 +42,7 @@ jobs:
           composer test:runtime-integrity
           composer test:relational-labels
           composer test:content-import
+          composer test:content-revisions
       - name: Build and validate ZIP
         env:
           CFFP_SKIP_SYNC: '1'

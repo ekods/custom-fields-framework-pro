@@ -8,6 +8,7 @@ class Content_Import {
   const MAX_ITEMS = 500;
   const BATCH_SIZE = 5;
   const TTL = 86400;
+  const MAX_BULK_PAGES = 100;
   private $plugin;
   private $running = false;
   private $context_id = 0;
@@ -37,8 +38,26 @@ class Content_Import {
     wp_enqueue_script('cff-content-import', CFFP_URL . 'assets/js/content-import.js', [], CFFP_VERSION, true);
     wp_localize_script('cff-content-import', 'CFFContentImport', [
       'ajax' => admin_url('admin-ajax.php'), 'nonce' => wp_create_nonce('cff_content_import'),
-      'postId' => isset($_GET['post_id']) ? absint($_GET['post_id']) : 0,
+      'postId' => count($ids = $this->bulk_ids($_GET)) === 1 ? $ids[0] : (isset($_GET['post_id']) ? absint($_GET['post_id']) : 0),
+      'postIds' => count($ids) > 1 ? implode(',', array_slice($ids, 0, self::MAX_BULK_PAGES)) : '',
     ]);
+  }
+
+  /** Destination IDs from post_ids (array or comma list); empty when absent. */
+  private function bulk_ids($input) {
+    $raw = $input['post_ids'] ?? [];
+    if (is_string($raw)) $raw = explode(',', $raw);
+    if (!is_array($raw)) return [];
+    $ids = [];
+    foreach ($raw as $value) if (is_scalar($value) && preg_match('/^\d+$/D', trim((string) $value))) $ids[(int) $value] = (int) $value;
+    return array_values(array_filter($ids));
+  }
+
+  private function destinations($ids) {
+    if (count($ids) > self::MAX_BULK_PAGES) throw new \RuntimeException('Select no more than ' . self::MAX_BULK_PAGES . ' pages per import.');
+    $posts = array_map([$this, 'destination'], $ids);
+    foreach ($posts as $post) if ($post->post_type !== $posts[0]->post_type) throw new \RuntimeException('Select pages of one post type only.');
+    return $posts;
   }
 
   public function destination($id) {
@@ -51,17 +70,34 @@ class Content_Import {
   public function page() {
     if (!current_user_can(Plugin::admin_capability())) return;
     $types = $this->post_types();
-    $destination = null;
-    if (!empty($_GET['post_id'])) {
-      try { $destination = $this->destination(absint($_GET['post_id'])); }
+    $destination = null; $bulk_destinations = [];
+    $bulk = $this->bulk_ids($_GET);
+    if (count($bulk) > 1) {
+      try {
+        $bulk_destinations = $this->destinations($bulk);
+        $destination = $bulk_destinations[0];
+      } catch (\RuntimeException $error) { wp_die(esc_html($error->getMessage()), '', ['response' => 403]); return; }
+    } elseif ($bulk || !empty($_GET['post_id'])) {
+      try { $destination = $this->destination($bulk ? $bulk[0] : absint($_GET['post_id'])); }
       catch (\RuntimeException $error) { wp_die(esc_html($error->getMessage()), '', ['response' => 403]); return; }
     } elseif (empty($_GET['bulk'])) {
       $type = is_string($_GET['post_type'] ?? null) ? sanitize_key($_GET['post_type']) : 'page';
       if (!isset($types[$type])) $type = key($types);
       $search = is_string($_GET['content_search'] ?? null) ? sanitize_text_field(wp_unslash($_GET['content_search'])) : '';
       $candidates = $type ? get_posts(['post_type' => $type, 'post_status' => ['publish', 'draft', 'pending', 'private', 'future'],
-        's' => $search, 'numberposts' => 30, 'suppress_filters' => true, 'orderby' => 'modified', 'order' => 'DESC']) : [];
+        's' => $search, 'numberposts' => 100, 'suppress_filters' => true, 'orderby' => 'ID', 'order' => 'ASC']) : [];
       $candidates = array_filter($candidates, function($post) { return current_user_can('edit_post', $post->ID); });
+      if ($type && is_post_type_hierarchical($type)) {
+        $ids = wp_list_pluck($candidates, 'ID');
+        $by_parent = [];
+        foreach ($candidates as $post) $by_parent[in_array((int) $post->post_parent, $ids, true) ? (int) $post->post_parent : 0][] = $post;
+        $sorted = [];
+        $walk = function($parent) use (&$walk, &$sorted, $by_parent) {
+          foreach ($by_parent[$parent] ?? [] as $post) { $sorted[] = $post; $walk((int) $post->ID); }
+        };
+        $walk(0);
+        $candidates = $sorted;
+      }
       require __DIR__ . '/admin/views/import-content-select.php'; return;
     }
     $sample_url = wp_nonce_url(admin_url('admin-post.php?action=cff_content_import_sample'), 'cff_content_import_sample');
@@ -157,7 +193,14 @@ class Content_Import {
 
   public function validate_options($input) {
     if (($input['scope'] ?? '') === 'page') {
-      $post = $this->destination($input['post_id'] ?? 0);
+      $ids = $this->bulk_ids($input);
+      if (count($ids) > 1) {
+        $posts = $this->destinations($ids);
+        $policy = $input['policy'] ?? 'fill_empty';
+        if (!in_array($policy, ['replace', 'fill_empty'], true)) throw new \RuntimeException('Choose Replace supplied fields or Fill empty fields only.');
+        return ['scope' => 'page', 'post_id' => (int) $posts[0]->ID, 'post_ids' => array_map(function($p) { return (int) $p->ID; }, $posts), 'post_type' => $posts[0]->post_type, 'mode' => 'update', 'allow_publish' => false, 'policy' => $policy];
+      }
+      $post = $this->destination($ids ? $ids[0] : ($input['post_id'] ?? 0));
       $policy = $input['policy'] ?? 'fill_empty';
       if (!in_array($policy, ['replace', 'fill_empty'], true)) throw new \RuntimeException('Choose Replace supplied fields or Fill empty fields only.');
       return ['scope' => 'page', 'post_id' => (int) $post->ID, 'post_type' => $post->post_type, 'mode' => 'update', 'allow_publish' => false, 'policy' => $policy];
@@ -177,7 +220,9 @@ class Content_Import {
     if (isset($data['field_groups']) || isset($data['post_types']) || isset($data['format'])) throw new \RuntimeException('Use a page content object, not a configuration or bulk import package.');
     if (count($data) === 1 && isset($data['cff'])) $data = $data['cff'];
     if (!is_array($data) || !$data) throw new \RuntimeException('The JSON has no page field values.');
-    return [['ID' => $options['post_id'], 'cff' => $data]];
+    $rows = [];
+    foreach ($options['post_ids'] ?? [$options['post_id']] as $id) $rows[] = ['ID' => $id, 'cff' => $data];
+    return $rows;
   }
 
   private function prepare_item($row, $options) {
@@ -185,8 +230,8 @@ class Content_Import {
   }
 
   public function prepare_page_row($row, $options) {
-    $post = $this->destination($options['post_id']);
-    if ((int) ($row['ID'] ?? 0) !== (int) $post->ID) throw new \RuntimeException('The JSON destination does not match the current page.');
+    $post = $this->destination($row['ID'] ?? 0);
+    if (!in_array((int) $post->ID, $options['post_ids'] ?? [(int) $options['post_id']], true)) throw new \RuntimeException('The JSON destination does not match the current page.');
     $definitions = $this->plugin->get_field_definitions_for_import($post->post_type, $post->ID, get_page_template_slug($post->ID) ?: 'default');
     $values = []; $mapping = []; $warnings = [];
     foreach ($row['cff'] as $source => $value) {
@@ -698,6 +743,7 @@ class Content_Import {
       $result = $this->write_post(['ID' => $id] + $plan['core']);
       if (is_wp_error($result) || !$result) throw new \RuntimeException(is_wp_error($result) ? $result->get_error_message() : 'Could not update content.');
       if (isset($plan['core']['post_status']) && get_post($id)->post_status !== $plan['core']['post_status']) throw new \RuntimeException('WordPress did not accept the requested publication status.');
+      update_post_meta($id, '_cff_last_import', time());
       return ['state' => $created ? 'created' : 'updated', 'target_id' => (int) $id, 'message' => ''];
     } catch (\Throwable $error) {
       $restored = true;
@@ -767,7 +813,10 @@ class Content_Import {
 
   public function command($command, $input = [], $raw = null) {
     if (!in_array($command, ['upload', 'preview', 'start', 'batch', 'pause', 'resume', 'cancel', 'status'], true)) throw new \RuntimeException('Unknown import command.');
-    $this->context_id = ($input['scope'] ?? '') === 'page' ? (int) $this->destination($input['post_id'] ?? 0)->ID : 0;
+    $ids = $this->bulk_ids($input);
+    if (($input['scope'] ?? '') !== 'page') $this->context_id = 0;
+    elseif (count($ids) > 1) { $this->destinations($ids); $this->context_id = -1; }
+    else $this->context_id = (int) $this->destination($ids ? $ids[0] : ($input['post_id'] ?? 0))->ID;
     $lease = $this->lock();
     try {
       if ($command === 'upload') return $this->summary($this->upload($raw, $input));

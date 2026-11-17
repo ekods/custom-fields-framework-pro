@@ -49,6 +49,7 @@ foreach ($internal_posts as $post_id) {
 }
 
 $cff_meta_like = $wpdb->esc_like('_cff_') . '%';
+$wpdb->delete($wpdb->postmeta, ['meta_key' => '_cffp_content_revision']);
 $wpdb->query(
   $wpdb->prepare(
     "DELETE FROM {$wpdb->postmeta} WHERE meta_key LIKE %s",

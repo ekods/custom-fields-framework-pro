@@ -2418,10 +2418,6 @@
   margin-top: 0;
 }
 
-.cff-flex-add .cff-flex-layout {
-  min-width: 200px;
-}
-
 .cff-repeater > .cff-rep-add-wrap {
   display: flex;
   justify-content: center;
@@ -2432,7 +2428,7 @@
 }
 
 .cff-rep-add-wrap .cff-rep-add,
-.cff-flex-add .cff-flex-add-btn,
+.cff-flex-add .cff-flex-add-toggle,
 .cff-gallery > .cff-media-actions .button {
   display: inline-flex;
   align-items: center;
@@ -2444,7 +2440,7 @@
 }
 
 .cff-rep-add-wrap .cff-rep-add .dashicons,
-.cff-flex-add .cff-flex-add-btn .dashicons,
+.cff-flex-add .cff-flex-add-toggle .dashicons,
 .cff-gallery > .cff-media-actions .button .dashicons {
   width: 16px;
   height: 16px;
@@ -2490,15 +2486,6 @@
     grid-template-columns: 1fr;
   }
 
-  .cff-flex-add {
-    flex-wrap: wrap;
-  }
-
-  .cff-flex-add .cff-flex-layout {
-    flex: 1 1 100%;
-    min-width: 0;
-  }
-
   .cff-field .cff-hndle-meta,
   .cff-field .cff-label-meta {
     flex-wrap: wrap;
@@ -2515,9 +2502,6 @@
     grid-template-columns: 1fr;
   }
 
-  .cff-flex-add {
-    flex-wrap: wrap;
-  }
 }
 
 /* Repeater toolbar: row count, limits and Collapse all / Expand all. */
@@ -2541,3 +2525,190 @@
 .cff-rep-row.has-invalid > .cff-rep-row-head,
 .cff-repeater[data-layout="table"] tr.cff-rep-row.has-invalid > td:first-child { box-shadow: inset 3px 0 0 #d63638; }
 .cff-repeater[data-layout="simple"] .cff-rep-row.cff-rep-row-simple.has-invalid { box-shadow: inset 3px 0 0 #d63638; }
+
+/* Flexible content "Add Row": a layout menu that opens above the button. */
+.cff-flexible > .cff-flex-add {
+  position: relative;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.cff-flexible > .cff-flex-add > .description { margin: 0; }
+.cff-flex-menu {
+  position: fixed;
+  z-index: 100000;
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  max-width: min(320px, calc(100vw - 16px));
+  padding: 6px 0;
+  border-radius: 6px;
+  background: #32373c;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .2);
+}
+.cff-flex-menu[hidden] { display: none; }
+.cff-flex-menu::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: var(--cff-flex-arrow-x, 50%);
+  margin-left: -8px;
+  border: 8px solid transparent;
+  border-bottom: 0;
+  border-top-color: #32373c;
+}
+.cff-flex-menu.is-below::after {
+  top: auto;
+  bottom: 100%;
+  border: 8px solid transparent;
+  border-top: 0;
+  border-bottom-color: #32373c;
+}
+.cff-flex-menu-item {
+  padding: 10px 18px;
+  border: 0;
+  background: none;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: start;
+  cursor: pointer;
+}
+.cff-flex-menu-item:hover,
+.cff-flex-menu-item:focus-visible {
+  outline: none;
+  background: var(--wp-admin-theme-color, #2271b1);
+}
+
+
+/* Field instructions, placed below the label or below the input per the field group setting. */
+.cff-instructions.description { margin: 4px 0 0; color: #646970; font-size: 13px; line-height: 1.5; }
+.cff-input > .cff-instructions.description,
+.cff-subfield-input > :not(label) + .cff-instructions.description { margin-top: 6px; }
+
+/* Wrapper width: fields with a width sit side by side; only containers that hold one switch to rows. */
+:is(.cff-metabox-fields, .cff-group, .cff-flex-body):has(> .cff-has-width),
+.cff-rep-row:not(.cff-rep-row-grid):not(.cff-rep-row-row):not(.cff-rep-row-gallery):not(.cff-rep-row-table) > .cff-rep-row-body:has(> .cff-has-width) {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  column-gap: 16px;
+}
+:is(.cff-metabox-fields, .cff-group, .cff-flex-body):has(> .cff-has-width) > *,
+.cff-rep-row-body:has(> .cff-has-width) > * { flex: 0 0 100%; min-width: 0; }
+:is(.cff-metabox-fields, .cff-group, .cff-flex-body, .cff-rep-row-body) > .cff-has-width {
+  flex: 0 0 calc(100% * var(--cff-w) - 16px * (1 - var(--cff-w)));
+}
+@media (max-width: 782px) {
+  :is(.cff-metabox-fields, .cff-group, .cff-flex-body, .cff-rep-row-body) > .cff-has-width { flex-basis: 100%; }
+}
+
+/* Label placement "Left" on the field group. */
+.cff-labels-left .cff-metabox-fields > .cff-field:not(.cff-postbox) {
+  display: grid;
+  grid-template-columns: minmax(140px, 25%) minmax(0, 1fr);
+  column-gap: 20px;
+  align-items: start;
+}
+.cff-labels-left .cff-metabox-fields > .cff-field:not(.cff-postbox) > .cff-label { grid-column: 1; margin: 0; }
+.cff-labels-left .cff-metabox-fields > .cff-field:not(.cff-postbox) > :not(.cff-label) { grid-column: 2; }
+@media (max-width: 782px) {
+  .cff-labels-left .cff-metabox-fields > .cff-field:not(.cff-postbox) { display: block; }
+}
+
+/* Validation errors returned by the server before save. */
+.cff-has-error { box-shadow: inset 3px 0 0 #d63638; }
+.cff-subfield-input.cff-has-error { padding-inline-start: 10px; }
+.cff-has-error > .cff-label label,
+.cff-has-error > label { color: #b32d2e; }
+.cff-has-error :is(input:not([type="checkbox"], [type="radio"], [type="hidden"]), textarea, select, .select2-selection) { border-color: #d63638; }
+.cff-error-message { margin: 6px 0 0; color: #b32d2e; font-size: 13px; font-weight: 600; }
+.cff-validation-notice { margin: 12px 0; }
+
+/* Tab and accordion markers group the fields that follow them. */
+.cff-metabox-fields > .cff-tab-hidden,
+.cff-metabox-fields > .cff-accordion-hidden,
+.cff-metabox-fields > .cff-field-tab { display: none !important; }
+.cff-field-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  flex: 0 0 100%;
+  gap: 0 24px;
+  margin: 0;
+  border-bottom: 1px solid #dcdcde;
+}
+.cff-field-tab-button {
+  margin-bottom: -1px;
+  padding: 10px 0 8px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: none;
+  color: #50575e;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.cff-field-tab-button:hover { color: #1d2327; }
+.cff-field-tab-button.is-active { border-bottom-color: var(--wp-admin-theme-color, #2271b1); color: var(--wp-admin-theme-color, #2271b1); }
+.cff-field-tab-button:focus-visible { outline: 2px solid var(--wp-admin-theme-color, #2271b1); outline-offset: 2px; }
+
+.cff-metabox-fields > .cff-field-accordion { flex: 0 0 100%; padding: 0; border: 0; background: none; box-shadow: none; }
+.cff-accordion-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #dcdcde;
+  border-radius: 6px;
+  background: #f6f7f7;
+  color: #1d2327;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: start;
+  cursor: pointer;
+}
+.cff-accordion-toggle::before { content: "\f345"; font-family: dashicons; font-size: 16px; color: #646970; transition: transform .15s ease; }
+.cff-field-accordion.is-open .cff-accordion-toggle::before { transform: rotate(90deg); }
+.cff-accordion-toggle:focus-visible { outline: 2px solid var(--wp-admin-theme-color, #2271b1); outline-offset: 2px; }
+.cff-field-accordion > .cff-instructions { margin: 6px 2px 0; }
+@media (prefers-reduced-motion: reduce) { .cff-accordion-toggle::before { transition: none; } }
+
+/* Range, time and message fields. */
+.cff-range { display: flex; align-items: center; gap: 12px; }
+.cff-range-slider { flex: 1 1 auto; min-width: 0; accent-color: var(--wp-admin-theme-color, #2271b1); }
+.cff-range-value { flex: 0 0 90px; width: 90px; }
+.cff-time-input { min-width: 140px; }
+.cff-message { color: #1d2327; }
+.cff-message > :first-child { margin-top: 0; }
+.cff-message > :last-child { margin-bottom: 0; }
+
+/* Metabox tidy-up: one consistent gap between the Field View bar and the fields, instructions on their own
+   line under the label, and the last field card keeps its bottom border (an older list rule removed it). */
+.cff-metabox > .cff-metabox-view { margin: 0; }
+.cff-metabox > .cff-metabox-fields { margin-top: 0; }
+.cff-metabox .cff-field:last-child { border-bottom-style: solid; border-bottom-width: 1px; }
+.cff-field > .cff-label > .cff-instructions.description { flex: 1 0 100%; order: 10; margin: 0; }
+
+/* Icon-only media actions (select / clear) are round buttons, including in the gallery repeater layout. */
+.cff-media .cff-media-actions .button,
+.cff-repeater[data-layout="gallery"] .cff-media .cff-media-actions .button {
+  flex: 0 0 34px;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
+}
+.cff-media .cff-media-actions .button .dashicons { width: 16px; height: 16px; font-size: 16px; margin: 0; }
+.cff-media .cff-media-actions .cff-media-clear:hover { border-color: #b32d2e; color: #b32d2e; }

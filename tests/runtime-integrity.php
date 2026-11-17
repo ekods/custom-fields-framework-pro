@@ -53,6 +53,12 @@ function apply_filters($name, $value, ...$args) {
   return $value;
 }
 function get_post($id) { return $GLOBALS['posts'][$id] ?? null; }
+function get_post_type($id) { $post = get_post($id); return $post ? $post->post_type : false; }
+// Local JSON stays off: the theme has no cff-json folder.
+function get_stylesheet_directory() { return sys_get_temp_dir() . '/cff-runtime-no-theme'; }
+function trailingslashit($path) { return rtrim($path, '/\\') . '/'; }
+function untrailingslashit($path) { return rtrim($path, '/\\'); }
+function wp_is_writable($path) { return is_writable($path); }
 function get_term($id, $taxonomy = '') {
   $term = $GLOBALS['fixture_terms'][$id] ?? null;
   return $term && (!$taxonomy || $term->taxonomy === $taxonomy) ? $term : null;

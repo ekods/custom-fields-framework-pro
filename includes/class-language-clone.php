@@ -486,7 +486,7 @@ class Language_Clone {
   }
 
   public function copy_meta_key($key, $job) {
-    if (in_array($key, ['_edit_lock', '_edit_last', '_wp_old_slug', '_wp_old_date', '_cff_hidden_sections_local',
+    if (in_array($key, ['_edit_lock', '_edit_last', '_wp_old_slug', '_wp_old_date', '_cff_hidden_sections_local', '_cffp_content_revision',
       'language_id', '_language_id', '_translations', '_post_translations'], true)
       || strpos($key, '_pll') === 0 || strpos($key, 'pll_') === 0 || strpos($key, '_wp_trash_meta_') === 0) return false;
     if ($key === '_thumbnail_id') return $this->selected($job, 'thumbnail');

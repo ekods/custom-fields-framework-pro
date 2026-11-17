@@ -1,3 +1,62 @@
+## 2.5.55
+
+- Rework the field builder into a table of fields (# / Label / Name / Type) that open into General, Validation, Presentation and Conditional Logic tabs, with Close Field and Close and Add Field actions; sub fields use the same list.
+- Add Instructions, Default Value and Wrapper Width to every field; Label Placement Left and Instruction Placement now apply in the editor.
+- Validate fields on the server before publishing (required, email, URL, number, range bounds, repeater min/max), with messages on each field; fields hidden by conditional logic are skipped.
+- Add Local JSON: field groups are saved to the theme's cff-json folder when it exists, with Sync / Sync all on the Field Groups screen and a status card on Export / Import.
+- Add Email, Range, Time Picker, Message, Tab and Accordion field types; ACF migration carries these types and common field settings.
+- Flexible Content: an Add Row menu lists the layouts; layout names are generated from the label so layouts are no longer dropped on save.
+- Field Groups list shows Description, Key, Location and Fields like ACF; field groups get a Description input that is exported and imported.
+- Rework the Overview dashboard with Build and Tools links, remove the section navigation, use Tool Kits page headings, and turn Reorder into accordions with one panel per post type and coloured status badges.
+- Imports and syncs keep required, placeholder, choices and media settings; number sub fields render as number inputs; round media select/clear buttons.
+
+## 2.5.54
+
+- Replace the popup Close button with an X icon, retaining a 44px target, accessible name and visible keyboard focus.
+- Limit the list height with independent wheel/touch/keyboard scrolling; keep the popup header, X and footer outside the scrolling area.
+
+## 2.5.53
+
+- Add a Revisions popup to each content editor with avatar, user, relative time and linked full local date/time, newest first and scoped to that content ID.
+- Open the exact To revision from its date link; keep the general comparison link and reject missing or foreign revision targets without falling back to a different revision.
+- Preserve unsaved-editor guards and authenticated per-ID access; add native dialog keyboard/focus handling, loading/empty/error/retry states and scrollable responsive lists.
+
+Validation: 98 real WordPress metadata/SQLite checks, 77 browser checks including exact date-link selection, empty/error/retry states, delayed responses, focus and mobile overflow; runtime-integrity (396) and PHP lint.
+
+## 2.5.52
+
+- Reserve a fixed marker gutter in diff cells and explicitly align minus/plus symbols with the first text line, including wrapped mobile values and typed/large-value fallback output.
+- Prevent WordPress revisions.css from positioning markers over content when loaded after CFF.
+
+Validation: reproduced the overlap with core revisions.css, then passed 97 metadata/SQLite and 58 browser checks including marker/text separation at desktop/mobile widths.
+
+## 2.5.51
+
+- Add per-field/section restore actions and a multi-select restore control, using the To revision while retaining unselected current values.
+- Restore each root group/repeater/flexible structure intact, including its own visibility; offer explicit field-order and full visibility selection and keep legacy media companions together.
+- Preserve recovery snapshots, edit permissions, editor locks, stale comparison checks, rollback and per-ID isolation for partial restores; record the selected scope in history.
+- Add user and inclusive site-local date filters for this ID's version selectors and timeline, with empty-result feedback, invalid date-order handling and Reset.
+
+Validation: 97 real WordPress metadata/SQLite checks and 56 browser checks including checkbox/per-field restores, preserved unselected values, combined filters and mobile layout.
+
+## 2.5.50
+
+- Restyle revision sliders with segmented white tracks and circular two-arrow handles matching WordPress revisions.
+- Show the selected revision's avatar, editing user and relative/exact time in a speech bubble anchored above its handle; keep bubbles in bounds on desktop and mobile.
+- Preserve native keyboard and pointer operation, accessible labels and independent From/To comparisons.
+
+## 2.5.49
+
+- Align From/To details in equal columns with full-width selectors and a separate restore footer; stack the columns on mobile.
+- Separate exact and relative timestamps, shorten version choices and reduce spacing in comparison headings and diff rows while preserving content and whitespace differences.
+
+## 2.5.48
+
+- Add revision history scoped to each content ID, retaining 20 complete CFF states including nested values, field order and Hide Section.
+- Replace the revision modal with a dedicated WordPress-style comparison page: timeline, Previous/Next, compare any two revisions, From/To details and native red/green line and word highlights.
+- Show each saved/restored revision's editing user, exact timestamp in the site's timezone and relative time. Keep the captured display name if the account is later deleted. Label pre-change recovery captures without inventing their original author/time.
+- Preserve per-ID access checks, stale-value protection, editor locks, rollback, independent translation history and unsaved-editor guards.
+
 ## 2.5.47
 
 - Repeater rows show a title taken from the first filled text field when no Row Label Field is set, and the title follows typing.
@@ -65,6 +124,7 @@ All notable changes to this project will be documented in this file.
 - Moved content field save handling out of `render.php` into a dedicated `Content_Field_Saver`.
 
 ### Tests
+- Add isolated SQLite regressions using WordPress's real metadata/hooks and browser checks for per-ID history, nested comparisons, safe restore and mobile layouts.
 - Added unit coverage for REST write toggle behavior and JSON import payload validation.
 - Added unit coverage for content field ordering, hidden-section saves, sanitized value saves, and empty-value deletes.
 

@@ -1683,15 +1683,90 @@ jQuery(function($){
     updateRepeaterRowTitles($rep);
   });
 
+  // "Add Row" opens a menu of the field's layouts; picking one appends that layout.
+  // Fixed positioning keeps the menu clear of the field card's overflow clipping.
+  function positionFlexMenu($add){
+    var toggle = $add.children('.cff-flex-add-toggle')[0];
+    var menu = $add.children('.cff-flex-menu')[0];
+    if (!toggle || !menu || menu.hidden) return;
+    var rect = toggle.getBoundingClientRect();
+    var height = menu.offsetHeight;
+    var width = menu.offsetWidth;
+    var below = rect.top - height - 12 < 40 && window.innerHeight - rect.bottom > rect.top;
+    var left = Math.max(8, Math.min(rect.right - width, window.innerWidth - width - 8));
+    menu.style.left = left + 'px';
+    menu.style.top = (below ? rect.bottom + 12 : rect.top - height - 12) + 'px';
+    menu.style.setProperty('--cff-flex-arrow-x', (rect.left + rect.width / 2 - left) + 'px');
+    menu.classList.toggle('is-below', below);
+  }
+
+  function setFlexMenu($add, open){
+    var $toggle = $add.children('.cff-flex-add-toggle');
+    var $menu = $add.children('.cff-flex-menu');
+    $menu.prop('hidden', !open);
+    $toggle.attr('aria-expanded', open ? 'true' : 'false');
+    if (open) {
+      positionFlexMenu($add);
+      $menu.children('.cff-flex-menu-item').first().trigger('focus');
+    }
+  }
+
+  function repositionFlexMenus(){
+    $('.cff-flex-add').each(function(){ positionFlexMenu($(this)); });
+  }
+  window.addEventListener('scroll', repositionFlexMenus, true);
+  window.addEventListener('resize', repositionFlexMenus);
+
+  function closeFlexMenus($except){
+    $('.cff-flex-add').not($except || $()).each(function(){
+      if (!$(this).children('.cff-flex-menu').prop('hidden')) setFlexMenu($(this), false);
+    });
+  }
+
   $(document)
-    .off('click.cffFlexAdd', '.cff-flex-add-btn')
-    .on('click.cffFlexAdd', '.cff-flex-add-btn', function(e){
+    .off('click.cffFlexAdd', '.cff-flex-add-toggle')
+    .on('click.cffFlexAdd', '.cff-flex-add-toggle', function(e){
       e.preventDefault();
-      var $flex = $(this).closest('.cff-flexible');
-      var layout = $flex.find('.cff-flex-layout').first().val() || '';
-      if (!layout) return;
-      createFlexibleRowFromTemplate($flex, layout);
-      $flex.closest('form').trigger('change');
+      var $add = $(this).closest('.cff-flex-add');
+      closeFlexMenus($add);
+      setFlexMenu($add, $add.children('.cff-flex-menu').prop('hidden'));
+    })
+    .off('click.cffFlexPick', '.cff-flex-menu-item')
+    .on('click.cffFlexPick', '.cff-flex-menu-item', function(e){
+      e.preventDefault();
+      var $add = $(this).closest('.cff-flex-add');
+      var $flex = $add.closest('.cff-flexible');
+      setFlexMenu($add, false);
+      var $new = createFlexibleRowFromTemplate($flex, $(this).attr('data-layout') || '');
+      $add.children('.cff-flex-add-toggle').trigger('focus');
+      if ($new.length) {
+        $new.find(':input:visible').first().trigger('focus');
+        $flex.closest('form').trigger('change');
+      }
+    })
+    .off('keydown.cffFlexMenu', '.cff-flex-menu')
+    .on('keydown.cffFlexMenu', '.cff-flex-menu', function(e){
+      var $items = $(this).children('.cff-flex-menu-item');
+      var index = $items.index(document.activeElement);
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        var $add = $(this).closest('.cff-flex-add');
+        setFlexMenu($add, false);
+        $add.children('.cff-flex-add-toggle').trigger('focus');
+      } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        var next = (index + (e.key === 'ArrowDown' ? 1 : -1) + $items.length) % $items.length;
+        $items.eq(next).trigger('focus');
+      } else if (e.key === 'Home' || e.key === 'End') {
+        e.preventDefault();
+        $items.eq(e.key === 'Home' ? 0 : $items.length - 1).trigger('focus');
+      } else if (e.key === 'Tab') {
+        setFlexMenu($(this).closest('.cff-flex-add'), false);
+      }
+    })
+    .off('click.cffFlexOutside')
+    .on('click.cffFlexOutside', function(e){
+      if (!$(e.target).closest('.cff-flex-add').length) closeFlexMenus();
     });
 
   $(document)
@@ -1736,4 +1811,236 @@ jQuery(function($){
     }
   });
 
+});
+
+/* Server-side validation before saving. Errors come back keyed by input name prefix, which each field
+   wrapper carries as data-cff-path; Save Draft and Preview are not validated. */
+jQuery(function($){
+  if (!window.CFFP || !CFFP.ajax || !$('[data-cff-path]').length) return;
+
+  function wrapperPath(el){
+    var original = el.getAttribute('data-cff-path') || '';
+    var depth = (original.match(/\[/g) || []).length;
+    // Rows can be reordered after render; read the live index from the wrapper's own inputs.
+    var input = el.querySelector('[name^="cff_values["]');
+    if (!input) return original;
+    var parts = input.name.match(/\[[^\]]*\]/g) || [];
+    return parts.length >= depth ? 'cff_values' + parts.slice(0, depth).join('') : original;
+  }
+
+  function isHidden(el){
+    return el.style.display === 'none' || el.hidden || el.classList.contains('cff-section-hidden') || el.classList.contains('cff-field-hidden');
+  }
+
+  function postId(){
+    var id = $('#post_ID').val();
+    if (!id && window.wp && wp.data && wp.data.select('core/editor')) id = wp.data.select('core/editor').getCurrentPostId();
+    return id;
+  }
+
+  function clearErrors(){
+    $('.cff-validation-notice').remove();
+    $('.cff-has-error').removeClass('cff-has-error');
+    $('.cff-error-message').remove();
+  }
+
+  function showErrors(errors){
+    clearErrors();
+    var byPath = {};
+    $('[data-cff-path]').each(function(){ byPath[wrapperPath(this)] = this; });
+    var $first = $();
+    var count = 0;
+    $.each(errors, function(path, message){
+      var el = byPath[path];
+      if (!el) return;
+      count++;
+      var $wrap = $(el).addClass('cff-has-error');
+      $wrap.trigger('cff:reveal');
+      // Reveal the field: open closed postboxes and collapsed repeater rows around it.
+      $wrap.parents('.cff-postbox.closed').addBack('.cff-postbox.closed').removeClass('closed')
+        .find('> .postbox-header .cff-acc-toggle').attr('aria-expanded', 'true');
+      $wrap.parents('.cff-rep-row.is-collapsed').removeClass('is-collapsed');
+      var $target = $wrap.children('.cff-input').first();
+      if (!$target.length) $target = $wrap;
+      $('<p class="cff-error-message" role="alert"></p>').text(message).appendTo($target);
+      if (!$first.length) $first = $wrap;
+    });
+    if (!count) return;
+    var text = count === 1 ? 'Validation failed. 1 field requires attention.' : 'Validation failed. ' + count + ' fields require attention.';
+    var $notice = $('<div class="notice notice-error cff-validation-notice" role="alert"><p></p></div>');
+    $notice.find('p').text(text);
+    var $anchor = $('.wp-header-end').first();
+    if ($anchor.length) $anchor.after($notice); else $('.cff-metabox').first().before($notice);
+    $first[0].scrollIntoView({ block: 'center' });
+    $first.find(':input:visible').first().trigger('focus');
+  }
+
+  function validate(){
+    if (window.tinymce) { try { tinymce.triggerSave(); } catch (e) {} }
+    var skip = [];
+    $('[data-cff-path]').each(function(){ if (isHidden(this)) skip.push(wrapperPath(this)); });
+    return $.post(CFFP.ajax, {
+      action: 'cff_validate_values',
+      nonce: CFFP.nonce,
+      post_id: postId(),
+      form: $('.cff-metabox').find(':input').serialize(),
+      skip: skip
+    });
+  }
+
+  $(document).on('input change', '.cff-has-error :input', function(){
+    var $wrap = $(this).closest('.cff-has-error');
+    $wrap.removeClass('cff-has-error');
+    $wrap.find('.cff-error-message').filter(function(){
+      return $(this).closest('[data-cff-path]')[0] === $wrap[0];
+    }).remove();
+  });
+
+  // Classic editor: hold the submit, validate, then resubmit with the same button.
+  var validated = false;
+  var $form = $('form#post');
+  $form.on('submit.cffValidate', function(event){
+    if (validated) return;
+    var submitter = event.originalEvent && event.originalEvent.submitter;
+    if (submitter && (submitter.id === 'save-post' || submitter.id === 'post-preview' || submitter.name === 'wp-preview')) return;
+    if ($('#wp-preview').val() === 'dopreview') return;
+    event.preventDefault();
+    var form = this;
+    function resubmit(){
+      validated = true;
+      if (form.requestSubmit && submitter) form.requestSubmit(submitter);
+      else {
+        if (submitter && submitter.name) $('<input type="hidden">').attr('name', submitter.name).val(submitter.value).appendTo(form);
+        form.submit();
+      }
+    }
+    validate().done(function(res){
+      if (res && res.success && res.data && !res.data.valid) {
+        showErrors(res.data.errors || {});
+        // Undo WordPress' busy state so the author can fix the fields and try again.
+        $('#publishing-action .spinner, #save-action .spinner').removeClass('is-active');
+        $('#publish, #save-post').removeClass('disabled');
+        return;
+      }
+      clearErrors();
+      resubmit();
+    }).fail(resubmit);
+  });
+
+  // Block editor: cancel the save from the pre-save filter when fields are invalid.
+  if (!$form.length && window.wp && wp.hooks && wp.data && wp.data.select('core/editor')) {
+    wp.hooks.addFilter('editor.preSavePost', 'cff/validate', function(edits, options){
+      if (options && (options.isAutosave || options.isPreview)) return edits;
+      var status = wp.data.select('core/editor').getEditedPostAttribute('status');
+      if (status === 'draft' || status === 'auto-draft') return edits;
+      return new Promise(function(resolve, reject){
+        validate().done(function(res){
+          if (res && res.success && res.data && !res.data.valid) {
+            showErrors(res.data.errors || {});
+            reject(new Error('Validation failed. Please fix the highlighted fields.'));
+            return;
+          }
+          clearErrors();
+          resolve(edits);
+        }).fail(function(){ resolve(edits); });
+      });
+    });
+  }
+});
+
+/* Range, tab and accordion fields. Tabs and accordions are markers in the flat field list, so per-post field
+   reordering keeps working; membership is recomputed from DOM order whenever the layout is applied. */
+jQuery(function($){
+  $(document).on('input change', '.cff-range-slider', function(){
+    $(this).siblings('.cff-range-value').val(this.value).trigger('change');
+  });
+  $(document).on('input', '.cff-range-value', function(){
+    if (this.value !== '') $(this).siblings('.cff-range-slider').val(this.value);
+  });
+
+  function isMarker($el){ return $el.is('.cff-field-tab, .cff-field-accordion'); }
+
+  function applyLayout($fields){
+    var $children = $fields.children('.cff-field');
+    var $tabs = $children.filter('.cff-field-tab');
+    var $nav = $fields.children('.cff-field-tabs');
+    if ($tabs.length) {
+      if (!$nav.length) {
+        $nav = $('<div class="cff-field-tabs" role="tablist"></div>');
+      }
+      var active = Math.min(parseInt($fields.attr('data-cff-active-tab') || '0', 10) || 0, $tabs.length - 1);
+      $nav.empty();
+      $tabs.each(function(index){
+        $('<button type="button" role="tab" class="cff-field-tab-button"></button>')
+          .text($(this).find('.cff-tab-label').text())
+          .attr('aria-selected', index === active ? 'true' : 'false')
+          .toggleClass('is-active', index === active)
+          .attr('data-tab-index', index)
+          .appendTo($nav);
+      });
+      $tabs.first().before($nav);
+      var tabIndex = -1;
+      var accordionOpen = true;
+      $children.each(function(){
+        var $el = $(this);
+        if ($el.hasClass('cff-field-tab')) { tabIndex++; accordionOpen = true; return; }
+        $el.toggleClass('cff-tab-hidden', tabIndex !== -1 && tabIndex !== active);
+        if ($el.hasClass('cff-field-accordion')) { accordionOpen = $el.hasClass('is-open'); return; }
+        $el.toggleClass('cff-accordion-hidden', !accordionOpen);
+      });
+      return;
+    }
+    $nav.remove();
+    var open = true;
+    $children.each(function(){
+      var $el = $(this);
+      if ($el.hasClass('cff-field-accordion')) { open = $el.hasClass('is-open'); return; }
+      if (!isMarker($el)) $el.toggleClass('cff-accordion-hidden', !open);
+    });
+  }
+
+  function applyAll(){
+    $('.cff-metabox-fields').each(function(){ applyLayout($(this)); });
+  }
+
+  $(document).on('click', '.cff-field-tab-button', function(){
+    var $fields = $(this).closest('.cff-metabox-fields');
+    $fields.attr('data-cff-active-tab', $(this).attr('data-tab-index'));
+    applyLayout($fields);
+    $fields.children('.cff-field-tabs').children('.is-active').trigger('focus');
+  });
+
+  $(document).on('keydown', '.cff-field-tab-button', function(e){
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    e.preventDefault();
+    var $buttons = $(this).parent().children();
+    var next = ($buttons.index(this) + (e.key === 'ArrowRight' ? 1 : -1) + $buttons.length) % $buttons.length;
+    $buttons.eq(next).trigger('click');
+  });
+
+  $(document).on('click', '.cff-accordion-toggle', function(){
+    var $marker = $(this).closest('.cff-field-accordion');
+    var open = !$marker.hasClass('is-open');
+    $marker.toggleClass('is-open', open);
+    $(this).attr('aria-expanded', open ? 'true' : 'false');
+    applyLayout($marker.closest('.cff-metabox-fields'));
+  });
+
+  // Validation errors: reveal the tab or accordion that holds the field.
+  $(document).on('cff:reveal', '.cff-field', function(){
+    var $field = $(this).closest('.cff-metabox-fields > .cff-field');
+    var $fields = $field.parent();
+    if ($field.hasClass('cff-tab-hidden')) {
+      var tabIndex = $field.prevAll('.cff-field-tab').length - 1;
+      $fields.attr('data-cff-active-tab', Math.max(0, tabIndex));
+    }
+    if ($field.hasClass('cff-accordion-hidden')) {
+      $field.prevAll('.cff-field-accordion').first().addClass('is-open').find('.cff-accordion-toggle').attr('aria-expanded', 'true');
+    }
+    applyLayout($fields);
+  });
+
+  // Field order can change in the per-post Reorder view; re-apply when returning to the editor.
+  $(document).on('change', '.cff-field-view-mode--metabox', function(){ setTimeout(applyAll, 0); });
+  applyAll();
 });

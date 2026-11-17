@@ -4,6 +4,26 @@ if (!defined('ABSPATH')) exit;
 require_once __DIR__ . '/helpers/relational-label.php';
 
 class Ajax_Controller {
+  /** Validates the editor's cff_values before the post is saved; returns errors keyed by input name prefix. */
+  public function ajax_validate_values() {
+    check_ajax_referer('cffp', 'nonce');
+    $post_id = absint($_POST['post_id'] ?? 0);
+    if (!$post_id || !current_user_can('edit_post', $post_id)) {
+      wp_send_json_error(['message' => __('Forbidden', 'cff')], 403);
+    }
+    $post = get_post($post_id);
+    if (!$post) wp_send_json_error(['message' => __('Post not found.', 'cff')], 404);
+
+    $form = [];
+    parse_str((string) wp_unslash($_POST['form'] ?? ''), $form);
+    $skip = isset($_POST['skip']) && is_array($_POST['skip']) ? array_map('sanitize_text_field', wp_unslash($_POST['skip'])) : [];
+
+    require_once __DIR__ . '/class-field-validator.php';
+    $fields = array_values(Plugin::instance()->get_field_definitions_for_post($post));
+    $errors = (new Field_Validator())->validate($fields, $form['cff_values'] ?? [], $skip);
+    wp_send_json_success(['valid' => !$errors, 'errors' => $errors]);
+  }
+
   public function ajax_search_posts() {
     check_ajax_referer('cffp', 'nonce');
     if (!current_user_can('edit_posts')) {

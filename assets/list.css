@@ -17,11 +17,12 @@
 }
 
 /* Core owns table appearance, row actions and the mobile column toggle. */
-body.edit-php.post-type-cff_group .column-cff_key { width: 18%; }
-body.edit-php.post-type-cff_group .column-cff_location { width: 28%; }
-body.edit-php.post-type-cff_group .column-cff_fields { width: 64px; }
-body.edit-php.post-type-cff_group .cffp-location-summary { margin: 0; }
-body.edit-php.post-type-cff_group .cffp-location-summary li { margin-bottom: 4px; }
+body.edit-php.post-type-cff_group :is(.column-cff_desc, .column-cff_key, .column-cff_location) { width: 22%; }
+body.edit-php.post-type-cff_group .column-cff_fields { width: 80px; }
+body.edit-php.post-type-cff_group .cff-col-meta { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; }
+body.edit-php.post-type-cff_group .cff-col-meta > span:not(.dashicons) { overflow-wrap: anywhere; }
+body.edit-php.post-type-cff_group .cff-col-meta .dashicons { flex: 0 0 16px; width: 16px; height: 16px; font-size: 16px; color: #8c8f94; }
+body.edit-php.post-type-cff_group .cff-col-empty { color: #a7aaad; }
 @media (max-width: 782px) {
-  body.edit-php.post-type-cff_group :is(.column-cff_key, .column-cff_location, .column-cff_fields) { width: auto; }
+  body.edit-php.post-type-cff_group :is(.column-cff_desc, .column-cff_key, .column-cff_location, .column-cff_fields) { width: auto; }
 }

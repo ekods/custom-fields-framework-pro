@@ -19,6 +19,24 @@ class Field_Sanitizer {
 
     if ($type === 'checkbox') return !empty($value) ? '1' : '0';
 
+    if (in_array($type, ['message', 'tab', 'accordion'], true)) return null;
+
+    if ($type === 'email') {
+      return is_scalar($value) ? sanitize_email((string) $value) : '';
+    }
+
+    if ($type === 'range') {
+      if (!is_scalar($value) || $value === '' || !is_numeric($value)) return null;
+      $min = is_numeric($field['range_min'] ?? null) ? 0 + $field['range_min'] : 0;
+      $max = is_numeric($field['range_max'] ?? null) ? 0 + $field['range_max'] : 100;
+      return min($max, max($min, 0 + $value));
+    }
+
+    if ($type === 'time_picker') {
+      $time = is_scalar($value) ? trim((string) $value) : '';
+      return preg_match('/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/', $time) ? $time : '';
+    }
+
     if ($type === 'choice') return $this->sanitize_choice($field, $value);
 
     if ($type === 'url') {

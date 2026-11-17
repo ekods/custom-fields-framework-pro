@@ -67,12 +67,12 @@ for (const page of Object.values(pages)) {
                 const style = element => getComputedStyle(element);
                 const pick = element => Object.fromEntries(shape.map(property => [property, style(element)[property]]));
                 const heroButtons = [...document.querySelectorAll('.tk-hero-action .button')];
-                const icon = style(document.querySelector('.tk-hero-icon'));
+                const icon = style(document.querySelector('.tk-page-icon'));
                 return {
                     heroStyle: style(document.querySelector('.tk-hero')),
                     gradient: style(document.querySelector('.tk-hero')).backgroundImage.includes('gradient'),
                     radius: style(document.querySelector('.tk-hero')).borderRadius,
-                    iconSize: icon.width, iconGradient: icon.backgroundImage.includes('gradient'), iconColor: style(document.querySelector('.tk-hero-icon .dashicons')).color,
+                    iconSize: icon.width, iconGradient: icon.backgroundImage.includes('gradient'), iconColor: style(document.querySelector('.tk-page-icon .dashicons')).color,
                     title: style(document.querySelector('.tk-hero-title')).fontSize,
                     accent: style(heroButtons[0]).getPropertyValue('--wp-admin-theme-color').trim(),
                     buttons: heroButtons.map(button => ({primary: button.classList.contains('button-primary'), shape: pick(button), color: style(button).color, background: style(button).backgroundColor, border: style(button).borderTopColor})),

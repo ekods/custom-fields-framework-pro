@@ -12,6 +12,8 @@ class Plugin {
   private $term_meta_manager = null;
   private $language_clone = null;
   private $content_import = null;
+  private $content_revisions = null;
+  private $local_json = null;
   private $field_sanitizer = null;
   private $group_settings_cache = [];
   private $published_field_groups_cache = null;
@@ -169,6 +171,10 @@ class Plugin {
   }
 
   private function __construct() {
+    $this->local_json = new Local_JSON($this);
+    $this->local_json->register();
+    $this->content_revisions = new Content_Revisions($this);
+    $this->content_revisions->register();
     $this->language_clone = new Language_Clone($this);
     $this->language_clone->register();
     $this->content_import = new Content_Import($this);
@@ -189,6 +195,7 @@ class Plugin {
     add_action('admin_menu', [$this, 'admin_menu']);
     add_action('add_meta_boxes', [$this, 'meta_boxes']);
     add_action('save_post_cff_group', [$this, 'save_group'], 10, 2);
+    add_filter('wp_insert_post_data', [$this, 'filter_group_description'], 10, 2);
     add_action('save_post_cff_options', [$this, 'save_global_ui_settings'], 10, 2);
 
     add_action('add_meta_boxes', [$this, 'content_meta_boxes'], 20, 2);
@@ -221,6 +228,7 @@ class Plugin {
     add_filter('redirect_post_location', [$this, 'add_copy_notice_flag_to_redirect'], 10, 2);
 
     add_action('wp_ajax_cff_search_posts', [$this->ajax_controller(), 'ajax_search_posts']);
+    add_action('wp_ajax_cff_validate_values', [$this->ajax_controller(), 'ajax_validate_values']);
     add_action('wp_ajax_cff_search_relational', [$this->ajax_controller(), 'ajax_search_relational']);
     add_action('wp_ajax_cff_get_templates', [$this->ajax_controller(), 'ajax_get_templates']);
     add_action('wp_ajax_cff_get_post_types', [$this->ajax_controller(), 'ajax_get_post_types']);
@@ -1031,26 +1039,30 @@ TEXT;
       'dashicons-sort'
     );
 
-    echo '<div id="cff-reorder">';
+    echo '<div id="cff-reorder" class="cff-reorder-accordion">';
 
-    echo '<div class="cff-reorder-section">';
-    echo '<h2>Posts / Pages / Custom Post Types</h2>';
-    echo '<div class="cff-reorder-controls">';
-    echo '<label for="cff-reorder-post-type">Post Type</label> ';
-    echo '<select id="cff-reorder-post-type">';
+    echo '<details class="cff-reorder-section" open>';
+    echo '<summary class="cff-reorder-summary"><span class="cff-reorder-summary-title">' . esc_html__('Posts / Pages / Custom Post Types', 'cff') . '</span>';
+    echo '<span class="cff-reorder-summary-meta">' . esc_html(sprintf(_n('%d post type', '%d post types', count($post_types), 'cff'), count($post_types))) . '</span></summary>';
+    echo '<div class="cff-reorder-body">';
+    echo '<p class="description">' . esc_html__('Open a post type to load its items. Each post type is saved separately.', 'cff') . '</p>';
     foreach ($post_types as $pt) {
-      echo '<option value="'.esc_attr($pt->name).'">'.esc_html($pt->labels->name).'</option>';
+      echo '<details class="cff-reorder-type" data-post-type="' . esc_attr($pt->name) . '">';
+      echo '<summary class="cff-reorder-summary"><span class="cff-reorder-summary-title">' . esc_html($pt->labels->name) . '</span>';
+      echo '<code class="cff-reorder-summary-key">' . esc_html($pt->name) . '</code>';
+      echo '<span class="cff-reorder-summary-meta" data-reorder-count></span></summary>';
+      echo '<div class="cff-reorder-body">';
+      echo '<ul class="cff-reorder-list" data-kind="post" data-post-type="' . esc_attr($pt->name) . '"></ul>';
+      echo '<p><button type="button" class="button button-primary cff-reorder-save-type">' . esc_html(sprintf(__('Save %s Order', 'cff'), $pt->labels->name)) . '</button></p>';
+      echo '</div>';
+      echo '</details>';
     }
-    echo '</select> ';
     echo '</div>';
-    echo '<ul class="cff-reorder-list" data-kind="post"></ul>';
-    echo '<p><button type="button" class="button button-primary" id="cff-reorder-save-posts">Save Order</button></p>';
-    echo '</div>';
+    echo '</details>';
 
-    echo '<hr>';
-
-    echo '<div class="cff-reorder-section">';
-    echo '<h2>Taxonomies / Categories</h2>';
+    echo '<details class="cff-reorder-section">';
+    echo '<summary class="cff-reorder-summary"><span class="cff-reorder-summary-title">' . esc_html__('Taxonomies / Categories', 'cff') . '</span></summary>';
+    echo '<div class="cff-reorder-body">';
     echo '<div class="cff-reorder-controls">';
     echo '<label for="cff-reorder-taxonomy">Taxonomy</label> ';
     echo '<select id="cff-reorder-taxonomy">';
@@ -1074,17 +1086,16 @@ TEXT;
     echo '<ul class="cff-reorder-list" data-kind="term"></ul>';
     echo '<p><button type="button" class="button button-primary" id="cff-reorder-save-terms">Save Order</button></p>';
     echo '</div>';
+    echo '</details>';
 
-    echo '<hr>';
-
-    echo '<div class="cff-reorder-section">';
-    echo '<h2>Field Groups</h2>';
-    echo '<p class="description" style="margin-bottom:8px;">' . esc_html__('Drag field groups to adjust the order they appear in the editor and frontend.', 'cff') . '</p>';
-    echo '<div class="cff-reorder-controls">';
-    echo '</div>';
+    echo '<details class="cff-reorder-section">';
+    echo '<summary class="cff-reorder-summary"><span class="cff-reorder-summary-title">' . esc_html__('Field Groups', 'cff') . '</span></summary>';
+    echo '<div class="cff-reorder-body">';
+    echo '<p class="description">' . esc_html__('Drag field groups to adjust the order they appear in the editor and frontend.', 'cff') . '</p>';
     echo '<ul class="cff-reorder-list" data-kind="group"></ul>';
     echo '<p><button type="button" class="button button-primary" id="cff-reorder-save-groups">Save Order</button></p>';
     echo '</div>';
+    echo '</details>';
 
     echo '</div></div>';
   }
@@ -1533,6 +1544,7 @@ TEXT;
 
     $blocked = [
       '_edit_lock',
+      '_cffp_content_revision',
       'language_id',
       '_language_id',
       '_pll_language',
@@ -1970,6 +1982,12 @@ TEXT;
     ];
     $presentation_json = wp_json_encode($presentation);
 
+    echo '<div class="cff-group-description">';
+    echo '<label for="cff-group-description">' . esc_html__('Description', 'cff') . '</label>';
+    echo '<textarea id="cff-group-description" name="cff_group_description" rows="2" class="large-text">' . esc_textarea($post->post_excerpt) . '</textarea>';
+    echo '<p class="description">' . esc_html__('Shown in the Field Groups list to explain what this group is for.', 'cff') . '</p>';
+    echo '</div>';
+
     echo '<div id="message" class="notice notice-info inline">';
     echo '<p>Fields marked with <span class="cff-required-indicator" aria-hidden="true">*</span> are required.</p>';
     echo '</div>';
@@ -2108,19 +2126,23 @@ TEXT;
         <div class="cff-field-structure">
           <div class="cff-field-head">
             <div class="cff-col">
-              <label>Label</label>
+              <label>Field Label</label>
               <input type="text" class="cff-input cff-label" value="{{label}}">
+              <p class="description">This is the name which will appear on the EDIT page</p>
             </div>
             <div class="cff-col">
-              <label>Name</label>
+              <label>Field Name</label>
               <input type="text" class="cff-input cff-name" value="{{name}}">
+              <p class="description">Single word, no spaces. Lowercase letters, numbers and underscores only</p>
             </div>
             <div class="cff-col cff-row-type">
               <div class="cff-row-type-main">
-                <label>Type</label>
+                <label>Field Type</label>
                 <select class="cff-input cff-type cff-select2">
                   <option value="text">Text</option>
                   <option value="number">Number</option>
+                  <option value="range">Range</option>
+                  <option value="email">Email</option>
                   <option value="textarea">Textarea</option>
                   <option value="wysiwyg">WYSIWYG</option>
                   <option value="shortcode">Shortcode</option>
@@ -2132,6 +2154,7 @@ TEXT;
                   <option value="relational">Relational</option>
                   <option value="date_picker">Date Picker</option>
                   <option value="datetime_picker">Date Time Picker</option>
+                  <option value="time_picker">Time Picker</option>
                   <option value="checkbox">Checkbox</option>
                   <option value="image">Image</option>
                   <option value="gallery">Gallery</option>
@@ -2139,6 +2162,9 @@ TEXT;
                   <option value="repeater">Repeater</option>
                   <option value="group">Group</option>
                   <option value="flexible">Flexible Content</option>
+                  <option value="message">Message</option>
+                  <option value="tab">Tab</option>
+                  <option value="accordion">Accordion</option>
                 </select>
               </div>
             </div>
@@ -2152,6 +2178,39 @@ TEXT;
             </div>
           </div>
           <div class="cff-field-meta-row">
+            <div class="cff-row-instructions">
+              <label>Instructions</label>
+              <textarea class="cff-input cff-instructions-input" rows="2"></textarea>
+              <p class="description">Instructions for authors. Shown when submitting data.</p>
+            </div>
+            <div class="cff-row-default">
+              <label>Default Value</label>
+              <input type="text" class="cff-input cff-default-value">
+              <p class="description">Appears when creating a new post.</p>
+            </div>
+            <div class="cff-row-width">
+              <label>Wrapper Width (%)</label>
+              <input type="number" class="cff-input cff-wrapper-width" min="0" max="100" step="1" placeholder="100">
+              <p class="description">Fields narrower than 100% sit side by side in the editor.</p>
+            </div>
+            <div class="cff-row-range-options">
+              <div class="cff-row-repeater-advanced">
+                <div class="cff-row-repeater-col"><label>Minimum</label><input type="number" class="cff-input cff-range-min" step="any" value="0"></div>
+                <div class="cff-row-repeater-col"><label>Maximum</label><input type="number" class="cff-input cff-range-max" step="any" value="100"></div>
+                <div class="cff-row-repeater-col"><label>Step</label><input type="number" class="cff-input cff-range-step" step="any" min="0" value="1"></div>
+              </div>
+            </div>
+            <div class="cff-row-message-options">
+              <label>Message</label>
+              <textarea class="cff-input cff-message-input" rows="4"></textarea>
+              <p class="description">Shown to editors in place of an input. Basic HTML is allowed.</p>
+            </div>
+            <div class="cff-row-accordion-options">
+              <span class="cff-tools-toggles">
+                <div><strong>Open by default</strong><div class="description">Fields after this accordion, up to the next accordion or tab, are shown inside it.</div></div>
+                <label class="cff-switch"><input type="checkbox" class="cff-accordion-open-toggle"><span class="cff-slider"></span></label>
+              </span>
+            </div>
             <div class="cff-row-placeholder">
               <label>Placeholder</label>
               <input type="text" class="cff-input cff-placeholder" placeholder="Placeholder" value="{{placeholder}}">
@@ -2345,7 +2404,7 @@ TEXT;
         <div class="cff-advanced">
           <div class="cff-subbuilder" data-kind="repeater">
             <div class="cff-subhead">
-              <strong>Sub Fields (Repeater)</strong>
+              <strong>Fields</strong>
               <button type="button" class="button cff-add-sub">Add Sub Field</button>
             </div>
             <div class="cff-subfields-table-head" aria-hidden="true">
@@ -2359,7 +2418,7 @@ TEXT;
 
           <div class="cff-groupbuilder" data-kind="group">
             <div class="cff-subhead">
-              <strong>Group Fields</strong>
+              <strong>Fields</strong>
               <button type="button" class="button cff-add-group-sub">Add Field</button>
             </div>
             <div class="cff-group-fields"></div>
@@ -2385,19 +2444,23 @@ TEXT;
         <div class="cff-subfield-structure">
           <div class="cff-field-head">
             <div class="cff-col">
-              <label>Label</label>
+              <label>Field Label</label>
               <input type="text" class="cff-input cff-slabel" value="{{label}}">
+              <p class="description">This is the name which will appear on the EDIT page</p>
             </div>
             <div class="cff-col">
-              <label>Name</label>
+              <label>Field Name</label>
               <input type="text" class="cff-input cff-sname" value="{{name}}">
+              <p class="description">Single word, no spaces. Lowercase letters, numbers and underscores only</p>
             </div>
             <div class="cff-col cff-row-type">
               <div class="cff-row-type-main">
-                <label>Type</label>
+                <label>Field Type</label>
                 <select class="cff-input cff-stype cff-select2">
                   <option value="text">Text</option>
                   <option value="number">Number</option>
+                  <option value="range">Range</option>
+                  <option value="email">Email</option>
                   <option value="textarea">Textarea</option>
                   <option value="wysiwyg">WYSIWYG</option>
                   <option value="shortcode">Shortcode</option>
@@ -2409,12 +2472,14 @@ TEXT;
                   <option value="relational">Relational</option>
                   <option value="date_picker">Date Picker</option>
                   <option value="datetime_picker">Date Time Picker</option>
+                  <option value="time_picker">Time Picker</option>
                   <option value="checkbox">Checkbox</option>
                   <option value="image">Image</option>
                   <option value="gallery">Gallery</option>
                   <option value="file">File</option>
                   <option value="repeater">Repeater</option>
                   <option value="group">Group</option>
+                  <option value="message">Message</option>
                 </select>
               </div>
             </div>
@@ -2428,6 +2493,39 @@ TEXT;
             </div>
           </div>
           <div class="cff-field-meta-row">
+            <div class="cff-row-instructions">
+              <label>Instructions</label>
+              <textarea class="cff-input cff-instructions-input" rows="2"></textarea>
+              <p class="description">Instructions for authors. Shown when submitting data.</p>
+            </div>
+            <div class="cff-row-default">
+              <label>Default Value</label>
+              <input type="text" class="cff-input cff-default-value">
+              <p class="description">Appears when creating a new post.</p>
+            </div>
+            <div class="cff-row-width">
+              <label>Wrapper Width (%)</label>
+              <input type="number" class="cff-input cff-wrapper-width" min="0" max="100" step="1" placeholder="100">
+              <p class="description">Fields narrower than 100% sit side by side in the editor.</p>
+            </div>
+            <div class="cff-row-range-options">
+              <div class="cff-row-repeater-advanced">
+                <div class="cff-row-repeater-col"><label>Minimum</label><input type="number" class="cff-input cff-range-min" step="any" value="0"></div>
+                <div class="cff-row-repeater-col"><label>Maximum</label><input type="number" class="cff-input cff-range-max" step="any" value="100"></div>
+                <div class="cff-row-repeater-col"><label>Step</label><input type="number" class="cff-input cff-range-step" step="any" min="0" value="1"></div>
+              </div>
+            </div>
+            <div class="cff-row-message-options">
+              <label>Message</label>
+              <textarea class="cff-input cff-message-input" rows="4"></textarea>
+              <p class="description">Shown to editors in place of an input. Basic HTML is allowed.</p>
+            </div>
+            <div class="cff-row-accordion-options">
+              <span class="cff-tools-toggles">
+                <div><strong>Open by default</strong><div class="description">Fields after this accordion, up to the next accordion or tab, are shown inside it.</div></div>
+                <label class="cff-switch"><input type="checkbox" class="cff-accordion-open-toggle"><span class="cff-slider"></span></label>
+              </span>
+            </div>
             <div class="cff-row-placeholder">
               <label>Placeholder</label>
               <input type="text" class="cff-input cff-placeholder" placeholder="Placeholder" value="{{placeholder}}">
@@ -2619,7 +2717,7 @@ TEXT;
         </div>
         <div class="cff-subbuilder cff-subrepeater" data-kind="repeater">
           <div class="cff-subhead">
-            <strong>Sub Fields (Repeater)</strong>
+            <strong>Fields</strong>
             <button type="button" class="button cff-add-sub">Add Sub Field</button>
           </div>
           <div class="cff-subfields-table-head" aria-hidden="true">
@@ -2633,7 +2731,7 @@ TEXT;
 
         <div class="cff-groupbuilder cff-subgroupbuilder" data-kind="group">
           <div class="cff-subhead">
-            <strong>Group Fields</strong>
+            <strong>Fields</strong>
             <button type="button" class="button cff-add-group-sub">Add Field</button>
           </div>
           <div class="cff-group-fields"></div>
@@ -2707,6 +2805,15 @@ TEXT;
     <?php
   }
 
+  /** Field groups keep their description in post_excerpt; saved with the group's own nonce. */
+  public function filter_group_description($data, $postarr) {
+    if (($data['post_type'] ?? '') !== 'cff_group' || !isset($_POST['cff_group_description'], $_POST['cff_group_nonce'])) return $data;
+    if (!wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['cff_group_nonce'])), 'cff_group_save')) return $data;
+    if (!current_user_can(self::admin_capability())) return $data;
+    $data['post_excerpt'] = wp_slash(sanitize_textarea_field(wp_unslash($_POST['cff_group_description'])));
+    return $data;
+  }
+
   public function save_group($post_id, $post) {
     if (!isset($_POST['cff_group_nonce']) || !wp_verify_nonce($_POST['cff_group_nonce'], 'cff_group_save')) return;
     if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
@@ -2734,81 +2841,7 @@ TEXT;
     $presentation = json_decode($presentation_json, true);
     $presentation = $this->sanitize_presentation(is_array($presentation) ? $presentation : []);
 
-    // sanitize fields
-    $clean = [];
-    $seen = [];
-    $seen_keys = [];
-    foreach ($fields as $f) {
-      $type = isset($f['type']) ? sanitize_key($f['type']) : 'text';
-      $name = isset($f['name']) ? sanitize_key($f['name']) : '';
-      if (!$name || isset($seen[$name])) continue;
-      $seen[$name] = true;
-
-      $field_key = $this->sanitize_field_key($f['key'] ?? '');
-      while (isset($seen_keys[$field_key])) {
-        $field_key = $this->sanitize_field_key('');
-      }
-      $seen_keys[$field_key] = true;
-
-      $item = [
-        'label' => $this->sanitize_string_value($f['label'] ?? $name),
-        'name'  => $name,
-        'type'  => $type,
-        'key' => $field_key,
-        'required' => !empty($f['required']),
-        'hide' => !empty($f['hide']),
-        'placeholder' => $this->sanitize_string_value($f['placeholder'] ?? ''),
-      ];
-      if ($type === 'image' || $type === 'file') {
-        $item['file_library'] = $this->sanitize_file_library($f['file_library'] ?? 'document');
-        $item['max_upload_mb'] = $this->sanitize_media_max_upload_mb($f['max_upload_mb'] ?? 2);
-      }
-      if ($type === 'gallery') {
-        $item['gallery_preview_fit'] = $this->sanitize_gallery_preview_fit($f['gallery_preview_fit'] ?? 'cover');
-      }
-      $aliases = $this->sanitize_field_aliases($f['aliases'] ?? [], $name);
-      if ($aliases) {
-        $item['aliases'] = $aliases;
-      }
-      $conditional_logic = $this->sanitize_conditional_logic($f['conditional_logic'] ?? []);
-      if ($conditional_logic) {
-        $item['conditional_logic'] = $conditional_logic;
-      }
-
-      if ($type === 'repeater') {
-        $sub_fields = $this->sanitize_subfields($f['sub_fields'] ?? []);
-        $min = $this->sanitize_repeater_min($f['min'] ?? 0);
-        $item['sub_fields'] = $sub_fields;
-        $item['repeater_layout'] = $this->sanitize_repeater_layout($f['repeater_layout'] ?? 'default');
-        $item['min'] = $min;
-        $item['max'] = $this->sanitize_repeater_max($f['max'] ?? 0, $min);
-        $item['repeater_row_label'] = $this->sanitize_repeater_row_label($f['repeater_row_label'] ?? '', $sub_fields);
-        $item['repeater_collapsed'] = !empty($f['repeater_collapsed']);
-      }
-      if ($type === 'datetime_picker') {
-        $item['datetime_use_time'] = !array_key_exists('datetime_use_time', $f) ? true : !empty($f['datetime_use_time']);
-      }
-      if ($type === 'flexible') {
-        $item['layouts'] = $this->sanitize_layouts($f['layouts'] ?? []);
-      }
-      if ($type === 'group') {
-        $item['sub_fields'] = $this->sanitize_subfields($f['sub_fields'] ?? []);
-      }
-      if ($type === 'choice') {
-        $item['choices'] = $this->sanitize_choices($f['choices'] ?? []);
-        $item['choice_display'] = $this->sanitize_choice_display($f['choice_display'] ?? '');
-        $item['choice_default'] = $this->sanitize_choice_default($f['choice_default'] ?? '', $item['choices'], $item['choice_display']);
-      }
-      if ($type === 'relational') {
-        $item['relational_type'] = $this->sanitize_relational_type($f['relational_type'] ?? 'post');
-        $item['relational_subtype'] = $this->sanitize_string_value($f['relational_subtype'] ?? '');
-        $item['relational_post_type'] = sanitize_key($f['relational_post_type'] ?? '');
-        $item['relational_display'] = $this->sanitize_relational_display($f['relational_display'] ?? 'select');
-        $item['relational_multiple'] = !empty($f['relational_multiple']);
-      }
-
-      $clean[] = $item;
-    }
+    $clean = $this->sanitize_field_list($fields);
     $settings['fields'] = $clean;
 
     // sanitize location groups
@@ -2880,6 +2913,47 @@ TEXT;
       return '';
     }
     return sanitize_text_field($value ?? '');
+  }
+
+  /** Field types whose single stored value can be pre-filled with a default. */
+  public static function supports_default_value($type) {
+    return in_array($type, ['text', 'number', 'textarea', 'wysiwyg', 'email', 'url', 'color', 'range', 'shortcode', 'date_picker', 'datetime_picker', 'time_picker', 'checkbox'], true);
+  }
+
+  /** Settings shared by every field and sub field (instructions, default value, wrapper width) plus the
+      options of the simple types: range bounds, message text and accordion state. */
+  private function apply_common_field_settings(array $item, array $src) {
+    $instructions = is_string($src['instructions'] ?? null) ? sanitize_textarea_field($src['instructions']) : '';
+    if ($instructions !== '') $item['instructions'] = $instructions;
+
+    if (self::supports_default_value($item['type']) && isset($src['default_value']) && is_scalar($src['default_value'])) {
+      $default = (string) $src['default_value'];
+      if ($item['type'] === 'wysiwyg') $default = wp_kses_post($default);
+      elseif ($item['type'] === 'textarea') $default = sanitize_textarea_field($default);
+      else $default = sanitize_text_field($default);
+      if ($default !== '') $item['default_value'] = $default;
+    }
+
+    $width = isset($src['wrapper_width']) && is_numeric($src['wrapper_width']) ? (int) $src['wrapper_width'] : 0;
+    if ($width > 0 && $width < 100) $item['wrapper_width'] = $width;
+
+    if ($item['type'] === 'range') {
+      $min = isset($src['range_min']) && is_numeric($src['range_min']) ? 0 + $src['range_min'] : 0;
+      $max = isset($src['range_max']) && is_numeric($src['range_max']) ? 0 + $src['range_max'] : 100;
+      $step = isset($src['range_step']) && is_numeric($src['range_step']) && $src['range_step'] > 0 ? 0 + $src['range_step'] : 1;
+      if ($max <= $min) $max = $min + $step;
+      $item['range_min'] = $min;
+      $item['range_max'] = $max;
+      $item['range_step'] = $step;
+    }
+    if ($item['type'] === 'message') {
+      $item['message'] = wp_kses_post(is_string($src['message'] ?? null) ? $src['message'] : '');
+    }
+    if ($item['type'] === 'accordion') {
+      $item['accordion_open'] = !empty($src['accordion_open']);
+    }
+
+    return $item;
   }
 
   private function sanitize_repeater_layout($value) {
@@ -3016,7 +3090,7 @@ TEXT;
         $item['choice_display'] = $this->sanitize_choice_display($s['choice_display'] ?? '');
         $item['choice_default'] = $this->sanitize_choice_default($s['choice_default'] ?? '', $item['choices'], $item['choice_display']);
       }
-      $out[] = $item;
+      $out[] = $this->apply_common_field_settings($item, $s);
     }
     return $out;
   }
@@ -3026,6 +3100,7 @@ TEXT;
     if (!is_array($layouts)) return $out;
     foreach ($layouts as $l) {
       $lname = sanitize_key($l['name'] ?? '');
+      if (!$lname) $lname = sanitize_key(preg_replace('/[\s-]+/', '_', (string) ($l['label'] ?? '')));
       if (!$lname) continue;
       $out[] = [
         'label' => $this->sanitize_string_value($l['label'] ?? $lname),
@@ -3191,7 +3266,9 @@ TEXT;
             }
           }
           wp_nonce_field('cff_content_save', 'cff_content_nonce');
-          echo '<div class="cff-metabox">';
+          $presentation = isset($settings['presentation']) && is_array($settings['presentation']) ? $settings['presentation'] : [];
+          $labels_left = ($presentation['label_placement'] ?? 'top') === 'left';
+          echo '<div class="cff-metabox' . ($labels_left ? ' cff-labels-left' : '') . '">';
           echo '<div class="cff-field-view-controls cff-metabox-view">';
           echo '<div class="cff-field-view-copy">';
           echo '<div class="cff-field-view-head">';
@@ -3224,7 +3301,10 @@ TEXT;
           echo '<input type="hidden" class="cff-metabox-order-active" name="cff_group_field_order_active[' . intval($g->ID) . ']" value="0">';
           echo '</div>';
           echo '<div class="cff-metabox-fields">';
+          require_once __DIR__ . '/render.php';
+          \CFF\cff_instruction_placement($presentation['instruction_placement'] ?? 'below_labels');
           foreach ($fields as $f) $this->render_field($post, $f);
+          \CFF\cff_instruction_placement('below_labels');
           echo '</div>';
           echo '</div>';
         },
@@ -3566,6 +3646,8 @@ TEXT;
     return $this->tools_page()->handle_export_acf_data();
   }
 
+  public function local_json() { return $this->local_json; }
+  public function local_json_sanitize_settings($settings) { return $this->sanitize_group_settings(is_array($settings) ? $settings : []); }
   public function tools_export_field_groups($group_id = 0) { return $this->export_field_groups($group_id); }
   public function tools_sanitize_import_post_types($defs) { return $this->sanitize_import_post_types($defs); }
   public function tools_sanitize_import_taxonomies($defs) { return $this->sanitize_import_taxonomies($defs); }
@@ -3599,6 +3681,7 @@ TEXT;
           'post_title' => $p->post_title,
           'post_name'  => $p->post_name,
           'post_status'=> $p->post_status,
+          'post_excerpt' => $p->post_excerpt,
         ],
         'settings' => get_post_meta($p->ID, '_cff_settings', true),
       ];
@@ -3760,13 +3843,18 @@ TEXT;
   private function import_field_groups($groups) {
     foreach ($groups as $g) {
       $title = sanitize_text_field($g['post']['post_title'] ?? 'Imported Group');
+      $description = sanitize_textarea_field($g['post']['post_excerpt'] ?? '');
       $existing_id = $this->find_group_by_title($title);
 
       $post_id = $existing_id ? $existing_id : wp_insert_post([
         'post_type'=>'cff_group',
         'post_status'=>'publish',
         'post_title'=>$title,
+        'post_excerpt'=>$description,
       ]);
+      if ($existing_id && $description !== '') {
+        wp_update_post(['ID' => $existing_id, 'post_excerpt' => $description]);
+      }
 
       if ($post_id && !is_wp_error($post_id)) {
         $settings = isset($g['settings']) && is_array($g['settings']) ? $g['settings'] : [];
@@ -3786,13 +3874,18 @@ TEXT;
       if (!is_array($acf_group)) continue;
 
       $title = sanitize_text_field($acf_group['title'] ?? 'ACF Group');
+      $description = sanitize_textarea_field($acf_group['description'] ?? '');
       $existing_id = $this->find_group_by_title($title);
 
       $post_id = $existing_id ? $existing_id : wp_insert_post([
         'post_type'=>'cff_group',
         'post_status'=>'publish',
         'post_title'=>$title,
+        'post_excerpt'=>$description,
       ]);
+      if ($existing_id && $description !== '') {
+        wp_update_post(['ID' => $existing_id, 'post_excerpt' => $description]);
+      }
 
       if (!$post_id || is_wp_error($post_id)) continue;
 
@@ -3800,7 +3893,7 @@ TEXT;
       $mapped_fields = $this->map_acf_fields($acf_group['fields'] ?? []);
 
       $settings = [
-        'fields' => $mapped_fields,
+        'fields' => $this->sanitize_field_list($mapped_fields),
         'location' => $loc ?: [[['param'=>'post_type','operator'=>'==','value'=>'post']]],
         'presentation' => [
           'style'=>'standard',
@@ -3919,7 +4012,7 @@ TEXT;
       $mapped_fields = $this->map_acf_fields($fields);
 
       $settings = [
-        'fields' => $mapped_fields,
+        'fields' => $this->sanitize_field_list($mapped_fields),
         'location' => $loc ?: [[['param'=>'post_type','operator'=>'==','value'=>'post']]],
         'presentation' => [
           'style'=>'standard',
@@ -4016,6 +4109,18 @@ TEXT;
         'name'=>$name ?: sanitize_key($label),
         'type'=>$mapped_type,
       ];
+      // Shared ACF settings; values are cleaned by sanitize_field_list() / apply_common_field_settings().
+      foreach (['instructions', 'placeholder', 'default_value', 'message'] as $setting) {
+        if (isset($f[$setting]) && is_scalar($f[$setting]) && $f[$setting] !== '') $base[$setting] = (string) $f[$setting];
+      }
+      if (!empty($f['required'])) $base['required'] = true;
+      if (!empty($f['wrapper']['width'])) $base['wrapper_width'] = (int) $f['wrapper']['width'];
+      if ($type === 'range') {
+        foreach (['min' => 'range_min', 'max' => 'range_max', 'step' => 'range_step'] as $acf_key => $cff_key) {
+          if (isset($f[$acf_key]) && is_numeric($f[$acf_key])) $base[$cff_key] = 0 + $f[$acf_key];
+        }
+      }
+      if ($type === 'accordion') $base['accordion_open'] = !empty($f['open']);
 
       if ($type === 'repeater') {
         $base['type'] = 'repeater';
@@ -4077,14 +4182,18 @@ TEXT;
     ];
   }
 
-  private function sanitize_fields($fields) {
-    $out = [];
+  /** Full field sanitizer shared by the builder save, imports and Local JSON sync. */
+  private function sanitize_field_list($fields) {
+    $clean = [];
+    $seen = [];
     $seen_keys = [];
     foreach ((array) $fields as $f) {
       if (!is_array($f)) continue;
-      $type = sanitize_key($f['type'] ?? 'text');
-      $name = sanitize_key($f['name'] ?? '');
-      if (!$name) continue;
+      $type = isset($f['type']) ? sanitize_key($f['type']) : 'text';
+      $name = isset($f['name']) ? sanitize_key($f['name']) : '';
+      if (!$name || isset($seen[$name])) continue;
+      $seen[$name] = true;
+
       $field_key = $this->sanitize_field_key($f['key'] ?? '');
       while (isset($seen_keys[$field_key])) {
         $field_key = $this->sanitize_field_key('');
@@ -4092,13 +4201,20 @@ TEXT;
       $seen_keys[$field_key] = true;
 
       $item = [
-        'label' => sanitize_text_field($f['label'] ?? $name),
-        'name' => $name,
-        'type' => $type,
+        'label' => $this->sanitize_string_value($f['label'] ?? $name),
+        'name'  => $name,
+        'type'  => $type,
         'key' => $field_key,
+        'required' => !empty($f['required']),
+        'hide' => !empty($f['hide']),
+        'placeholder' => $this->sanitize_string_value($f['placeholder'] ?? ''),
       ];
-      if (!empty($f['hide'])) {
-        $item['hide'] = true;
+      if ($type === 'image' || $type === 'file') {
+        $item['file_library'] = $this->sanitize_file_library($f['file_library'] ?? 'document');
+        $item['max_upload_mb'] = $this->sanitize_media_max_upload_mb($f['max_upload_mb'] ?? 2);
+      }
+      if ($type === 'gallery') {
+        $item['gallery_preview_fit'] = $this->sanitize_gallery_preview_fit($f['gallery_preview_fit'] ?? 'cover');
       }
       $aliases = $this->sanitize_field_aliases($f['aliases'] ?? [], $name);
       if ($aliases) {
@@ -4109,27 +4225,30 @@ TEXT;
         $item['conditional_logic'] = $conditional_logic;
       }
 
-      if ($type === 'repeater' || $type === 'group') {
-        $item['sub_fields'] = $this->sanitize_subfields($f['sub_fields'] ?? []);
-        if ($type === 'repeater') {
-          $min = $this->sanitize_repeater_min($f['min'] ?? 0);
-          $item['repeater_layout'] = $this->sanitize_repeater_layout($f['repeater_layout'] ?? 'default');
-          $item['min'] = $min;
-          $item['max'] = $this->sanitize_repeater_max($f['max'] ?? 0, $min);
-          $item['repeater_row_label'] = $this->sanitize_repeater_row_label($f['repeater_row_label'] ?? '', $item['sub_fields']);
-          $item['repeater_collapsed'] = !empty($f['repeater_collapsed']);
-        }
-      }
-      if ($type === 'flexible') {
-        $item['layouts'] = $this->sanitize_layouts($f['layouts'] ?? []);
+      if ($type === 'repeater') {
+        $sub_fields = $this->sanitize_subfields($f['sub_fields'] ?? []);
+        $min = $this->sanitize_repeater_min($f['min'] ?? 0);
+        $item['sub_fields'] = $sub_fields;
+        $item['repeater_layout'] = $this->sanitize_repeater_layout($f['repeater_layout'] ?? 'default');
+        $item['min'] = $min;
+        $item['max'] = $this->sanitize_repeater_max($f['max'] ?? 0, $min);
+        $item['repeater_row_label'] = $this->sanitize_repeater_row_label($f['repeater_row_label'] ?? '', $sub_fields);
+        $item['repeater_collapsed'] = !empty($f['repeater_collapsed']);
       }
       if ($type === 'datetime_picker') {
         $item['datetime_use_time'] = !array_key_exists('datetime_use_time', $f) ? true : !empty($f['datetime_use_time']);
       }
-      if ($type === 'gallery') {
-        $item['gallery_preview_fit'] = $this->sanitize_gallery_preview_fit($f['gallery_preview_fit'] ?? 'cover');
+      if ($type === 'flexible') {
+        $item['layouts'] = $this->sanitize_layouts($f['layouts'] ?? []);
       }
-
+      if ($type === 'group') {
+        $item['sub_fields'] = $this->sanitize_subfields($f['sub_fields'] ?? []);
+      }
+      if ($type === 'choice') {
+        $item['choices'] = $this->sanitize_choices($f['choices'] ?? []);
+        $item['choice_display'] = $this->sanitize_choice_display($f['choice_display'] ?? '');
+        $item['choice_default'] = $this->sanitize_choice_default($f['choice_default'] ?? '', $item['choices'], $item['choice_display']);
+      }
       if ($type === 'relational') {
         $item['relational_type'] = $this->sanitize_relational_type($f['relational_type'] ?? 'post');
         $item['relational_subtype'] = $this->sanitize_string_value($f['relational_subtype'] ?? '');
@@ -4138,9 +4257,13 @@ TEXT;
         $item['relational_multiple'] = !empty($f['relational_multiple']);
       }
 
-      $out[] = $item;
+      $clean[] = $this->apply_common_field_settings($item, $f);
     }
-    return $out;
+    return $clean;
+  }
+
+  private function sanitize_fields($fields) {
+    return $this->sanitize_field_list($fields);
   }
 
   /**

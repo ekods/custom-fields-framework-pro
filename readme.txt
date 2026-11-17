@@ -1,6 +1,6 @@
 === Custom Fields Framework Pro ===
 Contributors: ekods
-Stable tag: 2.5.47
+Stable tag: 2.5.55
 
 Custom fields with Field Groups, Repeater, Flexible Content, Location rules, and CFF-compatible frontend helpers.
 
@@ -15,6 +15,54 @@ Build structured WordPress content with custom fields, nested repeaters, groups,
 3. Open Custom Fields and create a Field Group with location rules.
 
 == Changelog ==
+
+= 2.5.55 =
+* Rework the field builder into a table of fields (# / Label / Name / Type) that open into General, Validation, Presentation and Conditional Logic tabs, with Close Field and Close and Add Field actions; sub fields use the same list.
+* Add Instructions, Default Value and Wrapper Width to every field; Label Placement Left and Instruction Placement now apply in the editor.
+* Validate fields on the server before publishing (required, email, URL, number, range bounds, repeater min/max), with messages on each field; fields hidden by conditional logic are skipped.
+* Add Local JSON: field groups are saved to the theme's cff-json folder when it exists, with Sync / Sync all on the Field Groups screen and a status card on Export / Import.
+* Add Email, Range, Time Picker, Message, Tab and Accordion field types; ACF migration carries these types and common field settings.
+* Flexible Content: an Add Row menu lists the layouts; layout names are generated from the label so layouts are no longer dropped on save.
+* Field Groups list shows Description, Key, Location and Fields like ACF; field groups get a Description input that is exported and imported.
+* Rework the Overview dashboard with Build and Tools links, remove the section navigation, use Tool Kits page headings, and turn Reorder into accordions with one panel per post type and coloured status badges.
+* Imports and syncs keep required, placeholder, choices and media settings; number sub fields render as number inputs; round media select/clear buttons.
+
+= 2.5.54 =
+* Replace the Revisions popup's Close text button with a compact X icon and accessible close label.
+* Constrain the revision list height and support wheel, touch and keyboard scrolling while keeping the popup header, X and footer visible.
+
+= 2.5.53 =
+* Open a Revisions popup from CFF Revision History with newest-first rows showing avatar, user, relative time and linked full local date/time, scoped to the editor's content ID.
+* Date links open the comparison page with that exact To revision selected. Keep Compare revisions available for the general comparison view; invalid/expired revision links do not silently select another version.
+* Support keyboard focus, Escape/Close, scrollable mobile lists, loading/empty/error states and retry. Preserve unsaved-editor guards and per-ID permissions.
+
+= 2.5.52 =
+* Reserve a dedicated gutter for diff minus/plus markers so they cannot overlap the first character or wrapped text when WordPress revisions.css is loaded.
+* Align native and fallback markers with the first text line using consistent text symbols, including mobile layouts.
+
+= 2.5.51 =
+* Restore one or several selected root fields/sections from the To revision, using the field/section action or the checkbox selector. Keep unselected values and field order unchanged.
+* Restore groups, repeaters and flexible layouts intact with their own Hide Section state; keep legacy media URL companions together. Field order and complete section visibility are separately selectable.
+* Preserve full recovery snapshots, permission/lock/stale checks, rollback and per-ID isolation for partial restores. Record the restored field scope in revision history and reject empty or invalid selections.
+* Filter the current content ID's history by user and inclusive site-local date range; update both version selectors and timeline marks to match, with no-results feedback and Reset.
+
+= 2.5.50 =
+* Match the WordPress revision timeline with a white segmented track, circular two-arrow handles and an author/time speech bubble above the selected revision.
+* Keep tooltip arrows aligned to their handles at the start, middle and end of the timeline, and constrain bubbles within desktop/mobile layouts.
+* Retain native slider semantics, keyboard navigation, pointer dragging, independent From/To controls and per-content revision behavior.
+
+= 2.5.49 =
+* Tidy the revision comparison header into equal From/To columns with aligned full-width version selectors, readable author/date details and shorter dropdown labels.
+* Put the restore action and explanation in a separate footer, stack version details on small screens and constrain the reading width on large screens.
+* Tighten field headings, diff row padding and line spacing; remove row gutters while preserving all whitespace and content differences.
+
+= 2.5.48 =
+* Add CFF revision history scoped to each post, page or CPT ID, including nested values, field order and Hide Section; keep the latest 20 versions independently per ID.
+* Open a dedicated comparison page from the content editor with a revision timeline, Previous/Next, compare-any-two controls, From/To author details, exact local timestamps and relative time.
+* Use WordPress's native split diff renderer with red/green line and word highlights. Display saved content markup as escaped text.
+* Record the editing user and capture their display name for each saved/restored version. Identify initial recovery snapshots as captures with unknown original author/change time.
+* Restore the To revision only to its original content ID, preserve a recovery point, enforce edit permissions and stale-value/editor-lock checks, and roll back failed field writes.
+* Keep history out of duplication and Polylang copies; prevent restores from synchronizing CFF values to other translations. Protect unsaved classic and Gutenberg metabox changes before opening history.
 
 = 2.5.47 =
 - Repeater rows show a title taken from the first filled text field when no Row Label Field is set, and the title follows typing.

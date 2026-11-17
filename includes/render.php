@@ -23,7 +23,66 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       . ' data-cff-conditional-value="' . esc_attr($value) . '"';
   }
 
-  function cff_field_is_hidden($field) {
+  /** Instruction placement of the field group being rendered: 'below_labels' or 'below_fields'. */
+function cff_instruction_placement($set = null) {
+  static $placement = 'below_labels';
+  if ($set !== null) $placement = ($set === 'below_fields') ? 'below_fields' : 'below_labels';
+  return $placement;
+}
+
+function cff_field_instructions_html($field, $position) {
+  $text = trim((string) ($field['instructions'] ?? ''));
+  if ($text === '' || cff_instruction_placement() !== $position) return '';
+  return '<p class="cff-instructions description">' . nl2br(esc_html($text)) . '</p>';
+}
+
+/** Width as a fraction for the flex layout; '' when the field spans the full row. */
+function cff_field_width_style($field) {
+  $width = (int) ($field['wrapper_width'] ?? 0);
+  if ($width <= 0 || $width >= 100) return '';
+  return ' style="--cff-w:' . esc_attr(rtrim(rtrim(number_format($width / 100, 4, '.', ''), '0'), '.')) . '"';
+}
+
+function cff_field_width_class($field) {
+  return cff_field_width_style($field) === '' ? '' : ' cff-has-width';
+}
+
+/** Stored value, or the field's default when nothing has been saved for it yet. */
+function cff_value_or_default($values, $name, $field) {
+  if (is_array($values) && array_key_exists($name, $values)) return $values[$name];
+  return \CFF\Plugin::supports_default_value($field['type'] ?? '') ? (string) ($field['default_value'] ?? '') : '';
+}
+
+/** Controls for email, range, time picker and message; returns false for other types. */
+function cff_render_simple_control($type, $name_attr, $value, $field, $placeholder_attr, $required_attr) {
+  if ($type === 'email') {
+    echo '<input class="widefat" type="email" name="' . esc_attr($name_attr) . '" value="' . esc_attr($value) . '"' . $placeholder_attr . $required_attr . '>';
+    return true;
+  }
+  if ($type === 'range') {
+    $min = is_numeric($field['range_min'] ?? null) ? 0 + $field['range_min'] : 0;
+    $max = is_numeric($field['range_max'] ?? null) ? 0 + $field['range_max'] : 100;
+    $step = is_numeric($field['range_step'] ?? null) && $field['range_step'] > 0 ? 0 + $field['range_step'] : 1;
+    $current = is_numeric($value) ? 0 + $value : $min;
+    $bounds = ' min="' . esc_attr($min) . '" max="' . esc_attr($max) . '" step="' . esc_attr($step) . '"';
+    echo '<div class="cff-range">';
+    echo '<input type="range" class="cff-range-slider"' . $bounds . ' value="' . esc_attr($current) . '" aria-hidden="true" tabindex="-1">';
+    echo '<input type="number" class="cff-range-value" name="' . esc_attr($name_attr) . '"' . $bounds . ' value="' . esc_attr(is_numeric($value) ? $value : '') . '"' . $required_attr . '>';
+    echo '</div>';
+    return true;
+  }
+  if ($type === 'time_picker') {
+    echo '<input class="cff-time-input" type="time" step="60" name="' . esc_attr($name_attr) . '" value="' . esc_attr($value) . '"' . $required_attr . '>';
+    return true;
+  }
+  if ($type === 'message') {
+    echo '<div class="cff-message">' . wpautop(wp_kses_post((string) ($field['message'] ?? ''))) . '</div>';
+    return true;
+  }
+  return false;
+}
+
+function cff_field_is_hidden($field) {
     return is_array($field) && !empty($field['hide']);
   }
 
@@ -493,6 +552,9 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       $label = ucfirst(str_replace(['_', '-'], ' ', $name));
     }
     $val = cff_get_value_with_aliases($plugin, $post->ID, $name, $f);
+    if (!cff_has_meaningful_value($val) && Plugin::supports_default_value($type) && !metadata_exists('post', (int) $post->ID, $plugin->meta_key($name))) {
+      $val = (string) ($f['default_value'] ?? '');
+    }
 
     $required = !empty($f['required']);
     $required_attr = $required ? ' required aria-required="true"' : '';
@@ -505,7 +567,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
 
     $is_accordion = in_array($type, ['repeater', 'group'], true);
     $is_initially_closed = $is_accordion;
-    $field_classes = 'cff-field cff-field-' . $type . ($is_accordion ? ' cff-postbox' : '');
+    $field_classes = 'cff-field cff-field-' . $type . ($is_accordion ? ' cff-postbox' : '') . cff_field_width_class($f);
     if ($is_initially_closed) {
       $field_classes .= ' closed';
     }
@@ -522,6 +584,20 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       echo '<div class="' . esc_attr($hidden_classes) . '" data-field-name="' . esc_attr($field_attr_name) . '" data-field-key="' . esc_attr($field_key) . '" hidden aria-hidden="true" style="display:none!important"></div>';
       return;
     }
+    // Tabs and accordions are markers in the flat field list; post.js groups the fields that follow them.
+    if ($type === 'tab' || $type === 'accordion') {
+      $marker = ' data-field-name="' . esc_attr($field_attr_name) . '" data-field-key="' . esc_attr($field_key) . '"';
+      if ($type === 'tab') {
+        echo '<div class="cff-field cff-field-tab"' . $marker . '><span class="cff-tab-label">' . esc_html($label) . '</span></div>';
+      } else {
+        $open = !empty($f['accordion_open']);
+        echo '<div class="cff-field cff-field-accordion' . ($open ? ' is-open' : '') . '"' . $marker . '>';
+        echo '<button type="button" class="cff-accordion-toggle" aria-expanded="' . ($open ? 'true' : 'false') . '"><span class="cff-accordion-label">' . esc_html($label) . '</span></button>';
+        echo cff_field_instructions_html($f, cff_instruction_placement());
+        echo '</div>';
+      }
+      return;
+    }
     $section_hidden = cff_section_is_hidden($post->ID, $field_attr_name);
     if ($section_hidden) {
       $field_classes .= ' cff-section-hidden';
@@ -530,7 +606,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     if ($section_hidden) {
       $section_body_attrs .= ' style="display:none!important"';
     }
-    echo '<div class="' . esc_attr($field_classes) . '" data-field-name="' . esc_attr($field_attr_name) . '" data-field-key="' . esc_attr($field_key) . '"' . cff_conditional_attrs($f) . '>';
+    echo '<div class="' . esc_attr($field_classes) . '" data-field-name="' . esc_attr($field_attr_name) . '" data-field-key="' . esc_attr($field_key) . '"' . cff_conditional_attrs($f) . cff_field_width_style($f) . ' data-cff-path="' . esc_attr('cff_values[' . sanitize_key($name) . ']') . '">';
     $type_label = ucfirst(str_replace('_', ' ', $type));
     if ($is_accordion) {
       echo '<div class="postbox-header">';
@@ -551,6 +627,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       echo '</div>';
       echo '</div>';
       echo '<div class="inside cff-input"' . $section_body_attrs . '>';
+      echo cff_field_instructions_html($f, 'below_labels');
     } else {
       echo '<div class="cff-label">';
       echo '<div class="cff-field-identity">';
@@ -561,11 +638,14 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       echo '</div>';
       echo '</div>';
       cff_render_section_hide_switch($field_attr_name, $section_hidden, $label);
+      echo cff_field_instructions_html($f, 'below_labels');
       echo '</div>';
       echo '<div class="cff-input"' . $section_body_attrs . '>';
     }
 
-    if ($type === 'text' || $type === 'number') {
+    if (cff_render_simple_control($type, 'cff_values[' . sanitize_key($name) . ']', $val, $f, $placeholder_attr, $required_attr)) {
+      // email, range, time picker, message
+    } elseif ($type === 'text' || $type === 'number') {
       $input_type = $type === 'number' ? 'number' : 'text';
       echo '<input class="widefat" type="'.esc_attr($input_type).'" name="cff_values['.esc_attr($name).']" value="'.esc_attr($val).'"'.$placeholder_attr.$required_attr.'>';
     } elseif ($type === 'textarea') {
@@ -705,13 +785,17 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       echo '</div>';
 
       echo '<div class="cff-flex-add">';
-      echo '<select class="cff-flex-layout">';
-      echo '<option value="">' . esc_html__('Add layout…', 'cff') . '</option>';
-      foreach ($layouts as $l) {
-        echo '<option value="'.esc_attr($l['name']).'">'.esc_html($l['label']).'</option>';
+      if ($layouts) {
+        $menu_id = 'cff-flex-menu-' . sanitize_html_class($name) . '-' . wp_rand();
+        echo '<div class="cff-flex-menu" id="'.esc_attr($menu_id).'" role="menu" hidden>';
+        foreach ($layouts as $l) {
+          echo '<button type="button" role="menuitem" class="cff-flex-menu-item" data-layout="'.esc_attr($l['name']).'">'.esc_html($l['label'] ?: $l['name']).'</button>';
+        }
+        echo '</div>';
+        echo '<button type="button" class="button button-primary cff-flex-add-toggle" aria-haspopup="menu" aria-expanded="false" aria-controls="'.esc_attr($menu_id).'"><span class="dashicons dashicons-plus-alt2" aria-hidden="true"></span>' . esc_html__('Add Row', 'cff') . '</button>';
+      } else {
+        echo '<p class="description">' . esc_html__('No layouts yet. Add layouts to this field in its field group.', 'cff') . '</p>';
       }
-      echo '</select> ';
-      echo '<button type="button" class="button cff-flex-add-btn"><span class="dashicons dashicons-plus-alt2" aria-hidden="true"></span>' . esc_html__('Add', 'cff') . '</button>';
       echo '</div>';
 
       echo '<div class="cff-flex-templates" style="display:none">';
@@ -726,6 +810,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     } else {
       echo '<input class="widefat" type="text" name="cff_values['.esc_attr($name).']" value="'.esc_attr($val).'"'.$placeholder_attr.$required_attr.'>';
     }
+    echo cff_field_instructions_html($f, 'below_fields');
     cff_render_copy_to_translations_field_action([
       'root' => $name,
       'field' => $name,
@@ -888,7 +973,12 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
     $stype = $s['type'];
     $label = $s['label'] ?? $sname;
 
-    if ($stype === 'textarea') {
+    if (cff_render_simple_control($stype, $name_attr, $v, $s, $placeholder_attr, $required_attr)) {
+      return;
+    }
+    if ($stype === 'number') {
+      echo '<input class="widefat" type="number" name="'.esc_attr($name_attr).'" value="'.esc_attr($v).'"'.$placeholder_attr.$required_attr.'>';
+    } elseif ($stype === 'textarea') {
       echo '<textarea class="widefat" rows="'.intval($textarea_rows).'" name="'.esc_attr($name_attr).'"'.$placeholder_attr.$required_attr.'>'.esc_textarea($v).'</textarea>';
     } elseif ($stype === 'shortcode') {
       render_shortcode_input($name_attr, $v, $placeholder_attr, $required_attr);
@@ -1035,7 +1125,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         $sname = $s['name'];
         $stype = $s['type'];
         $label = $s['label'] ?? $sname;
-        $v = isset($row[$sname]) ? $row[$sname] : '';
+        $v = cff_value_or_default($row, $sname, $s);
         $placeholder = cff_resolve_placeholder($s['placeholder'] ?? '', $stype);
         $placeholder_attr = $placeholder ? ' placeholder="' . esc_attr($placeholder) . '"' : '';
         $name_attr = $row_prefix . '[' . $sname . ']';
@@ -1049,12 +1139,14 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
           'name' => sanitize_key($sname),
           'type' => sanitize_key($stype),
         ]]);
-        echo '<td class="cff-subfield-input cff-subfield-type-' . esc_attr(sanitize_key($stype)) . '" data-field-name="' . esc_attr(sanitize_key($sname)) . '" data-field-key="' . esc_attr($sub_field_key) . '"' . cff_conditional_attrs($s) . '>';
+        echo '<td class="cff-subfield-input cff-subfield-type-' . esc_attr(sanitize_key($stype)) . '" data-field-name="' . esc_attr(sanitize_key($sname)) . '" data-field-key="' . esc_attr($sub_field_key) . '"' . cff_conditional_attrs($s) . ' data-cff-path="' . esc_attr($name_attr) . '">';
         if ($index === 0) {
           echo '<input type="hidden" class="cff-row-id" name="'.esc_attr($row_prefix . '[__cff_row_id]').'" value="'.esc_attr($row_id).'">';
         }
         echo '<label>'.$label_text.'</label>';
+        echo cff_field_instructions_html($s, 'below_labels');
         cff_render_subfield_control($s, $name_attr, $v, $post_id, $root_name, $current_path, $placeholder_attr, $required_attr);
+        echo cff_field_instructions_html($s, 'below_fields');
         if (!cff_subfield_copy_hidden()) {
           cff_render_copy_to_translations_field_action([
             'root' => $root_name ?: sanitize_key($parent),
@@ -1107,7 +1199,7 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
       $sname = $s['name'];
       $stype = $s['type'];
       $label = $s['label'] ?? $sname;
-      $v = isset($row[$sname]) ? $row[$sname] : '';
+      $v = cff_value_or_default($row, $sname, $s);
       $placeholder = cff_resolve_placeholder($s['placeholder'] ?? '', $stype);
       $placeholder_attr = $placeholder ? ' placeholder="' . esc_attr($placeholder) . '"' : '';
       $name_attr = $row_prefix . '[' . $sname . ']';
@@ -1121,9 +1213,11 @@ if (!function_exists(__NAMESPACE__ . '\render_field_impl')) {
         'name' => sanitize_key($sname),
         'type' => sanitize_key($stype),
       ]]);
-      echo '<div class="cff-subfield-input cff-subfield-type-' . esc_attr(sanitize_key($stype)) . '" data-field-name="' . esc_attr(sanitize_key($sname)) . '" data-field-key="' . esc_attr($sub_field_key) . '"' . cff_conditional_attrs($s) . '>';
+      echo '<div class="cff-subfield-input cff-subfield-type-' . esc_attr(sanitize_key($stype)) . cff_field_width_class($s) . '" data-field-name="' . esc_attr(sanitize_key($sname)) . '" data-field-key="' . esc_attr($sub_field_key) . '"' . cff_conditional_attrs($s) . cff_field_width_style($s) . ' data-cff-path="' . esc_attr($name_attr) . '">';
       echo '<label>'.$label_text.'</label>';
+      echo cff_field_instructions_html($s, 'below_labels');
       cff_render_subfield_control($s, $name_attr, $v, $post_id, $root_name, $current_path, $placeholder_attr, $required_attr);
+      echo cff_field_instructions_html($s, 'below_fields');
       if (!cff_subfield_copy_hidden()) {
         cff_render_copy_to_translations_field_action([
           'root' => $root_name ?: sanitize_key($parent),
@@ -1144,7 +1238,7 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
       $sname = $s['name'];
       $stype = $s['type'];
       $label = $s['label'] ?? $sname;
-      $v = isset($vals[$sname]) ? $vals[$sname] : '';
+      $v = cff_value_or_default($vals, $sname, $s);
       $placeholder = $s['placeholder'] ?? '';
       $placeholder_attr = $placeholder ? ' placeholder="' . esc_attr($placeholder) . '"' : '';
       $name_attr = $parent_prefix . '[' . $sname . ']';
@@ -1158,9 +1252,11 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
         'name' => sanitize_key($sname),
         'type' => sanitize_key($stype),
       ]]);
-      echo '<div class="cff-subfield-input cff-subfield-type-' . esc_attr(sanitize_key($stype)) . '" data-field-name="' . esc_attr(sanitize_key($sname)) . '" data-field-key="' . esc_attr($sub_field_key) . '"' . cff_conditional_attrs($s) . '>';
+      echo '<div class="cff-subfield-input cff-subfield-type-' . esc_attr(sanitize_key($stype)) . cff_field_width_class($s) . '" data-field-name="' . esc_attr(sanitize_key($sname)) . '" data-field-key="' . esc_attr($sub_field_key) . '"' . cff_conditional_attrs($s) . cff_field_width_style($s) . ' data-cff-path="' . esc_attr($name_attr) . '">';
       echo '<label>'.$label_text.'</label>';
+      echo cff_field_instructions_html($s, 'below_labels');
       cff_render_subfield_control($s, $name_attr, $v, $post_id, $root_name, $current_path, $placeholder_attr, $required_attr);
+      echo cff_field_instructions_html($s, 'below_fields');
       if (!cff_subfield_copy_hidden()) {
         cff_render_copy_to_translations_field_action([
           'root' => $root_name ?: sanitize_key($sname),
@@ -1378,7 +1474,7 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
         $sname = $sf['name'];
         $stype = $sf['type'];
         $slabel = $sf['label'] ?? $sname;
-        $v = $fields[$sname] ?? '';
+        $v = cff_value_or_default($fields, $sname, $sf);
         $name_attr = 'cff_values['.$parent.']['.$i.'][fields]['.$sname.']';
         $placeholder = $sf['placeholder'] ?? '';
         $placeholder_attr = $placeholder ? ' placeholder="' . esc_attr($placeholder) . '"' : '';
@@ -1392,9 +1488,11 @@ function render_group_fields($parent_prefix, $subs, $vals, $post_id, $root_name 
           'name' => sanitize_key($sname),
           'type' => sanitize_key($stype),
         ]]);
-        echo '<div class="cff-subfield-input cff-subfield-type-' . esc_attr(sanitize_key($stype)) . '" data-field-name="' . esc_attr(sanitize_key($sname)) . '" data-field-key="' . esc_attr($sub_field_key) . '"' . cff_conditional_attrs($sf) . '>';
+        echo '<div class="cff-subfield-input cff-subfield-type-' . esc_attr(sanitize_key($stype)) . cff_field_width_class($sf) . '" data-field-name="' . esc_attr(sanitize_key($sname)) . '" data-field-key="' . esc_attr($sub_field_key) . '"' . cff_conditional_attrs($sf) . cff_field_width_style($sf) . ' data-cff-path="' . esc_attr($name_attr) . '">';
         echo '<label>'.$label_text.'</label>';
+        echo cff_field_instructions_html($sf, 'below_labels');
         cff_render_subfield_control($sf, $name_attr, $v, $post_id, $root_name, $current_path, $placeholder_attr, $required_attr, 4);
+        echo cff_field_instructions_html($sf, 'below_fields');
         if (!cff_subfield_copy_hidden()) {
           cff_render_copy_to_translations_field_action([
             'root' => $root_name ?: sanitize_key($parent),

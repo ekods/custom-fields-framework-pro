@@ -5,10 +5,10 @@ if (!defined('ABSPATH')) exit;
 
 function cff_render_page_hero($title, $description, $icon = 'dashicons-cff', $action_html = '') {
     ?>
-    <div class="tk-hero">
+    <div class="tk-hero tk-page-heading tk-card">
         <div class="tk-hero-content">
-            <div class="tk-hero-main">
-                <div class="tk-hero-icon">
+            <div class="tk-page-heading-main">
+                <div class="tk-page-icon">
                     <span class="dashicons <?php echo esc_attr($icon); ?>" aria-hidden="true"></span>
                 </div>
                 <div>
@@ -38,25 +38,6 @@ function cff_render_header_branding() {
         <a class="cff-help-link" href="<?php echo esc_url(admin_url('admin.php?page=cff-docs')); ?>"><?php echo esc_html__('Help & documentation', 'cff'); ?></a>
     </div>
     <?php
-    $current = sanitize_key($_GET['page'] ?? '');
-    $screen = function_exists('get_current_screen') ? get_current_screen() : null;
-    if ($screen && in_array($screen->id, ['edit-cff_group', 'cff_group'], true)) $current = 'edit.php?post_type=cff_group';
-    $items = [
-        'cff' => __('Overview', 'cff'),
-        'edit.php?post_type=cff_group' => __('Field Groups', 'cff'),
-        'cff-post-types' => __('Post Types', 'cff'),
-        'cff-taxonomies' => __('Taxonomies', 'cff'),
-        'cff-global-settings' => __('Global Settings', 'cff'),
-        'cff-reorder' => __('Reorder', 'cff'),
-        'cff-tools' => __('Export / Import', 'cff'),
-        'cff-import-content' => __('Import Content', 'cff'),
-    ];
-    echo '<nav class="cff-section-nav" aria-label="'.esc_attr__('Custom Fields navigation', 'cff').'">';
-    foreach ($items as $page => $label) {
-        $url = strpos($page, '.php') !== false ? admin_url($page) : admin_url('admin.php?page=' . $page);
-        echo '<a href="'.esc_url($url).'"'.($current === $page ? ' aria-current="page"' : '').'>'.esc_html($label).'</a>';
-    }
-    echo '</nav>';
 }
 
 /** Render real WordPress list tables, including server-side search and paging. */
