@@ -3,6 +3,13 @@
 .cff-import-settings label { display: block; margin-bottom: 6px; font-weight: 600; }
 .cff-import-settings select, .cff-import-settings input[type=file] { width: 100%; max-width: 100%; }
 .cff-import-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.cff-import-filter label { display: block; margin-bottom: 6px; }
+.cff-import-filter select { max-width: 100%; }
+.cff-import-search { align-items: center; }
+.cff-import-search input[type=search] { flex: 1 1 12rem; min-width: 0; max-width: 20rem; margin: 0; }
+.cff-import-bulk-actions { align-items: center; }
+.cff-import-bulk-actions .description { flex: 1 1 15rem; }
+.cff-import-destination-table { overflow-x: auto; }
 .cff-import-counts { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 12px 0; }
 .cff-import-result progress { width: 100%; height: 18px; }
 .cff-import-table-wrap { overflow-x: auto; max-height: 520px; }

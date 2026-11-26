@@ -1,3 +1,8 @@
+## 2.5.56
+
+- Space the Import Content search field and button and keep the destination table inside its panel on narrow screens.
+- Fix the Import Content search and post-type filter by avoiding a conflict with WordPress admin routing.
+
 ## 2.5.55
 
 - Rework the field builder into a table of fields (# / Label / Name / Type) that open into General, Validation, Presentation and Conditional Logic tabs, with Close Field and Close and Add Field actions; sub fields use the same list.

@@ -8,21 +8,26 @@ if (!defined('ABSPATH')) exit;
   <div class="tk-card">
     <form method="get" action="<?php echo esc_url(admin_url('admin.php')); ?>">
       <input type="hidden" name="page" value="cff-import-content">
-      <p><label for="cff-import-search-type"><?php esc_html_e('Post type', 'cff'); ?></label>
-      <select id="cff-import-search-type" name="post_type">
+      <p class="cff-import-filter"><label for="cff-import-search-type"><?php esc_html_e('Post type', 'cff'); ?></label>
+      <select id="cff-import-search-type" name="cff_content_type">
         <?php foreach ($types as $name => $object) : ?>
         <option value="<?php echo esc_attr($name); ?>" <?php selected($type, $name); ?>><?php echo esc_html($object->labels->name ?? $name); ?></option>
         <?php endforeach; ?>
       </select></p>
-      <p><label for="cff-import-search"><?php esc_html_e('Find a page', 'cff'); ?></label>
-      <input type="search" id="cff-import-search" name="content_search" value="<?php echo esc_attr($search); ?>">
-      <button type="submit" class="button"><?php esc_html_e('Search', 'cff'); ?></button></p>
+      <div class="cff-import-filter">
+        <label for="cff-import-search"><?php esc_html_e('Find a page', 'cff'); ?></label>
+        <div class="cff-import-actions cff-import-search">
+          <input type="search" id="cff-import-search" name="content_search" value="<?php echo esc_attr($search); ?>">
+          <button type="submit" class="button"><?php esc_html_e('Search', 'cff'); ?></button>
+        </div>
+      </div>
     </form>
     <p class="description"><?php esc_html_e('Showing up to 100 matches ordered by ID. The destination stays fixed throughout preview and import.', 'cff'); ?></p>
     <form method="get" action="<?php echo esc_url(admin_url('admin.php')); ?>">
     <input type="hidden" name="page" value="cff-import-content">
-    <p><button type="submit" class="button button-primary"><?php esc_html_e('Import into selected pages', 'cff'); ?></button>
+    <p class="cff-import-actions cff-import-bulk-actions"><button type="submit" class="button button-primary"><?php esc_html_e('Import into selected pages', 'cff'); ?></button>
     <span class="description"><?php esc_html_e('Select two or more pages of the same post type to apply one JSON file to all of them.', 'cff'); ?></span></p>
+    <div class="cff-import-destination-table" role="region" aria-label="<?php esc_attr_e('Available content', 'cff'); ?>" tabindex="0">
     <table class="widefat striped"><thead><tr><td class="check-column"><input type="checkbox" onclick="this.closest('table').querySelectorAll('tbody .cff-bulk-check').forEach(function(c){c.checked=this.checked}.bind(this))" aria-label="<?php esc_attr_e('Select all', 'cff'); ?>"></td><th><?php esc_html_e('Content', 'cff'); ?></th><th><?php esc_html_e('Status', 'cff'); ?></th><th><?php esc_html_e('Last import', 'cff'); ?></th><th><?php esc_html_e('Import', 'cff'); ?></th></tr></thead><tbody>
     <?php foreach ($candidates as $candidate) : ?>
       <tr><th scope="row" class="check-column"><input type="checkbox" class="cff-bulk-check" name="post_ids[]" value="<?php echo (int) $candidate->ID; ?>"></th><td><?php echo str_repeat('<span aria-hidden="true">— </span>', count(get_post_ancestors($candidate))); echo esc_html($candidate->post_title ?: '(untitled)'); ?> <small>#<?php echo (int) $candidate->ID; ?></small><?php if (function_exists('pll_get_post_language')) echo ' · ' . esc_html(strtoupper((string) pll_get_post_language($candidate->ID, 'slug'))); ?></td>
@@ -32,6 +37,7 @@ if (!defined('ABSPATH')) exit;
     <?php endforeach; ?>
     <?php if (!$candidates) : ?><tr><td colspan="5"><?php esc_html_e('No editable content found. Save a page first, or try another search.', 'cff'); ?></td></tr><?php endif; ?>
     </tbody></table>
+    </div>
     </form>
   </div>
 </div>

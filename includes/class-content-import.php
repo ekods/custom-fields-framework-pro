@@ -34,7 +34,9 @@ class Content_Import {
 
   public function assets($hook) {
     if (strpos((string) $hook, 'cff-import-content') === false) return;
-    wp_enqueue_style('cff-content-import', CFFP_URL . 'assets/content-import.css', [], CFFP_VERSION);
+    $style = CFFP_DIR . 'assets/content-import.css';
+    $version = is_file($style) ? CFFP_VERSION . '.' . filemtime($style) : CFFP_VERSION;
+    wp_enqueue_style('cff-content-import', CFFP_URL . 'assets/content-import.css', [], $version);
     wp_enqueue_script('cff-content-import', CFFP_URL . 'assets/js/content-import.js', [], CFFP_VERSION, true);
     wp_localize_script('cff-content-import', 'CFFContentImport', [
       'ajax' => admin_url('admin-ajax.php'), 'nonce' => wp_create_nonce('cff_content_import'),
@@ -81,7 +83,7 @@ class Content_Import {
       try { $destination = $this->destination($bulk ? $bulk[0] : absint($_GET['post_id'])); }
       catch (\RuntimeException $error) { wp_die(esc_html($error->getMessage()), '', ['response' => 403]); return; }
     } elseif (empty($_GET['bulk'])) {
-      $type = is_string($_GET['post_type'] ?? null) ? sanitize_key($_GET['post_type']) : 'page';
+      $type = is_string($_GET['cff_content_type'] ?? null) ? sanitize_key($_GET['cff_content_type']) : 'page';
       if (!isset($types[$type])) $type = key($types);
       $search = is_string($_GET['content_search'] ?? null) ? sanitize_text_field(wp_unslash($_GET['content_search'])) : '';
       $candidates = $type ? get_posts(['post_type' => $type, 'post_status' => ['publish', 'draft', 'pending', 'private', 'future'],
